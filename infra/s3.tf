@@ -123,10 +123,10 @@ resource "aws_cloudfront_distribution" "frontend" {
   # Default cache behaviour — applies to all requests (/*  )
   default_cache_behavior {
     target_origin_id       = "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"  # HTTP → HTTPS automatically
+    viewer_protocol_policy = "redirect-to-https" # HTTP → HTTPS automatically
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
-    compress               = true                  # gzip/brotli compression = faster loads
+    compress               = true # gzip/brotli compression = faster loads
 
     forwarded_values {
       query_string = false
@@ -144,20 +144,20 @@ resource "aws_cloudfront_distribution" "frontend" {
 
   # SPA fallback — React Router routes return index.html
   custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
   }
 
   custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
   }
 
   restrictions {
     geo_restriction {
-      restriction_type = "none"  # No country blocking
+      restriction_type = "none" # No country blocking
     }
   }
 
