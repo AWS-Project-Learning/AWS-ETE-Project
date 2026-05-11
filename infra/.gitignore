@@ -1,0 +1,10 @@
+# Local state (never commit — use remote state in S3)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Local variable overrides (may contain real account IDs / secrets)
+*.tfvars.local
+override.tf
+override.tf.json

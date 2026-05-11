@@ -1,0 +1,25 @@
+# ── Input Variables ───────────────────────────────────────────────────────────
+# These are the "parameters" of your Terraform configuration.
+# Actual values come from terraform.tfvars or -var flags at runtime.
+
+variable "aws_region" {
+  description = "AWS region for all resources"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Deployment environment (dev | sit)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "sit"], var.environment)
+    error_message = "environment must be 'dev' or 'sit'."
+  }
+}
+
+variable "project" {
+  description = "Project name — used in resource names and tags"
+  type        = string
+  default     = "orderflow"
+}

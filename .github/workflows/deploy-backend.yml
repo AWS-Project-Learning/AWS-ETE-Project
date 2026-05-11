@@ -1,0 +1,148 @@
+name: Deploy Backend Services
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - sit
+      service:
+        description: "Service to deploy (or 'all')"
+        required: true
+        type: choice
+        options:
+          - all
+          - order-service
+          - invoice-service
+          - bff
+      image_tag:
+        description: "Docker image tag (default: latest commit SHA)"
+        required: false
+        default: ""
+
+  push:
+    branches:
+      - main
+    paths:
+      - "backend-services/**"
+      - "deploy/**"
+
+env:
+  AWS_REGION:    us-east-1
+  ECR_REGISTRY:  ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+jobs:
+  # ── Build & Push images to ECR ─────────────────────────────────────────────
+  build:
+    name: Build & Push — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [order-service, invoice-service, bff]
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tag
+        id: meta
+        run: |
+          TAG=${{ github.event.inputs.image_tag }}
+          if [ -z "$TAG" ]; then
+            TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Build & push ${{ matrix.service }}
+        run: |
+          IMAGE=${{ env.ECR_REGISTRY }}/${{ matrix.service }}:${{ steps.meta.outputs.tag }}
+          docker build -t $IMAGE backend-services/${{ matrix.service }}/
+          docker push $IMAGE
+
+  # ── Render task definitions & deploy to ECS ───────────────────────────────
+  deploy:
+    name: Deploy — ${{ matrix.service }} → ${{ github.event.inputs.environment || 'dev' }}
+    runs-on: ubuntu-latest
+    needs: build
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    strategy:
+      matrix:
+        service: [order-service, invoice-service, bff]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Skip if specific service selected (not this one)
+        if: >
+          github.event.inputs.service != 'all' &&
+          github.event.inputs.service != matrix.service
+        run: |
+          echo "Skipping ${{ matrix.service }} — not selected."
+          exit 0
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install renderer dependencies
+        run: pip install jinja2 pyyaml
+
+      - name: Render ECS task definition
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+        run: |
+          ENV=${{ github.event.inputs.environment || 'dev' }}
+          python deploy/render.py \
+            --service ${{ matrix.service }} \
+            --env $ENV \
+            --out /tmp/${{ matrix.service }}-task-def.json
+
+      - name: Register task definition
+        id: register
+        run: |
+          TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file:///tmp/${{ matrix.service }}-task-def.json \
+            --query "taskDefinition.taskDefinitionArn" \
+            --output text)
+          echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+
+      - name: Update ECS service
+        run: |
+          ENV=${{ github.event.inputs.environment || 'dev' }}
+          aws ecs update-service \
+            --cluster orderflow-$ENV \
+            --service ${{ matrix.service }}-$ENV \
+            --task-definition ${{ steps.register.outputs.task_def_arn }} \
+            --force-new-deployment
+
+      - name: Wait for service stability
+        run: |
+          ENV=${{ github.event.inputs.environment || 'dev' }}
+          aws ecs wait services-stable \
+            --cluster orderflow-$ENV \
+            --services ${{ matrix.service }}-$ENV
