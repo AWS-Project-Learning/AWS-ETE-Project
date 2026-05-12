@@ -3,9 +3,9 @@
 # Override them in values-{env}.yaml as needed.
 
 global:
-  region:           ap-south-1
-  account_id:       "1096-5302-3631"        # Replace with real AWS account ID
-  ecr_registry:     "109653023631.dkr.ecr.ap-south-1.amazonaws.com"
+  region:           us-east-1
+  account_id:       "109653023631"
+  ecr_registry:     "109653023631.dkr.ecr.us-east-1.amazonaws.com"
   execution_role:   ecs-task-execution-role
   task_role:        ecs-task-role         # Final role: ecs-task-role-{service_name}
   log_group:        /ecs/orderflow
