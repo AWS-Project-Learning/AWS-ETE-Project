@@ -47,7 +47,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
 
     min_ttl     = 0
-    default_ttl = 3600  # cache for 1 hour; invalidate after each deploy
+    default_ttl = 3600 # cache for 1 hour; invalidate after each deploy
     max_ttl     = 86400
   }
 
