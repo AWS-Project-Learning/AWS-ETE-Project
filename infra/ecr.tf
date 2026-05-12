@@ -26,8 +26,8 @@ resource "aws_ecr_repository" "services" {
   #   aws_ecr_repository.services["bff"]
   for_each = toset(local.services)
 
-  name                 = "${var.project}/${each.key}"   # e.g. orderflow/order-service
-  image_tag_mutability = "MUTABLE"                       # allows overwriting tags like "latest"
+  name                 = "${var.project}/${each.key}" # e.g. orderflow/order-service
+  image_tag_mutability = "MUTABLE"                    # allows overwriting tags like "latest"
 
   # Scan images for known OS/library vulnerabilities on every push.
   # Results appear in the ECR console — free basic scanning.
