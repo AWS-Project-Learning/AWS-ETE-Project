@@ -4,8 +4,8 @@ global:
   environment:      dev
   cluster:          orderflow-dev
   region:           us-east-1
-  account_id:       "123456789012"        # Replace with real AWS account ID
-  ecr_registry:     "123456789012.dkr.ecr.us-east-1.amazonaws.com"
+  account_id:       "109653023631"
+  ecr_registry:     "109653023631.dkr.ecr.us-east-1.amazonaws.com"
   log_group:        /ecs/orderflow/dev
 
 # ── Backend Services ──────────────────────────────────────────────────────────
