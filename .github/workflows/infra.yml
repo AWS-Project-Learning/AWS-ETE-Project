@@ -23,32 +23,33 @@ on:
           - destroy
 
 env:
-  AWS_REGION:       us-east-1
-  TF_WORKING_DIR:   infra
-  TF_VERSION:       1.7.5
+  AWS_REGION:     us-east-1
+  TF_WORKING_DIR: infra
+  TF_VERSION:     1.7.5
 
 jobs:
   # ── Plan ────────────────────────────────────────────────────────────────────
-  # Runs on every PR and every push to main.
-  # Shows what Terraform WILL change — nothing is created/modified yet.
   plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
 
     permissions:
       contents:      read
-      pull-requests: write   # needed to post plan output as a PR comment
+      pull-requests: write
+      id-token:      write   # required for OIDC — allows the job to request a token
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+        # OIDC: GitHub sends a short-lived token to AWS, AWS verifies it against
+        # the OIDC provider, then issues temporary credentials for this role.
+        # No static keys stored anywhere.
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -58,8 +59,6 @@ jobs:
       - name: Terraform Format Check
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform fmt -check -recursive
-        # Fails if any .tf file is not properly formatted.
-        # Run `terraform fmt` locally to auto-fix before pushing.
 
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
@@ -68,7 +67,6 @@ jobs:
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
-        # Checks syntax and internal consistency — catches errors before plan.
 
       - name: Terraform Plan
         id: plan
@@ -86,8 +84,6 @@ jobs:
             ${{ env.TF_WORKING_DIR }}/plan-output.txt
           retention-days: 7
 
-      # Post plan output as a comment on the PR so reviewers can see
-      # exactly what will change before approving.
       - name: Comment plan on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
@@ -107,31 +103,29 @@ jobs:
             });
 
   # ── Apply ───────────────────────────────────────────────────────────────────
-  # Runs ONLY after the plan job succeeds AND a human approves.
-  # The approval gate is configured in GitHub → Settings → Environments → infra-approver-list.
-  # Add yourself as a required reviewer there.
   apply:
     name: Terraform Apply
     runs-on: ubuntu-latest
     needs: plan
-    environment: infra-approver-list   # ← this triggers the approval gate
+    environment: infra-approver-list
 
-    # Only apply on push to main or manual workflow_dispatch with action=apply.
-    # Never apply on a PR — PRs are plan-only.
     if: |
       (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
+
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -151,5 +145,3 @@ jobs:
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve tfplan
-        # Applies exactly the plan that was reviewed — no surprises.
-        # -auto-approve is safe here because a human already approved the plan.
