@@ -41,6 +41,10 @@ data "aws_caller_identity" "current" {}
 provider "aws" {
   region = var.aws_region
 
+  endpoints {
+    s3 = "https://s3.us-east-1.amazonaws.com"
+  }
+
   # Every resource created by Terraform will automatically get these tags.
   # This makes cost tracking and resource identification easy in the AWS console.
   default_tags {
