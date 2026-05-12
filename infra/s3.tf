@@ -3,7 +3,7 @@
 # The bucket is private — files are served only through CloudFront (see cloudfront.tf).
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "${var.project}-frontend-${var.environment}"
+  bucket = "${var.project}-frontend-${var.environment}-${data.aws_caller_identity.current.account_id}"
 }
 
 # Block all public access — users reach files only via CloudFront, never directly.
