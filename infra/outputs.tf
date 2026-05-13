@@ -67,6 +67,27 @@ output "sg_rds_id" {
   value       = aws_security_group.rds.id
 }
 
+# ── ALB Outputs ───────────────────────────────────────────────────────────────
+
+output "alb_dns_name" {
+  description = "ALB public DNS name — use this to test API endpoints before CloudFront is wired up"
+  value       = aws_lb.main.dns_name
+}
+
+output "alb_arn" {
+  description = "ALB ARN — referenced by ECS services to register targets"
+  value       = aws_lb.main.arn
+}
+
+output "target_group_arns" {
+  description = "Target group ARNs per service — used in ECS service definitions"
+  value = {
+    order_service   = aws_lb_target_group.order_service.arn
+    invoice_service = aws_lb_target_group.invoice_service.arn
+    bff             = aws_lb_target_group.bff.arn
+  }
+}
+
 # ── RDS Outputs ───────────────────────────────────────────────────────────────
 
 output "rds_endpoint" {
