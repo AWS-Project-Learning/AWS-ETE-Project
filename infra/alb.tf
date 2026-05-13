@@ -22,10 +22,9 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.public.id, aws_subnet.private_app.id]
-  # ALB requires at least 2 subnets in different AZs for high availability.
-  # We use public (AZ-a) and private_app (AZ-a) here — for a real production
-  # setup you would add a second public subnet in AZ-b.
+  subnets            = [aws_subnet.public.id, aws_subnet.public_b.id]
+  # ALB requires subnets in at least 2 different Availability Zones.
+  # public = AZ-a, public_b = AZ-b — satisfies the requirement.
 
   # Access logs disabled to stay within Free Tier (S3 costs apply per log)
   enable_deletion_protection = false

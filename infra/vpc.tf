@@ -39,6 +39,27 @@ resource "aws_subnet" "public" {
   }
 }
 
+# ── Public Subnet B ───────────────────────────────────────────────────────────
+# Second public subnet in AZ-b — required by the ALB.
+# ALB needs subnets in at least 2 different Availability Zones.
+
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.5.0/24"
+  availability_zone       = "${var.aws_region}b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "${var.project}-subnet-public-b-${var.environment}"
+  }
+}
+
+# Associate second public subnet with the public route table
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
 # ── Private App Subnet ────────────────────────────────────────────────────────
 # Where ECS containers run. No public IP, not reachable from internet.
 # Outbound traffic goes via VPC Endpoints (ECR, S3) — no NAT Gateway needed.
@@ -130,7 +151,7 @@ resource "aws_route_table_association" "private_db_b" {
 # ALB — accepts HTTP/HTTPS from anywhere on the internet
 resource "aws_security_group" "alb" {
   name        = "${var.project}-sg-alb-${var.environment}"
-  description = "Load balancer - inbound HTTP/HTTPS from internet"
+  description = "Load balancer — inbound HTTP/HTTPS from internet"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -165,7 +186,7 @@ resource "aws_security_group" "alb" {
 # ECS — only accepts traffic from the ALB, not directly from internet
 resource "aws_security_group" "ecs" {
   name        = "${var.project}-sg-ecs-${var.environment}"
-  description = "ECS containers - inbound from ALB only"
+  description = "ECS containers — inbound from ALB only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -192,7 +213,7 @@ resource "aws_security_group" "ecs" {
 # RDS — only accepts MySQL connections from ECS containers
 resource "aws_security_group" "rds" {
   name        = "${var.project}-sg-rds-${var.environment}"
-  description = "RDS MySQL - inbound from ECS only"
+  description = "RDS MySQL — inbound from ECS only"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -211,7 +232,7 @@ resource "aws_security_group" "rds" {
 # VPC Endpoints security group — allows ECS to reach AWS services without internet
 resource "aws_security_group" "vpc_endpoints" {
   name        = "${var.project}-sg-vpce-${var.environment}"
-  description = "VPC endpoints - inbound HTTPS from ECS"
+  description = "VPC endpoints — inbound HTTPS from ECS"
   vpc_id      = aws_vpc.main.id
 
   ingress {
