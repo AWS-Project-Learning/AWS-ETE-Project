@@ -18,6 +18,18 @@ output "cloudfront_domain" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
+# ── IAM Outputs ───────────────────────────────────────────────────────────────
+
+output "ecs_execution_role_arn" {
+  description = "ECS task execution role ARN - used by all services"
+  value       = aws_iam_role.ecs_execution.arn
+}
+
+output "ecs_task_role_arns" {
+  description = "ECS task role ARNs per service"
+  value       = { for svc, role in aws_iam_role.ecs_task : svc => role.arn }
+}
+
 # ── VPC Outputs ───────────────────────────────────────────────────────────────
 
 output "vpc_id" {
