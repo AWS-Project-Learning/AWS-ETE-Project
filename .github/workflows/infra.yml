@@ -40,6 +40,11 @@ jobs:
       pull-requests: write
       id-token:      write   # required for OIDC — allows the job to request a token
 
+    env:
+      # Terraform reads TF_VAR_* env vars automatically as input variables.
+      # DB_PASSWORD is stored as a GitHub secret — never appears in logs.
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,6 +123,9 @@ jobs:
     permissions:
       contents: read
       id-token: write   # required for OIDC
+
+    env:
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
     steps:
       - name: Checkout

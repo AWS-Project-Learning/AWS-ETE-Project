@@ -67,6 +67,18 @@ output "sg_rds_id" {
   value       = aws_security_group.rds.id
 }
 
+# ── RDS Outputs ───────────────────────────────────────────────────────────────
+
+output "rds_endpoint" {
+  description = "RDS MySQL endpoint — used to build DATABASE_URL in SSM Parameter Store"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "rds_db_name" {
+  description = "Default database name created on the RDS instance"
+  value       = aws_db_instance.main.db_name
+}
+
 # ── ECR Outputs ───────────────────────────────────────────────────────────────
 
 output "ecr_registry" {

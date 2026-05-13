@@ -23,3 +23,9 @@ variable "project" {
   type        = string
   default     = "orderflow"
 }
+
+variable "db_password" {
+  description = "Master password for the RDS MySQL instance — passed via GitHub secret TF_VAR_db_password"
+  type        = string
+  sensitive   = true # Terraform will never print this value in plan/apply output
+}
