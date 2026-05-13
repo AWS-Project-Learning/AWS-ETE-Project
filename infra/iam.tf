@@ -84,10 +84,6 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_ssm" {
 # TASK ROLES — one per service
 # ═══════════════════════════════════════════════════════════════════════════════
 
-locals {
-  services = ["order-service", "invoice-service", "bff"]
-}
-
 resource "aws_iam_role" "ecs_task" {
   for_each = toset(local.services)
 

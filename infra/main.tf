@@ -1,7 +1,5 @@
 # ── Terraform Settings ────────────────────────────────────────────────────────
-# This block tells Terraform:
-#   - Which version of Terraform is required
-#   - Which provider plugins to download (aws = the AWS SDK for Terraform)
+# Declares required Terraform version, provider plugins, and remote state backend.
 
 terraform {
   required_version = ">= 1.7"
@@ -17,8 +15,7 @@ terraform {
   # This means the team shares one source of truth for what exists in AWS.
   # The DynamoDB table prevents two people from running apply at the same time.
   #
-  # NOTE: This bucket must exist BEFORE running terraform init.
-  #       We will create it manually once (bootstrap step) — documented below.
+  # NOTE: This bucket must exist BEFORE running terraform init (bootstrap step).
   backend "s3" {
     bucket         = "orderflow-tfstate-109653023631"
     key            = "orderflow/terraform.tfstate"
@@ -28,30 +25,9 @@ terraform {
   }
 }
 
-# ── AWS Provider ──────────────────────────────────────────────────────────────
-# Tells the AWS provider which region to create resources in.
-# The credentials themselves come from environment variables:
-#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
-# (set in GitHub Actions secrets, or ~/.aws/credentials locally)
-
-# Looks up the AWS account ID of whoever is running Terraform.
-# Used in outputs and ARN construction — avoids hardcoding the account ID.
-data "aws_caller_identity" "current" {}
-
-provider "aws" {
-  region = var.aws_region
-
-  endpoints {
-    s3 = "https://s3.us-east-1.amazonaws.com"
-  }
-
-  # Every resource created by Terraform will automatically get these tags.
-  # This makes cost tracking and resource identification easy in the AWS console.
-  default_tags {
-    tags = {
-      Project     = "orderflow"
-      Environment = var.environment
-      ManagedBy   = "terraform"
-    }
-  }
+# ── Shared locals ─────────────────────────────────────────────────────────────
+# Defined here so all .tf files in this module can reference them without
+# duplication. Add new services here when the project grows.
+locals {
+  services = ["order-service", "invoice-service", "bff"]
 }

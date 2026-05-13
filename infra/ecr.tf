@@ -13,11 +13,6 @@
 # ECR repositories are global (not per environment) — the environment
 # is tracked by the image tag (e.g. order-service:dev-a3f9c12)
 
-locals {
-  # List of all backend services that need an ECR repository
-  services = ["order-service", "invoice-service", "bff"]
-}
-
 resource "aws_ecr_repository" "services" {
   # for_each creates one ECR repo for each service in the list above.
   # Result:
