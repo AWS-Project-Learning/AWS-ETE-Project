@@ -183,13 +183,24 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# ECS — accepts traffic from the ALB and from other ECS tasks (self).
-# Self-reference is required for awsvpc mode: each task has its own ENI/SG,
-# so BFF → order-service → invoice-service traffic must be allowed explicitly.
+# ECS — only accepts traffic from the ALB, not directly from internet.
+# Description is intentionally unchanged from the original — AWS treats SG
+# description as immutable, so editing it would force recreation of the SG
+# and cascade-replace dependent resources (launch template, dependent SG
+# ingress rules, etc.). Inline ALB ingress rule is kept in place so it
+# is never briefly absent during apply.
 resource "aws_security_group" "ecs" {
   name        = "${var.project}-sg-ecs-${var.environment}"
-  description = "ECS containers - inbound from ALB and from sibling tasks"
+  description = "ECS containers - inbound from ALB only"
   vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description     = "From ALB"
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
 
   egress {
     description = "All outbound (VPC endpoints + RDS)"
@@ -204,20 +215,11 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# Inbound from ALB → BFF (and any other ALB-fronted service)
-resource "aws_security_group_rule" "ecs_from_alb" {
-  type                     = "ingress"
-  description              = "From ALB"
-  from_port                = 0
-  to_port                  = 65535
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.alb.id
-  security_group_id        = aws_security_group.ecs.id
-}
-
-# Inbound from other ECS tasks — required for awsvpc service-to-service calls
-# (BFF → order-service, BFF → invoice-service). Without this the traffic is
-# blocked at the task ENI even though Cloud Map resolves the DNS correctly.
+# Self-reference rule — added separately to avoid recreating the SG.
+# Required for awsvpc mode: each task has its own ENI with this SG attached,
+# so BFF → order-service → invoice-service traffic must be allowed explicitly.
+# Without this, Cloud Map resolves DNS correctly but the connection is dropped
+# at the task ENI.
 resource "aws_security_group_rule" "ecs_from_self" {
   type                     = "ingress"
   description              = "From sibling ECS tasks (awsvpc)"

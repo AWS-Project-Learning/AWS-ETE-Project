@@ -1,50 +1,236 @@
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-|   timestamp   |                                                  message                                                  |                    logStreamName                     |
-|---------------|-----------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| 1778735836600 | INFO:     Started server process [1]                                                                      | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836600 | INFO:     Waiting for application startup.                                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836600 | INFO:app.main:Starting invoice-service...                                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836696 | INFO:app.main:Database tables created/verified.                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836698 | INFO:app.main:Database connection OK.                                                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836699 | INFO:app.events:Redis listener thread started                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836699 | INFO:app.main:Redis listener started (fails silently if Redis unavailable).                               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836700 | INFO:     Application startup complete.                                                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836700 | INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 | Exception in thread Thread-1 (_listen):                                                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 | Traceback (most recent call last):                                                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 357, in connect                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 |     sock = self.retry.call_with_retry(                                                                    | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^                                                                    | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836734 |   File "/usr/local/lib/python3.12/site-packages/redis/retry.py", line 62, in call_with_retry              | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |     return do()                                                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |            ^^^^                                                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 358, in <lambda>               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |     lambda: self._connect(), lambda error: self.disconnect(error)                                         | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |             ^^^^^^^^^^^^^^^                                                                               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 730, in _connect               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |     raise err                                                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 718, in _connect               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |     sock.connect(socket_address)                                                                          | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 | OSError: [Errno 99] Cannot assign requested address                                                       | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 | During handling of the above exception, another exception occurred:                                       | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 | Traceback (most recent call last):                                                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836735 |   File "/usr/local/lib/python3.12/threading.py", line 1075, in _bootstrap_inner                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |     self.run()                                                                                            | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |   File "/usr/local/lib/python3.12/threading.py", line 1012, in run                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |     self._target(*self._args, **self._kwargs)                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |   File "/app/app/events.py", line 44, in _listen                                                          | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |     pubsub.subscribe("order.created", "order.status_updated")                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |   File "/usr/local/lib/python3.12/site-packages/redis/client.py", line 957, in subscribe                  | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |     ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836736 |   File "/usr/local/lib/python3.12/site-packages/redis/client.py", line 786, in execute_command            | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |     self.connection = self.connection_pool.get_connection(                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 1422, in get_connection        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |     connection.connect()                                                                                  | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 363, in connect                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 |     raise ConnectionError(self._error_message(e))                                                         | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735836737 | redis.exceptions.ConnectionError: Error 99 connecting to localhost:6379. Cannot assign requested address. | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735865728 | INFO:     127.0.0.1:44336 - "GET /health HTTP/1.1" 200 OK                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-| 1778735895792 | INFO:     127.0.0.1:46816 - "GET /health HTTP/1.1" 200 OK                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  + create
+  ~ update in-place
++/- create replacement and then destroy
+Terraform will perform the following actions:
+  # aws_launch_template.ecs will be updated in-place
+  ~ resource "aws_launch_template" "ecs" {
+        id                      = "lt-00a295702bdcfd814"
+      ~ latest_version          = 2 -> (known after apply)
+        name                    = "orderflow-ecs-dev-20260514005608842800000003"
+        tags                    = {}
+      ~ vpc_security_group_ids  = [
+          - "sg-0d74705d5fbe7c6e7",
+        ] -> (known after apply)
+        # (10 unchanged attributes hidden)
+        # (2 unchanged blocks hidden)
+    }
+  # aws_lb_listener.http will be updated in-place
+  ~ resource "aws_lb_listener" "http" {
+        id                                   = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134"
+        tags                                 = {}
+        # (6 unchanged attributes hidden)
+      ~ default_action {
+          ~ target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+            # (2 unchanged attributes hidden)
+        }
+    }
+  # aws_lb_listener_rule.services["bff"] will be updated in-place
+  ~ resource "aws_lb_listener_rule" "services" {
+        id           = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2"
+        tags         = {}
+        # (4 unchanged attributes hidden)
+      ~ action {
+          ~ target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+            # (2 unchanged attributes hidden)
+        }
+        # (1 unchanged block hidden)
+    }
+  # aws_lb_target_group.services["bff"] must be replaced
++/- resource "aws_lb_target_group" "services" {
+      ~ arn                                = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+      ~ arn_suffix                         = "targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+      + connection_termination             = (known after apply)
+      ~ id                                 = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+      ~ ip_address_type                    = "ipv4" -> (known after apply)
+      ~ load_balancer_arns                 = [
+          - "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b",
+        ] -> (known after apply)
+      ~ load_balancing_algorithm_type      = "round_robin" -> (known after apply)
+      ~ load_balancing_anomaly_mitigation  = "off" -> (known after apply)
+      ~ load_balancing_cross_zone_enabled  = "use_load_balancer_configuration" -> (known after apply)
+      ~ name                               = "orderflow-bff-dev" -> (known after apply)
+      + name_prefix                        = "bff-" # forces replacement
+      + preserve_client_ip                 = (known after apply)
+      ~ protocol_version                   = "HTTP1" -> (known after apply)
+        tags                               = {
+            "Name"    = "orderflow-bff-dev"
+            "Service" = "bff"
+        }
+      ~ target_type                        = "instance" -> "ip" # forces replacement
+        # (8 unchanged attributes hidden)
+      - stickiness {
+          - cookie_duration = 86400 -> null
+          - enabled         = false -> null
+          - type            = "lb_cookie" -> null
+        }
+      - target_failover {}
+      - target_group_health {
+          - dns_failover {
+              - minimum_healthy_targets_count      = "1" -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+          - unhealthy_state_routing {
+              - minimum_healthy_targets_count      = 1 -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+        }
+      - target_health_state {}
+        # (1 unchanged block hidden)
+    }
+  # aws_security_group.ecs must be replaced
++/- resource "aws_security_group" "ecs" {
+      ~ arn                    = "arn:aws:ec2:us-east-1:109653023631:security-group/sg-0d74705d5fbe7c6e7" -> (known after apply)
+      ~ description            = "ECS containers - inbound from ALB only" -> "ECS containers - inbound from ALB and from sibling tasks" # forces replacement
+      ~ id                     = "sg-0d74705d5fbe7c6e7" -> (known after apply)
+      ~ ingress                = [
+          - {
+              - cidr_blocks      = []
+              - description      = "From ALB"
+              - from_port        = 0
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = [
+                  - "sg-003d32a5ea9ffe229",
+                ]
+              - self             = false
+              - to_port          = 65535
+            },
+        ] -> (known after apply)
+        name                   = "orderflow-sg-ecs-dev"
+      + name_prefix            = (known after apply)
+      ~ owner_id               = "109653023631" -> (known after apply)
+        tags                   = {
+            "Name" = "orderflow-sg-ecs-dev"
+        }
+        # (4 unchanged attributes hidden)
+    }
+  # aws_security_group.rds will be updated in-place
+  ~ resource "aws_security_group" "rds" {
+        id                     = "sg-0e8050613038df1c3"
+      ~ ingress                = [
+          - {
+              - cidr_blocks      = []
+              - description      = "MySQL from ECS"
+              - from_port        = 3306
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = [
+                  - "sg-0d74705d5fbe7c6e7",
+                ]
+              - self             = false
+              - to_port          = 3306
+            },
+          + {
+              + cidr_blocks      = []
+              + description      = "MySQL from ECS"
+              + from_port        = 3306
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = (known after apply)
+              + self             = false
+              + to_port          = 3306
+            },
+        ]
+        name                   = "orderflow-sg-rds-dev"
+        tags                   = {
+            "Name" = "orderflow-sg-rds-dev"
+        }
+        # (7 unchanged attributes hidden)
+    }
+  # aws_security_group.vpc_endpoints will be updated in-place
+  ~ resource "aws_security_group" "vpc_endpoints" {
+        id                     = "sg-0b15177002abf1aef"
+      ~ ingress                = [
+          - {
+              - cidr_blocks      = []
+              - description      = "HTTPS from ECS"
+              - from_port        = 443
+              - ipv6_cidr_blocks = []
+              - prefix_list_ids  = []
+              - protocol         = "tcp"
+              - security_groups  = [
+                  - "sg-0d74705d5fbe7c6e7",
+                ]
+              - self             = false
+              - to_port          = 443
+            },
+          + {
+              + cidr_blocks      = []
+              + description      = "HTTPS from ECS"
+              + from_port        = 443
+              + ipv6_cidr_blocks = []
+              + prefix_list_ids  = []
+              + protocol         = "tcp"
+              + security_groups  = (known after apply)
+              + self             = false
+              + to_port          = 443
+            },
+        ]
+        name                   = "orderflow-sg-vpce-dev"
+        tags                   = {
+            "Name" = "orderflow-sg-vpce-dev"
+        }
+        # (7 unchanged attributes hidden)
+    }
+  # aws_security_group_rule.ecs_from_alb will be created
+  + resource "aws_security_group_rule" "ecs_from_alb" {
+      + description              = "From ALB"
+      + from_port                = 0
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = "sg-003d32a5ea9ffe229"
+      + to_port                  = 65535
+      + type                     = "ingress"
+    }
+  # aws_security_group_rule.ecs_from_self will be created
+  + resource "aws_security_group_rule" "ecs_from_self" {
+      + description              = "From sibling ECS tasks (awsvpc)"
+      + from_port                = 0
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 65535
+      + type                     = "ingress"
+    }
+  # aws_ssm_parameter.ecs_security_group will be updated in-place
+  ~ resource "aws_ssm_parameter" "ecs_security_group" {
+        id             = "/orderflow/dev/infra/ecs-sg-id"
+      + insecure_value = (known after apply)
+        name           = "/orderflow/dev/infra/ecs-sg-id"
+        tags           = {
+            "Name" = "infra-ecs-sg-id-dev"
+        }
+      ~ value          = (sensitive value)
+      ~ version        = 1 -> (known after apply)
+        # (5 unchanged attributes hidden)
+    }
+  # aws_ssm_parameter.tg_arn["bff"] will be updated in-place
+  ~ resource "aws_ssm_parameter" "tg_arn" {
+        id             = "/orderflow/dev/infra/tg-bff-arn"
+      + insecure_value = (known after apply)
+        name           = "/orderflow/dev/infra/tg-bff-arn"
+        tags           = {
+            "Name" = "infra-tg-bff-arn-dev"
+        }
+      ~ value          = (sensitive value)
+      ~ version        = 1 -> (known after apply)
+        # (5 unchanged attributes hidden)
+    }
+Plan: 4 to add, 7 to change, 2 to destroy.
+Changes to Outputs:
+  ~ target_group_arns          = {
+      ~ bff = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
+    }
+─────────────────────────────────────────────────────────────────────────────
+Saved the plan to: tfplan
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
