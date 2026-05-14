@@ -90,12 +90,23 @@ def ensure_cloudmap(sd_client, cloudmap_doc: dict | None) -> tuple[str, str] | N
     namespace_id = cloudmap_doc["NamespaceId"]
     print(f"[cloudmap] {name} (namespace: {namespace_id})")
 
+    wanted_type = cloudmap_doc["DnsConfig"]["DnsRecords"][0]["Type"]
+
     paginator = sd_client.get_paginator("list_services")
     for page in paginator.paginate(Filters=[{"Name": "NAMESPACE_ID", "Values": [namespace_id]}]):
         for svc in page["Services"]:
             if svc["Name"] == name:
-                print(f"[cloudmap] Already exists: {svc['Arn']}")
-                return svc["Id"], svc["Arn"]
+                # Check if the existing service has the right DNS record type.
+                # A→SRV migration requires delete+recreate (AWS does not allow in-place change).
+                detail      = sd_client.get_service(Id=svc["Id"])["Service"]
+                actual_type = detail["DnsConfig"]["DnsRecords"][0]["Type"]
+                if actual_type == wanted_type:
+                    print(f"[cloudmap] Already exists: {svc['Arn']}")
+                    return svc["Id"], svc["Arn"]
+                else:
+                    print(f"[cloudmap] Existing service has DNS type '{actual_type}', wanted '{wanted_type}' — recreating.")
+                    sd_client.delete_service(Id=svc["Id"])
+                    print(f"[cloudmap] Deleted stale service: {svc['Id']}")
 
     resp   = sd_client.create_service(
         Name=name,

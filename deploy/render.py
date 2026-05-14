@@ -203,8 +203,8 @@ def build_cloudmap(service: str, cfg: dict, namespace_id: str) -> dict | None:
         "NamespaceId": namespace_id,
         "DnsConfig": {
             "NamespaceId": namespace_id,
-            "DnsRecords":  [{"TTL": 10, "Type": "A"}],
-            "RoutingPolicy": "MULTIVALUE"
+            "DnsRecords":  [{"TTL": 10, "Type": "SRV"}],
+            "RoutingPolicy": "WEIGHTED"
         },
         "HealthCheckCustomConfig": {"FailureThreshold": 1},
         "Tags": [
