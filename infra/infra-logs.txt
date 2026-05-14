@@ -1,0 +1,122 @@
+  ~ update in-place
+ <= read (data resources)
+Terraform will perform the following actions:
+  # data.aws_iam_policy_document.frontend_bucket will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_iam_policy_document" "frontend_bucket" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+      + statement {
+          + actions   = [
+              + "s3:GetObject",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "arn:aws:s3:::orderflow-frontend-dev-109653023631/*",
+            ]
+          + sid       = "AllowCloudFrontRead"
+          + condition {
+              + test     = "StringEquals"
+              + values   = [
+                  + "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE",
+                ]
+              + variable = "AWS:SourceArn"
+            }
+          + principals {
+              + identifiers = [
+                  + "cloudfront.amazonaws.com",
+                ]
+              + type        = "Service"
+            }
+        }
+    }
+  # aws_cloudfront_distribution.frontend will be updated in-place
+  ~ resource "aws_cloudfront_distribution" "frontend" {
+        id                             = "E3HDWKPHQETVYE"
+        tags                           = {}
+        # (21 unchanged attributes hidden)
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/api/*"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + origin {
+          + connection_attempts = 3
+          + connection_timeout  = 10
+          + domain_name         = "orderflow-alb-dev-500583749.us-east-1.elb.amazonaws.com"
+          + origin_id           = "alb-bff"
+          + custom_origin_config {
+              + http_port                = 80
+              + https_port               = 443
+              + origin_keepalive_timeout = 5
+              + origin_protocol_policy   = "http-only"
+              + origin_read_timeout      = 30
+              + origin_ssl_protocols     = [
+                  + "TLSv1.2",
+                ]
+            }
+        }
+        # (6 unchanged blocks hidden)
+    }
+  # aws_s3_bucket_policy.frontend will be updated in-place
+  ~ resource "aws_s3_bucket_policy" "frontend" {
+        id     = "orderflow-frontend-dev-109653023631"
+      ~ policy = jsonencode(
+            {
+              - Statement = [
+                  - {
+                      - Action    = "s3:GetObject"
+                      - Condition = {
+                          - StringEquals = {
+                              - "AWS:SourceArn" = "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE"
+                            }
+                        }
+                      - Effect    = "Allow"
+                      - Principal = {
+                          - Service = "cloudfront.amazonaws.com"
+                        }
+                      - Resource  = "arn:aws:s3:::orderflow-frontend-dev-109653023631/*"
+                      - Sid       = "AllowCloudFrontRead"
+                    },
+                ]
+              - Version   = "2012-10-17"
+            }
+        ) -> (known after apply)
+        # (1 unchanged attribute hidden)
+    }
+Plan: 0 to add, 2 to change, 0 to destroy.
+─────────────────────────────────────────────────────────────────────────────
+Saved the plan to: tfplan
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"

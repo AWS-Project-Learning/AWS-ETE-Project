@@ -128,12 +128,13 @@ jobs:
 
       - name: Login to ECR
         if: steps.gate.outputs.skip != 'true'
+        id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build & push
         if: steps.gate.outputs.skip != 'true'
         env:
-          ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
           IMAGE_TAG:    ${{ needs.detect.outputs.image_tag }}
         run: |
           IMAGE=$ECR_REGISTRY/orderflow/${{ matrix.service }}:$IMAGE_TAG
