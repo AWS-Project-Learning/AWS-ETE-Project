@@ -68,7 +68,7 @@ data "aws_ssm_parameter" "ecs_ami" {
 resource "aws_launch_template" "ecs" {
   name_prefix   = "${var.project}-ecs-${var.environment}-"
   image_id      = data.aws_ssm_parameter.ecs_ami.value
-  instance_type = "t2.micro" # Free Tier: 750 hours/month for 12 months
+  instance_type = "t3.micro" # Free Tier eligible: 750 hours/month
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance.name
