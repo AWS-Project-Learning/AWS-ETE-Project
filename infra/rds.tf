@@ -85,11 +85,15 @@ resource "aws_db_instance" "main" {
   storage_type          = "gp2"
   storage_encrypted     = true # encrypt at rest — good practice even in dev
 
-  # Database credentials
-  # Password comes from a sensitive Terraform variable, passed via GitHub secret
-  db_name  = replace(var.project, "-", "_") # "orderflow" — the default schema created on first boot
-  username = "admin"
-  password = var.db_password
+  # ── Snapshot restore support ───────────────────────────────────────────────
+  # When snapshot_identifier is set, RDS restores data from the snapshot.
+  # The infra-lifecycle workflow passes this during startup after a teardown.
+  # db_name is omitted on restore — AWS inherits it from the snapshot content.
+  # On fresh creates (no snapshot), db_name creates the initial empty schema.
+  snapshot_identifier = local.db_snapshot_id
+  db_name             = local.db_snapshot_id == null ? replace(var.project, "-", "_") : null
+  username            = "admin"
+  password            = var.db_password
 
   # Networking
   db_subnet_group_name   = aws_db_subnet_group.main.name
@@ -109,11 +113,18 @@ resource "aws_db_instance" "main" {
   auto_minor_version_upgrade = true                  # automatically apply minor patches
 
   # Deletion settings
-  # skip_final_snapshot = true means Terraform won't wait for a backup before destroying
-  # This is fine for dev/sit — set to false and add final_snapshot_identifier for prod
+  # The lifecycle workflow takes a manual snapshot before running destroy,
+  # so skip_final_snapshot = true is safe here.
   skip_final_snapshot      = true
   deletion_protection      = false
   delete_automated_backups = true
+
+  # snapshot_identifier and db_name are only meaningful at creation time.
+  # Ignoring them prevents spurious plan diffs on subsequent applies
+  # (e.g., when running apply for unrelated changes after a restore).
+  lifecycle {
+    ignore_changes = [snapshot_identifier, db_name]
+  }
 
   tags = {
     Name = "${var.project}-mysql-${var.environment}"

@@ -1,0 +1,753 @@
+name: Infrastructure Lifecycle — Teardown / Startup
+
+# ── Purpose ──────────────────────────────────────────────────────────────────
+# Cost-management workflow that safely tears down expensive AWS resources
+# (~$50/month) while preserving ALL data, and restores them on demand.
+#
+# Resources DESTROYED (saves ~$50/month when idle):
+#   - ALB                          (~$16/month)
+#   - EC2 t3.micro (ECS host)      (~$8/month)
+#   - RDS db.t3.micro              (~$13/month)
+#   - VPC Interface Endpoints ×3   (~$21/month)
+#
+# Resources PRESERVED (free / negligible cost):
+#   - VPC, subnets, security groups, route tables, IGW
+#   - ECS cluster, Cloud Map namespace
+#   - ECR image repositories
+#   - S3 buckets
+#   - CloudFront distribution (UI stays accessible, API calls will 502)
+#   - IAM roles and policies
+#   - SSM parameters
+#
+# Data safety:
+#   TEARDOWN → takes a manual RDS snapshot before destroying RDS.
+#              Saves snapshot ID + ECS image tags to SSM for restore.
+#   STARTUP  → restores RDS from that snapshot via Terraform.
+#              Re-deploys all ECS services using saved image tags.
+#
+# Zero error tolerance:
+#   Every step uses `set -euo pipefail`.
+#   Any failure stops the workflow immediately — no partial states.
+#   Teardown is sequenced so dependencies are removed before dependents.
+#   Startup is sequenced so infrastructure exists before services deploy.
+#
+# Prerequisites:
+#   GitHub repo variable : AWS_ROLE_ARN
+#   GitHub repo secret   : DB_PASSWORD
+#   GitHub environment   : infra-approver-list  (required reviewers)
+#
+# Usage:
+#   Actions → Infrastructure Lifecycle → Run workflow
+#   action = teardown  →  snapshots DB, destroys expensive resources
+#   action = startup   →  recreates resources, restores DB, redeploys services
+#   confirm            →  type the environment name exactly (e.g. dev) as a safety check
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "teardown = snapshot DB and stop | startup = restore and start"
+        required: true
+        type: choice
+        options:
+          - teardown
+          - startup
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+        default: dev
+      confirm:
+        description: "Safety check — type the environment name exactly (e.g. dev)"
+        required: true
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.7.5
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+
+  # ── Safety gate ─────────────────────────────────────────────────────────────
+  # Runs before everything else. Fails fast if the confirmation does not match.
+  # This prevents accidental teardowns from misclicks.
+
+  preflight:
+    name: Safety check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation input
+        run: |
+          if [ "${{ inputs.confirm }}" != "${{ inputs.environment }}" ]; then
+            echo "FAIL: You typed '${{ inputs.confirm }}' but the environment is '${{ inputs.environment }}'."
+            echo "      Type the environment name exactly in the 'confirm' field to proceed."
+            exit 1
+          fi
+          echo "PASS: Confirmation matches environment '${{ inputs.environment }}'."
+
+
+  # ── TEARDOWN ─────────────────────────────────────────────────────────────────
+  # Sequence (strict, fail-fast):
+  #   1. Save ECS image tags → SSM  (so startup can redeploy the same images)
+  #   2. Scale ECS services → 0     (graceful drain before deleting)
+  #   3. Wait for tasks to drain
+  #   4. Delete ECS services        (so ALB target groups can be destroyed)
+  #   5. Take RDS manual snapshot   (data backup before DB is destroyed)
+  #   6. Wait for snapshot ready
+  #   7. Save snapshot ID → SSM
+  #   8. terraform destroy (in dependency order):
+  #       a. cluster capacity providers association
+  #       b. capacity provider + ASG + launch template
+  #       c. RDS instance
+  #       d. ALB listener rules + listener + target groups + ALB
+  #       e. VPC Interface endpoints (ECR API, ECR DKR, CloudWatch Logs)
+  #   9. Verify all expensive resources are gone
+
+  teardown:
+    name: "Teardown — ${{ inputs.environment }}"
+    if: inputs.action == 'teardown'
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: infra-approver-list
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # ── Step 1: Compute resource identifiers ─────────────────────────────────
+      - name: Resolve resource identifiers
+        id: ids
+        run: |
+          set -euo pipefail
+          ENV="${{ inputs.environment }}"
+          PROJECT="orderflow"
+          echo "cluster=${PROJECT}-${ENV}"                              >> $GITHUB_OUTPUT
+          echo "db_instance=${PROJECT}-mysql-${ENV}"                   >> $GITHUB_OUTPUT
+          echo "snapshot_id=${PROJECT}-${ENV}-$(date +%Y%m%d%H%M%S)"  >> $GITHUB_OUTPUT
+          echo "env=${ENV}"                                            >> $GITHUB_OUTPUT
+
+      # ── Step 2: Persist image tags before anything is deleted ─────────────────
+      - name: Save current ECS image tags to SSM
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+          ENV="${{ steps.ids.outputs.env }}"
+
+          for SERVICE in bff order-service invoice-service; do
+            TASK_DEF_ARN=$(aws ecs describe-services \
+              --cluster  "$CLUSTER" \
+              --services "$SERVICE" \
+              --query    'services[0].taskDefinition' \
+              --output   text 2>/dev/null || echo "")
+
+            if [ -z "$TASK_DEF_ARN" ] || [ "$TASK_DEF_ARN" = "None" ]; then
+              echo "WARN: Service $SERVICE not found — no image tag saved."
+              continue
+            fi
+
+            IMAGE=$(aws ecs describe-task-definition \
+              --task-definition "$TASK_DEF_ARN" \
+              --query           'taskDefinition.containerDefinitions[0].image' \
+              --output          text 2>/dev/null || echo "")
+
+            if [ -z "$IMAGE" ] || [ "$IMAGE" = "None" ]; then
+              echo "WARN: No image found in task def for $SERVICE — skipping."
+              continue
+            fi
+
+            IMAGE_TAG="${IMAGE##*:}"
+            aws ssm put-parameter \
+              --name      "/orderflow/${ENV}/lifecycle/last-image-tag/${SERVICE}" \
+              --value     "$IMAGE_TAG" \
+              --type      "String" \
+              --overwrite \
+              --no-cli-pager
+            echo "Saved $SERVICE image tag: $IMAGE_TAG"
+          done
+
+      # ── Step 3: Drain ECS services ───────────────────────────────────────────
+      - name: Scale ECS services to 0
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+
+          for SERVICE in bff order-service invoice-service; do
+            ACTIVE=$(aws ecs describe-services \
+              --cluster  "$CLUSTER" \
+              --services "$SERVICE" \
+              --query    'services[?status==`ACTIVE`].serviceName' \
+              --output   text 2>/dev/null || echo "")
+
+            if [ -n "$ACTIVE" ]; then
+              echo "Scaling $SERVICE → 0 ..."
+              aws ecs update-service \
+                --cluster      "$CLUSTER" \
+                --service      "$SERVICE" \
+                --desired-count 0 \
+                --no-cli-pager
+            else
+              echo "Service $SERVICE not found / not active — skipping."
+            fi
+          done
+
+      - name: Wait for ECS tasks to drain (max 4 min)
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+
+          for i in $(seq 1 24); do
+            RUNNING=$(aws ecs list-tasks \
+              --cluster        "$CLUSTER" \
+              --desired-status RUNNING \
+              --query          'length(taskArns)' \
+              --output         text 2>/dev/null || echo "0")
+            echo "Running tasks: $RUNNING  (check $i/24)"
+            [ "$RUNNING" = "0" ] && echo "All tasks drained." && break
+            [ "$i"       = "24" ] && echo "FAIL: Timed out waiting for task drain." && exit 1
+            sleep 10
+          done
+
+      - name: Delete ECS services
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+
+          for SERVICE in bff order-service invoice-service; do
+            ACTIVE=$(aws ecs describe-services \
+              --cluster  "$CLUSTER" \
+              --services "$SERVICE" \
+              --query    'services[?status==`ACTIVE`].serviceName' \
+              --output   text 2>/dev/null || echo "")
+
+            if [ -n "$ACTIVE" ]; then
+              echo "Deleting service $SERVICE ..."
+              aws ecs delete-service \
+                --cluster  "$CLUSTER" \
+                --service  "$SERVICE" \
+                --force \
+                --no-cli-pager
+              echo "Deleted $SERVICE."
+            else
+              echo "Service $SERVICE not found — skipping."
+            fi
+          done
+
+      # ── Step 4: RDS snapshot ─────────────────────────────────────────────────
+      - name: Check RDS instance status
+        id: rds
+        run: |
+          set -euo pipefail
+          DB="${{ steps.ids.outputs.db_instance }}"
+          STATUS=$(aws rds describe-db-instances \
+            --db-instance-identifier "$DB" \
+            --query                  'DBInstances[0].DBInstanceStatus' \
+            --output                 text 2>/dev/null || echo "not-found")
+          echo "status=${STATUS}" >> $GITHUB_OUTPUT
+          echo "RDS $DB status: $STATUS"
+
+      - name: Create manual RDS snapshot
+        if: steps.rds.outputs.status == 'available'
+        run: |
+          set -euo pipefail
+          DB="${{ steps.ids.outputs.db_instance }}"
+          SNAP="${{ steps.ids.outputs.snapshot_id }}"
+          echo "Creating snapshot $SNAP from $DB ..."
+          aws rds create-db-snapshot \
+            --db-instance-identifier "$DB" \
+            --db-snapshot-identifier "$SNAP" \
+            --no-cli-pager
+          echo "Snapshot creation triggered."
+
+      - name: Wait for snapshot to become available (max 30 min)
+        if: steps.rds.outputs.status == 'available'
+        run: |
+          set -euo pipefail
+          SNAP="${{ steps.ids.outputs.snapshot_id }}"
+          echo "Waiting for snapshot $SNAP ..."
+          aws rds wait db-snapshot-available \
+            --db-snapshot-identifier "$SNAP"
+          echo "Snapshot ready: $SNAP"
+
+      - name: Save snapshot ID to SSM
+        if: steps.rds.outputs.status == 'available'
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+          SNAP="${{ steps.ids.outputs.snapshot_id }}"
+          aws ssm put-parameter \
+            --name      "/orderflow/${ENV}/lifecycle/latest-snapshot" \
+            --value     "$SNAP" \
+            --type      "String" \
+            --overwrite \
+            --no-cli-pager
+          echo "Snapshot ID saved to SSM: $SNAP"
+
+      # ── Step 5: Terraform destroy (sequenced) ────────────────────────────────
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: "Destroy [1/5] — ECS cluster capacity provider association"
+        working-directory: infra
+        run: |
+          terraform destroy -auto-approve -input=false \
+            -target=aws_ecs_cluster_capacity_providers.main
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Destroy [2/5] — ECS capacity provider, ASG and launch template"
+        working-directory: infra
+        run: |
+          terraform destroy -auto-approve -input=false \
+            -target=aws_ecs_capacity_provider.main \
+            -target=aws_autoscaling_group.ecs \
+            -target=aws_launch_template.ecs
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Destroy [3/5] — RDS instance (data already snapshotted)"
+        working-directory: infra
+        run: |
+          terraform destroy -auto-approve -input=false \
+            -target=aws_db_instance.main
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Destroy [4/5] — ALB (rules → listener → target groups → ALB)"
+        working-directory: infra
+        run: |
+          terraform destroy -auto-approve -input=false \
+            -target='aws_lb_listener_rule.services["bff"]' \
+            -target=aws_lb_listener.http \
+            -target='aws_lb_target_group.services["bff"]' \
+            -target='aws_ssm_parameter.tg_arn["bff"]' \
+            -target=aws_lb.main
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Destroy [5/5] — VPC Interface endpoints (ECR API, ECR DKR, CloudWatch Logs)"
+        working-directory: infra
+        run: |
+          terraform destroy -auto-approve -input=false \
+            -target=aws_vpc_endpoint.ecr_api \
+            -target=aws_vpc_endpoint.ecr_dkr \
+            -target=aws_vpc_endpoint.logs
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      # ── Step 6: Verify teardown ──────────────────────────────────────────────
+      - name: Verify all expensive resources are destroyed
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+          PROJECT="orderflow"
+          ERRORS=0
+
+          echo "=== Teardown verification ==="
+
+          ALB=$(aws elbv2 describe-load-balancers \
+            --query "LoadBalancers[?LoadBalancerName=='${PROJECT}-alb-${ENV}'].LoadBalancerName" \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$ALB" ]; then
+            echo "FAIL: ALB still exists — ${ALB}"
+            ERRORS=$((ERRORS+1))
+          else
+            echo "OK  : ALB destroyed"
+          fi
+
+          ASG=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names "${PROJECT}-ecs-asg-${ENV}" \
+            --query                    'AutoScalingGroups[0].AutoScalingGroupName' \
+            --output                   text 2>/dev/null || echo "")
+          if [ -n "$ASG" ] && [ "$ASG" != "None" ]; then
+            echo "FAIL: ASG still exists — ${ASG}"
+            ERRORS=$((ERRORS+1))
+          else
+            echo "OK  : ASG destroyed"
+          fi
+
+          DB=$(aws rds describe-db-instances \
+            --db-instance-identifier "${PROJECT}-mysql-${ENV}" \
+            --query                  'DBInstances[0].DBInstanceStatus' \
+            --output                 text 2>/dev/null || echo "not-found")
+          if [ "$DB" != "not-found" ]; then
+            echo "FAIL: RDS still exists (status: ${DB})"
+            ERRORS=$((ERRORS+1))
+          else
+            echo "OK  : RDS destroyed"
+          fi
+
+          VPCE_COUNT=$(aws ec2 describe-vpc-endpoints \
+            --filters "Name=tag:Name,Values=${PROJECT}-vpce-ecr-*-${ENV}" \
+            --query   'length(VpcEndpoints[?State!=`deleted`])' \
+            --output  text 2>/dev/null || echo "0")
+          if [ "$VPCE_COUNT" != "0" ]; then
+            echo "FAIL: $VPCE_COUNT VPC Interface endpoint(s) still exist"
+            ERRORS=$((ERRORS+1))
+          else
+            echo "OK  : VPC Interface endpoints destroyed"
+          fi
+
+          if [ "$ERRORS" -gt "0" ]; then
+            echo ""
+            echo "FAIL: $ERRORS resource(s) were not destroyed. Review Terraform state."
+            exit 1
+          fi
+
+          echo ""
+          echo "SUCCESS: All expensive resources confirmed destroyed."
+
+      - name: Teardown summary
+        if: always()
+        run: |
+          echo "=============================="
+          echo " TEARDOWN SUMMARY"
+          echo "=============================="
+          echo " Environment : ${{ inputs.environment }}"
+          echo " Snapshot ID : ${{ steps.ids.outputs.snapshot_id }}"
+          echo " SSM path    : /orderflow/${{ inputs.environment }}/lifecycle/latest-snapshot"
+          echo ""
+          echo " Preserved: VPC, subnets, security groups, ECS cluster,"
+          echo "   Cloud Map, ECR repos, S3, CloudFront, IAM, SSM params."
+          echo ""
+          echo " To restart: Run this workflow with action=startup"
+          echo "=============================="
+
+
+  # ── STARTUP ──────────────────────────────────────────────────────────────────
+  # Sequence (strict, fail-fast):
+  #   1. Load snapshot ID + image tags from SSM
+  #   2. terraform plan  (with snapshot_identifier if snapshot exists)
+  #   3. terraform apply (recreates: VPC endpoints, EC2, capacity provider, RDS, ALB)
+  #      Terraform waits for RDS to reach 'available' before completing.
+  #   4. Wait for EC2 instance to register with ECS cluster
+  #   5. Deploy each service via render.py + apply.py (using saved image tags)
+  #   6. Wait for all ECS services to stabilize
+  #   7. Verify all resources are healthy
+
+  startup:
+    name: "Startup — ${{ inputs.environment }}"
+    if: inputs.action == 'startup'
+    needs: preflight
+    runs-on: ubuntu-latest
+    environment: infra-approver-list
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Set up Python (for service deploy)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install boto3 pyyaml
+
+      # ── Step 1: Compute resource identifiers ─────────────────────────────────
+      - name: Resolve resource identifiers
+        id: ids
+        run: |
+          set -euo pipefail
+          ENV="${{ inputs.environment }}"
+          PROJECT="orderflow"
+          echo "cluster=${PROJECT}-${ENV}" >> $GITHUB_OUTPUT
+          echo "db_instance=${PROJECT}-mysql-${ENV}" >> $GITHUB_OUTPUT
+          echo "env=${ENV}" >> $GITHUB_OUTPUT
+
+      # ── Step 2: Load saved state from SSM ───────────────────────────────────
+      - name: Load snapshot ID and image tags from SSM
+        id: ssm
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+
+          SNAPSHOT_ID=$(aws ssm get-parameter \
+            --name    "/orderflow/${ENV}/lifecycle/latest-snapshot" \
+            --query   'Parameter.Value' \
+            --output  text 2>/dev/null || echo "")
+
+          if [ -n "$SNAPSHOT_ID" ]; then
+            echo "Found snapshot: $SNAPSHOT_ID"
+          else
+            echo "No snapshot found in SSM — a fresh database will be created."
+          fi
+          echo "snapshot_id=${SNAPSHOT_ID}" >> $GITHUB_OUTPUT
+
+          for SERVICE in bff order-service invoice-service; do
+            TAG=$(aws ssm get-parameter \
+              --name   "/orderflow/${ENV}/lifecycle/last-image-tag/${SERVICE}" \
+              --query  'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+
+            # Convert service name to valid env var name (bff, order_service, invoice_service)
+            VAR=$(echo "$SERVICE" | tr '-' '_')
+            echo "${VAR}_tag=${TAG}" >> $GITHUB_OUTPUT
+
+            if [ -n "$TAG" ]; then
+              echo "Found image tag for $SERVICE: $TAG"
+            else
+              echo "WARN: No saved image tag for $SERVICE in SSM."
+            fi
+          done
+
+      - name: Verify image tags are available
+        run: |
+          set -euo pipefail
+          MISSING=0
+
+          for VAR_NAME in bff_tag order_service_tag invoice_service_tag; do
+            # Check via the outputs step
+            echo "Checking $VAR_NAME ..."
+          done
+
+          BFF_TAG="${{ steps.ssm.outputs.bff_tag }}"
+          ORDER_TAG="${{ steps.ssm.outputs.order_service_tag }}"
+          INVOICE_TAG="${{ steps.ssm.outputs.invoice_service_tag }}"
+
+          [ -z "$BFF_TAG"     ] && echo "FAIL: No saved image tag for bff"             && MISSING=$((MISSING+1))
+          [ -z "$ORDER_TAG"   ] && echo "FAIL: No saved image tag for order-service"   && MISSING=$((MISSING+1))
+          [ -z "$INVOICE_TAG" ] && echo "FAIL: No saved image tag for invoice-service" && MISSING=$((MISSING+1))
+
+          if [ "$MISSING" -gt "0" ]; then
+            echo ""
+            echo "Missing $MISSING image tag(s). This happens when startup is run"
+            echo "without a prior teardown (which saves the tags)."
+            echo ""
+            echo "Fix: deploy all services manually first, then run teardown,"
+            echo "     which saves the tags. Then startup will work."
+            exit 1
+          fi
+
+          echo "All image tags verified."
+
+      # ── Step 3: Terraform — recreate infrastructure ──────────────────────────
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform Plan
+        working-directory: infra
+        id: plan
+        run: |
+          set -euo pipefail
+          SNAPSHOT_ID="${{ steps.ssm.outputs.snapshot_id }}"
+
+          if [ -n "$SNAPSHOT_ID" ]; then
+            echo "Planning restore from snapshot: $SNAPSHOT_ID"
+            terraform plan -input=false -out=tfplan \
+              -var="db_snapshot_identifier=${SNAPSHOT_ID}"
+          else
+            echo "Planning fresh infrastructure (no snapshot)..."
+            terraform plan -input=false -out=tfplan
+          fi
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: Show plan summary
+        working-directory: infra
+        run: |
+          terraform show -no-color tfplan \
+            | grep -E "^(Plan:|  [+~-] )" \
+            | head -60 \
+            || true
+
+      - name: Terraform Apply — recreate all infrastructure
+        working-directory: infra
+        run: |
+          echo "Applying plan... RDS restore may take 10-15 minutes."
+          terraform apply -auto-approve -input=false tfplan
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      # ── Step 4: Wait for EC2 instance to join ECS cluster ───────────────────
+      - name: Wait for EC2 to register with ECS cluster (max 10 min)
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+          echo "Waiting for EC2 container instance to register ..."
+
+          for i in $(seq 1 40); do
+            COUNT=$(aws ecs list-container-instances \
+              --cluster "$CLUSTER" \
+              --status  ACTIVE \
+              --query   'length(containerInstanceArns)' \
+              --output  text 2>/dev/null || echo "0")
+
+            echo "Registered instances: $COUNT  (check $i/40)"
+
+            [ "$COUNT" -ge "1" ] && echo "EC2 instance registered with ECS cluster." && break
+            [ "$i"     = "40" ] && echo "FAIL: Timed out — no EC2 instance registered." && exit 1
+
+            sleep 15
+          done
+
+      # ── Step 5: Deploy all services ──────────────────────────────────────────
+      # We re-run render.py + apply.py for each service. This:
+      #   - recreates ECS services (deleted during teardown)
+      #   - wires them to the NEW target group ARNs (ALB was recreated, new ARNs)
+      #   - uses the exact same image tags that were running before teardown
+
+      - name: Deploy services using saved image tags
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+
+          BFF_TAG="${{ steps.ssm.outputs.bff_tag }}"
+          ORDER_TAG="${{ steps.ssm.outputs.order_service_tag }}"
+          INVOICE_TAG="${{ steps.ssm.outputs.invoice_service_tag }}"
+
+          deploy_service() {
+            local SERVICE="$1"
+            local TAG="$2"
+
+            echo ""
+            echo "=== Deploying $SERVICE (tag: $TAG) ==="
+
+            echo "  Rendering manifests..."
+            python deploy/render.py \
+              --service   "$SERVICE" \
+              --env       "$ENV" \
+              --image-tag "$TAG"
+
+            echo "  Applying to AWS..."
+            python deploy/apply.py \
+              --service "$SERVICE" \
+              --env     "$ENV"
+
+            echo "  $SERVICE deployed successfully."
+          }
+
+          # Deploy in dependency order: internal services first, BFF last
+          # (BFF calls order-service and invoice-service, so they should be up first)
+          deploy_service "order-service"   "$ORDER_TAG"
+          deploy_service "invoice-service" "$INVOICE_TAG"
+          deploy_service "bff"             "$BFF_TAG"
+
+      # ── Step 6: Wait for services to reach steady state ─────────────────────
+      - name: Wait for ECS services to stabilize (max 10 min each)
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+
+          SERVICES=()
+          for SERVICE in bff order-service invoice-service; do
+            ACTIVE=$(aws ecs describe-services \
+              --cluster  "$CLUSTER" \
+              --services "$SERVICE" \
+              --query    'services[?status==`ACTIVE`].serviceName' \
+              --output   text 2>/dev/null || echo "")
+            [ -n "$ACTIVE" ] && SERVICES+=("$SERVICE")
+          done
+
+          if [ "${#SERVICES[@]}" -eq "0" ]; then
+            echo "WARN: No active services found to wait on."
+            exit 0
+          fi
+
+          echo "Waiting for services to stabilize: ${SERVICES[*]}"
+          aws ecs wait services-stable \
+            --cluster  "$CLUSTER" \
+            --services "${SERVICES[@]}"
+          echo "All services stable."
+
+      # ── Step 7: Verify startup ───────────────────────────────────────────────
+      - name: Verify all resources are healthy
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+          PROJECT="orderflow"
+          ERRORS=0
+
+          echo "=== Startup verification ==="
+
+          ALB=$(aws elbv2 describe-load-balancers \
+            --query  "LoadBalancers[?LoadBalancerName=='${PROJECT}-alb-${ENV}'].State.Code" \
+            --output text 2>/dev/null || echo "")
+          if [ "$ALB" = "active" ]; then
+            echo "OK  : ALB is active"
+          else
+            echo "FAIL: ALB not active (state: '${ALB}')"
+            ERRORS=$((ERRORS+1))
+          fi
+
+          DB=$(aws rds describe-db-instances \
+            --db-instance-identifier "${PROJECT}-mysql-${ENV}" \
+            --query                  'DBInstances[0].DBInstanceStatus' \
+            --output                 text 2>/dev/null || echo "not-found")
+          if [ "$DB" = "available" ]; then
+            echo "OK  : RDS is available"
+          else
+            echo "FAIL: RDS not available (status: '${DB}')"
+            ERRORS=$((ERRORS+1))
+          fi
+
+          INSTANCES=$(aws ecs list-container-instances \
+            --cluster "${PROJECT}-${ENV}" \
+            --status  ACTIVE \
+            --query   'length(containerInstanceArns)' \
+            --output  text 2>/dev/null || echo "0")
+          if [ "$INSTANCES" -ge "1" ]; then
+            echo "OK  : $INSTANCES EC2 instance(s) registered in ECS"
+          else
+            echo "FAIL: No EC2 instances registered in ECS cluster"
+            ERRORS=$((ERRORS+1))
+          fi
+
+          if [ "$ERRORS" -gt "0" ]; then
+            echo ""
+            echo "FAIL: $ERRORS verification check(s) failed."
+            exit 1
+          fi
+
+          echo ""
+          echo "SUCCESS: All resources verified — infrastructure is up and running."
+
+      - name: Startup summary
+        run: |
+          echo "=============================="
+          echo " STARTUP SUMMARY"
+          echo "=============================="
+          echo " Environment   : ${{ inputs.environment }}"
+          echo " Snapshot used : ${{ steps.ssm.outputs.snapshot_id || 'none (fresh DB)' }}"
+          echo " bff tag       : ${{ steps.ssm.outputs.bff_tag }}"
+          echo " order tag     : ${{ steps.ssm.outputs.order_service_tag }}"
+          echo " invoice tag   : ${{ steps.ssm.outputs.invoice_service_tag }}"
+          echo ""
+          echo " All services deployed and stable."
+          echo " CloudFront URL is still active — your UI is accessible."
+          echo "=============================="

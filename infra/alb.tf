@@ -30,16 +30,22 @@ resource "aws_lb" "main" {
 
 # ── Target Groups ─────────────────────────────────────────────────────────────
 # Created per entry in local.alb_routing (only BFF currently).
-# target_type = "instance" required for bridge network mode on EC2.
+# target_type = "ip" because tasks run in awsvpc mode — each task has its own
+# ENI/IP, so ALB targets the task IP directly on the container port instead of
+# the EC2 instance + dynamic host port (which would require target_type=instance).
+#
+# A name_prefix + create_before_destroy is used so changing the name (or any
+# immutable attribute like target_type) does a smooth rotation: new TG is
+# created → SSM param flips → listener rule swaps → old TG is removed.
 
 resource "aws_lb_target_group" "services" {
   for_each = local.alb_routing
 
-  name        = "${var.project}-${each.key}-${var.environment}"
+  name_prefix = substr("${each.key}-", 0, 6)
   port        = each.value.port
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "instance"
+  target_type = "ip"
 
   health_check {
     path                = "/health"
@@ -49,6 +55,10 @@ resource "aws_lb_target_group" "services" {
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 3
+  }
+
+  lifecycle {
+    create_before_destroy = true
   }
 
   tags = {

@@ -48,6 +48,15 @@ terraform {
 #   → Also add to alb_routing with port + path pattern
 
 locals {
+  # ── Snapshot restore ───────────────────────────────────────────────────────
+  # Normalise the db_snapshot_identifier variable: treat empty string as null
+  # so rds.tf conditionals work correctly regardless of how the value is passed.
+  db_snapshot_id = (
+    var.db_snapshot_identifier != null && var.db_snapshot_identifier != ""
+    ? var.db_snapshot_identifier
+    : null
+  )
+
   # ── ECR repos ─────────────────────────────────────────────────────────────
   # One private Docker registry per service. Image tags track versions.
   # Add a new service name here when onboarding it.

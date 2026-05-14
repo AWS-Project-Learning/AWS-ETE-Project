@@ -183,19 +183,13 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# ECS — only accepts traffic from the ALB, not directly from internet
+# ECS — accepts traffic from the ALB and from other ECS tasks (self).
+# Self-reference is required for awsvpc mode: each task has its own ENI/SG,
+# so BFF → order-service → invoice-service traffic must be allowed explicitly.
 resource "aws_security_group" "ecs" {
   name        = "${var.project}-sg-ecs-${var.environment}"
-  description = "ECS containers - inbound from ALB only"
+  description = "ECS containers - inbound from ALB and from sibling tasks"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "From ALB"
-    from_port       = 0
-    to_port         = 65535
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
 
   egress {
     description = "All outbound (VPC endpoints + RDS)"
@@ -208,6 +202,30 @@ resource "aws_security_group" "ecs" {
   tags = {
     Name = "${var.project}-sg-ecs-${var.environment}"
   }
+}
+
+# Inbound from ALB → BFF (and any other ALB-fronted service)
+resource "aws_security_group_rule" "ecs_from_alb" {
+  type                     = "ingress"
+  description              = "From ALB"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  security_group_id        = aws_security_group.ecs.id
+}
+
+# Inbound from other ECS tasks — required for awsvpc service-to-service calls
+# (BFF → order-service, BFF → invoice-service). Without this the traffic is
+# blocked at the task ENI even though Cloud Map resolves the DNS correctly.
+resource "aws_security_group_rule" "ecs_from_self" {
+  type                     = "ingress"
+  description              = "From sibling ECS tasks (awsvpc)"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.ecs.id
+  security_group_id        = aws_security_group.ecs.id
 }
 
 # RDS — only accepts MySQL connections from ECS containers
