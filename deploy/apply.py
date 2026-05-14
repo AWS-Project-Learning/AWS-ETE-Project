@@ -15,6 +15,7 @@ Usage:
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 import boto3
@@ -134,6 +135,74 @@ def register_task_def(ecs_client, task_def_doc: dict) -> str:
 
 
 # ── Step 5: ECS service ───────────────────────────────────────────────────────
+#
+# An ECS service is a stateful resource with a small state machine:
+#
+#     (none) ──create─▶ ACTIVE ──delete─▶ DRAINING ──(auto)─▶ INACTIVE ──(~1h)─▶ (none)
+#                          ▲                                        │
+#                          └──────────  create  ◀───────────────────┘
+#
+# Operations and which states accept them:
+#     create_service  : valid only when "doesn't exist" (or INACTIVE tombstone)
+#     update_service  : valid ONLY in ACTIVE — fails on DRAINING with
+#                       ServiceNotActiveException
+#     delete_service  : valid in ACTIVE; idempotent on DRAINING/INACTIVE
+#
+# Naïve "exists vs doesn't exist" logic is incorrect because:
+#   - DRAINING means "exists but mid-deletion" — neither update nor create is safe
+#   - INACTIVE means "tombstone, logically gone" — describe still returns it for
+#     ~1 hour, but create_service will succeed (treating it as a recreate)
+#
+# We therefore explicitly resolve the current state and dispatch on it.
+
+
+SERVICE_STATE_POLL_SECONDS = 10
+SERVICE_STATE_MAX_WAIT_SECONDS = 180  # ~3 min — typical DRAINING completes in <60s
+
+
+def resolve_service_state(ecs_client, cluster: str, service_name: str) -> str:
+    """
+    Return one of: ACTIVE | INACTIVE | NOT_FOUND.
+
+    If the service is found in DRAINING state, polls describe-services until it
+    transitions to INACTIVE or the timeout elapses. DRAINING is intentionally
+    NOT returned to callers — by the time this function returns, the service
+    is guaranteed to be in a state where either create or update is valid.
+    """
+    deadline = time.time() + SERVICE_STATE_MAX_WAIT_SECONDS
+
+    while True:
+        resp     = ecs_client.describe_services(cluster=cluster, services=[service_name])
+        services = resp.get("services", [])
+
+        if not services:
+            # Tombstone has been purged (>~1 hour since deletion) or service
+            # was never created. Either way: caller should create_service.
+            return "NOT_FOUND"
+
+        status = services[0]["status"]
+        if status == "ACTIVE":
+            return "ACTIVE"
+        if status == "INACTIVE":
+            # Tombstone still visible. create_service will succeed; AWS treats
+            # this as a fresh creation and the tombstone is replaced.
+            return "INACTIVE"
+
+        # status == "DRAINING" — service is mid-deletion. Neither update nor
+        # create is valid until the transition completes.
+        remaining = int(deadline - time.time())
+        if remaining <= 0:
+            sys.exit(
+                f"[ecs] FAIL: Service '{service_name}' stuck in DRAINING for "
+                f">{SERVICE_STATE_MAX_WAIT_SECONDS}s. To recover, run:\n"
+                f"  aws ecs delete-service --cluster {cluster} "
+                f"--service {service_name} --force\n"
+                f"...wait until describe-services returns failures[].reason=MISSING, "
+                f"then re-run this deploy."
+            )
+        print(f"[ecs] Service is DRAINING — waiting (timeout in {remaining}s)...")
+        time.sleep(SERVICE_STATE_POLL_SECONDS)
+
 
 def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn: str | None):
     cluster      = ecs_svc_doc["cluster"]
@@ -150,10 +219,10 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
             service_registries.append(r)
 
     print(f"[ecs] Service: {service_name} in cluster: {cluster}")
-    resp     = ecs_client.describe_services(cluster=cluster, services=[service_name])
-    existing = [s for s in resp["services"] if s["status"] != "INACTIVE"]
+    state = resolve_service_state(ecs_client, cluster, service_name)
+    print(f"[ecs] Current state: {state}")
 
-    if existing:
+    if state == "ACTIVE":
         print(f"[ecs] Updating existing service.")
         update_kwargs = {
             "cluster":                       cluster,
@@ -168,29 +237,33 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
             update_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
         ecs_client.update_service(**update_kwargs)
         print(f"[ecs] Updated — new deployment started.")
-    else:
-        print(f"[ecs] Creating new service.")
-        create_kwargs = {
-            "cluster":                       cluster,
-            "serviceName":                   service_name,
-            "taskDefinition":                task_def_arn,
-            "desiredCount":                  ecs_svc_doc["desiredCount"],
-            "launchType":                    "EC2",
-            "deploymentConfiguration":       ecs_svc_doc.get("deploymentConfiguration", {}),
-            "healthCheckGracePeriodSeconds": ecs_svc_doc.get("healthCheckGracePeriodSeconds", 0),
-            "enableECSManagedTags":          True,
-            "propagateTags":                 "SERVICE",
-            "tags":                          ecs_svc_doc.get("tags", [])
-        }
-        if ecs_svc_doc.get("networkConfiguration"):
-            create_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
-        if ecs_svc_doc.get("loadBalancers"):
-            create_kwargs["loadBalancers"] = ecs_svc_doc["loadBalancers"]
-        if service_registries:
-            create_kwargs["serviceRegistries"] = service_registries
+        return
 
-        ecs_client.create_service(**create_kwargs)
-        print(f"[ecs] Service created.")
+    # state in ("INACTIVE", "NOT_FOUND") — both mean "logically gone, safe to create".
+    # INACTIVE = tombstone still visible (<1h since delete); create will replace it.
+    # NOT_FOUND = no record at all; first creation or tombstone purged.
+    print(f"[ecs] Creating new service.")
+    create_kwargs = {
+        "cluster":                       cluster,
+        "serviceName":                   service_name,
+        "taskDefinition":                task_def_arn,
+        "desiredCount":                  ecs_svc_doc["desiredCount"],
+        "launchType":                    "EC2",
+        "deploymentConfiguration":       ecs_svc_doc.get("deploymentConfiguration", {}),
+        "healthCheckGracePeriodSeconds": ecs_svc_doc.get("healthCheckGracePeriodSeconds", 0),
+        "enableECSManagedTags":          True,
+        "propagateTags":                 "SERVICE",
+        "tags":                          ecs_svc_doc.get("tags", [])
+    }
+    if ecs_svc_doc.get("networkConfiguration"):
+        create_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
+    if ecs_svc_doc.get("loadBalancers"):
+        create_kwargs["loadBalancers"] = ecs_svc_doc["loadBalancers"]
+    if service_registries:
+        create_kwargs["serviceRegistries"] = service_registries
+
+    ecs_client.create_service(**create_kwargs)
+    print(f"[ecs] Service created.")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

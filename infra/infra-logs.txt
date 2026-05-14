@@ -1,236 +1,26 @@
-  + create
-  ~ update in-place
-+/- create replacement and then destroy
-Terraform will perform the following actions:
-  # aws_launch_template.ecs will be updated in-place
-  ~ resource "aws_launch_template" "ecs" {
-        id                      = "lt-00a295702bdcfd814"
-      ~ latest_version          = 2 -> (known after apply)
-        name                    = "orderflow-ecs-dev-20260514005608842800000003"
-        tags                    = {}
-      ~ vpc_security_group_ids  = [
-          - "sg-0d74705d5fbe7c6e7",
-        ] -> (known after apply)
-        # (10 unchanged attributes hidden)
-        # (2 unchanged blocks hidden)
-    }
-  # aws_lb_listener.http will be updated in-place
-  ~ resource "aws_lb_listener" "http" {
-        id                                   = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134"
-        tags                                 = {}
-        # (6 unchanged attributes hidden)
-      ~ default_action {
-          ~ target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-            # (2 unchanged attributes hidden)
-        }
-    }
-  # aws_lb_listener_rule.services["bff"] will be updated in-place
-  ~ resource "aws_lb_listener_rule" "services" {
-        id           = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2"
-        tags         = {}
-        # (4 unchanged attributes hidden)
-      ~ action {
-          ~ target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-            # (2 unchanged attributes hidden)
-        }
-        # (1 unchanged block hidden)
-    }
-  # aws_lb_target_group.services["bff"] must be replaced
-+/- resource "aws_lb_target_group" "services" {
-      ~ arn                                = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-      ~ arn_suffix                         = "targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-      + connection_termination             = (known after apply)
-      ~ id                                 = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-      ~ ip_address_type                    = "ipv4" -> (known after apply)
-      ~ load_balancer_arns                 = [
-          - "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b",
-        ] -> (known after apply)
-      ~ load_balancing_algorithm_type      = "round_robin" -> (known after apply)
-      ~ load_balancing_anomaly_mitigation  = "off" -> (known after apply)
-      ~ load_balancing_cross_zone_enabled  = "use_load_balancer_configuration" -> (known after apply)
-      ~ name                               = "orderflow-bff-dev" -> (known after apply)
-      + name_prefix                        = "bff-" # forces replacement
-      + preserve_client_ip                 = (known after apply)
-      ~ protocol_version                   = "HTTP1" -> (known after apply)
-        tags                               = {
-            "Name"    = "orderflow-bff-dev"
-            "Service" = "bff"
-        }
-      ~ target_type                        = "instance" -> "ip" # forces replacement
-        # (8 unchanged attributes hidden)
-      - stickiness {
-          - cookie_duration = 86400 -> null
-          - enabled         = false -> null
-          - type            = "lb_cookie" -> null
-        }
-      - target_failover {}
-      - target_group_health {
-          - dns_failover {
-              - minimum_healthy_targets_count      = "1" -> null
-              - minimum_healthy_targets_percentage = "off" -> null
-            }
-          - unhealthy_state_routing {
-              - minimum_healthy_targets_count      = 1 -> null
-              - minimum_healthy_targets_percentage = "off" -> null
-            }
-        }
-      - target_health_state {}
-        # (1 unchanged block hidden)
-    }
-  # aws_security_group.ecs must be replaced
-+/- resource "aws_security_group" "ecs" {
-      ~ arn                    = "arn:aws:ec2:us-east-1:109653023631:security-group/sg-0d74705d5fbe7c6e7" -> (known after apply)
-      ~ description            = "ECS containers - inbound from ALB only" -> "ECS containers - inbound from ALB and from sibling tasks" # forces replacement
-      ~ id                     = "sg-0d74705d5fbe7c6e7" -> (known after apply)
-      ~ ingress                = [
-          - {
-              - cidr_blocks      = []
-              - description      = "From ALB"
-              - from_port        = 0
-              - ipv6_cidr_blocks = []
-              - prefix_list_ids  = []
-              - protocol         = "tcp"
-              - security_groups  = [
-                  - "sg-003d32a5ea9ffe229",
-                ]
-              - self             = false
-              - to_port          = 65535
-            },
-        ] -> (known after apply)
-        name                   = "orderflow-sg-ecs-dev"
-      + name_prefix            = (known after apply)
-      ~ owner_id               = "109653023631" -> (known after apply)
-        tags                   = {
-            "Name" = "orderflow-sg-ecs-dev"
-        }
-        # (4 unchanged attributes hidden)
-    }
-  # aws_security_group.rds will be updated in-place
-  ~ resource "aws_security_group" "rds" {
-        id                     = "sg-0e8050613038df1c3"
-      ~ ingress                = [
-          - {
-              - cidr_blocks      = []
-              - description      = "MySQL from ECS"
-              - from_port        = 3306
-              - ipv6_cidr_blocks = []
-              - prefix_list_ids  = []
-              - protocol         = "tcp"
-              - security_groups  = [
-                  - "sg-0d74705d5fbe7c6e7",
-                ]
-              - self             = false
-              - to_port          = 3306
-            },
-          + {
-              + cidr_blocks      = []
-              + description      = "MySQL from ECS"
-              + from_port        = 3306
-              + ipv6_cidr_blocks = []
-              + prefix_list_ids  = []
-              + protocol         = "tcp"
-              + security_groups  = (known after apply)
-              + self             = false
-              + to_port          = 3306
-            },
-        ]
-        name                   = "orderflow-sg-rds-dev"
-        tags                   = {
-            "Name" = "orderflow-sg-rds-dev"
-        }
-        # (7 unchanged attributes hidden)
-    }
-  # aws_security_group.vpc_endpoints will be updated in-place
-  ~ resource "aws_security_group" "vpc_endpoints" {
-        id                     = "sg-0b15177002abf1aef"
-      ~ ingress                = [
-          - {
-              - cidr_blocks      = []
-              - description      = "HTTPS from ECS"
-              - from_port        = 443
-              - ipv6_cidr_blocks = []
-              - prefix_list_ids  = []
-              - protocol         = "tcp"
-              - security_groups  = [
-                  - "sg-0d74705d5fbe7c6e7",
-                ]
-              - self             = false
-              - to_port          = 443
-            },
-          + {
-              + cidr_blocks      = []
-              + description      = "HTTPS from ECS"
-              + from_port        = 443
-              + ipv6_cidr_blocks = []
-              + prefix_list_ids  = []
-              + protocol         = "tcp"
-              + security_groups  = (known after apply)
-              + self             = false
-              + to_port          = 443
-            },
-        ]
-        name                   = "orderflow-sg-vpce-dev"
-        tags                   = {
-            "Name" = "orderflow-sg-vpce-dev"
-        }
-        # (7 unchanged attributes hidden)
-    }
-  # aws_security_group_rule.ecs_from_alb will be created
-  + resource "aws_security_group_rule" "ecs_from_alb" {
-      + description              = "From ALB"
-      + from_port                = 0
-      + id                       = (known after apply)
-      + protocol                 = "tcp"
-      + security_group_id        = (known after apply)
-      + security_group_rule_id   = (known after apply)
-      + self                     = false
-      + source_security_group_id = "sg-003d32a5ea9ffe229"
-      + to_port                  = 65535
-      + type                     = "ingress"
-    }
-  # aws_security_group_rule.ecs_from_self will be created
-  + resource "aws_security_group_rule" "ecs_from_self" {
-      + description              = "From sibling ECS tasks (awsvpc)"
-      + from_port                = 0
-      + id                       = (known after apply)
-      + protocol                 = "tcp"
-      + security_group_id        = (known after apply)
-      + security_group_rule_id   = (known after apply)
-      + self                     = false
-      + source_security_group_id = (known after apply)
-      + to_port                  = 65535
-      + type                     = "ingress"
-    }
-  # aws_ssm_parameter.ecs_security_group will be updated in-place
-  ~ resource "aws_ssm_parameter" "ecs_security_group" {
-        id             = "/orderflow/dev/infra/ecs-sg-id"
-      + insecure_value = (known after apply)
-        name           = "/orderflow/dev/infra/ecs-sg-id"
-        tags           = {
-            "Name" = "infra-ecs-sg-id-dev"
-        }
-      ~ value          = (sensitive value)
-      ~ version        = 1 -> (known after apply)
-        # (5 unchanged attributes hidden)
-    }
-  # aws_ssm_parameter.tg_arn["bff"] will be updated in-place
-  ~ resource "aws_ssm_parameter" "tg_arn" {
-        id             = "/orderflow/dev/infra/tg-bff-arn"
-      + insecure_value = (known after apply)
-        name           = "/orderflow/dev/infra/tg-bff-arn"
-        tags           = {
-            "Name" = "infra-tg-bff-arn-dev"
-        }
-      ~ value          = (sensitive value)
-      ~ version        = 1 -> (known after apply)
-        # (5 unchanged attributes hidden)
-    }
-Plan: 4 to add, 7 to change, 2 to destroy.
-Changes to Outputs:
-  ~ target_group_arns          = {
-      ~ bff = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102" -> (known after apply)
-    }
-─────────────────────────────────────────────────────────────────────────────
-Saved the plan to: tfplan
-To perform exactly these actions, run the following command to apply:
-    terraform apply "tfplan"
+   main()
+  File "/home/runner/work/AWS-ETE-Project/AWS-ETE-Project/deploy/apply.py", line 246, in main
+    deploy_ecs_service(ecs, ecs_svc, task_def_arn, sd_arn)
+  File "/home/runner/work/AWS-ETE-Project/AWS-ETE-Project/deploy/apply.py", line 169, in deploy_ecs_service
+[iam] Already exists: arn:aws:iam::109653023631:role/ecs-task-role-order-service
+[iam] Inline policy applied: ecs-task-role-order-service-policy
+
+[cloudmap] order-service (namespace: ns-paurwge4y4flewk2)
+[cloudmap] Already exists: arn:aws:servicediscovery:us-east-1:109653023631:service/srv-bj4z7qhyiog7l4wn
+
+[task-def] Registering: order-service-dev
+[task-def] Registered: order-service-dev:5
+
+[ecs] Service: order-service in cluster: orderflow-dev
+[ecs] Updating existing service.
+    ecs_client.update_service(**update_kwargs)
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/client.py", line 606, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/client.py", line 1094, in _make_api_call
+    raise error_class(parsed_response, operation_name)
+botocore.errorfactory.ServiceNotActiveException: An error occurred (ServiceNotActiveException) when calling the UpdateService operation: Service was not ACTIVE.
+Error: Process completed with exit code 1.
