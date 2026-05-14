@@ -65,7 +65,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
 
     min_ttl     = 0
-    default_ttl = 0   # never cache API responses
+    default_ttl = 0 # never cache API responses
     max_ttl     = 0
   }
 
