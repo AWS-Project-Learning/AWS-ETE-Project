@@ -40,9 +40,13 @@ def _listen():
         logger.warning("Redis unavailable — listener not started")
         return
 
-    pubsub = client.pubsub()
-    pubsub.subscribe("order.created", "order.status_updated")
-    logger.info("Subscribed to: order.created, order.status_updated")
+    try:
+        pubsub = client.pubsub()
+        pubsub.subscribe("order.created", "order.status_updated")
+        logger.info("Subscribed to: order.created, order.status_updated")
+    except Exception as e:
+        logger.warning(f"Redis unavailable — could not subscribe: {e}")
+        return
 
     for message in pubsub.listen():
         if message["type"] != "message":

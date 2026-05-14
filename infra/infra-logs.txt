@@ -1,39 +1,50 @@
-Run python deploy/apply.py \
-Traceback (most recent call last):
-
-  File "/home/runner/work/AWS-ETE-Project/AWS-ETE-Project/deploy/apply.py", line 238, in <module>
-============================================================
-  Applying: order-service  |  env: dev
-  Source:   deploy/out/order-service/dev/
-============================================================
-
-[log group] /ecs/orderflow/dev/order-service
-[log group] Created.
-
-[iam] Role: ecs-task-role-order-service
-[iam] Created: arn:aws:iam::109653023631:role/ecs-task-role-order-service
-[iam] Inline policy applied: ecs-task-role-order-service-policy
-
-[cloudmap] order-service (namespace: ns-paurwge4y4flewk2)
-[cloudmap] Created: arn:aws:servicediscovery:us-east-1:109653023631:service/srv-bj4z7qhyiog7l4wn
-
-[task-def] Registering: order-service-dev
-[task-def] Registered: order-service-dev:1
-
-[ecs] Service: order-service in cluster: orderflow-dev
-[ecs] Creating new service.
-    main()
-  File "/home/runner/work/AWS-ETE-Project/AWS-ETE-Project/deploy/apply.py", line 232, in main
-    deploy_ecs_service(ecs, ecs_svc, task_def_arn, sd_arn)
-  File "/home/runner/work/AWS-ETE-Project/AWS-ETE-Project/deploy/apply.py", line 178, in deploy_ecs_service
-    ecs_client.create_service(**create_kwargs)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/client.py", line 606, in _api_call
-    return self._make_api_call(operation_name, kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/botocore/client.py", line 1094, in _make_api_call
-    raise error_class(parsed_response, operation_name)
-botocore.errorfactory.InvalidParameterException: An error occurred (InvalidParameterException) when calling the CreateService operation: The specified serviceRegistries value is configured to use a type 'A' DNS record, which is not supported when specifying 'host' or 'bridge' for networkMode. Change to 'SRV' record, which is the supported DNS record type. Registry: arn:aws:servicediscovery:us-east-1:109653023631:service/srv-bj4z7qhyiog7l4wn
-Error: Process completed with exit code 1.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   timestamp   |                                                  message                                                  |                    logStreamName                     |
+|---------------|-----------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| 1778735836600 | INFO:     Started server process [1]                                                                      | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836600 | INFO:     Waiting for application startup.                                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836600 | INFO:app.main:Starting invoice-service...                                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836696 | INFO:app.main:Database tables created/verified.                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836698 | INFO:app.main:Database connection OK.                                                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836699 | INFO:app.events:Redis listener thread started                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836699 | INFO:app.main:Redis listener started (fails silently if Redis unavailable).                               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836700 | INFO:     Application startup complete.                                                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836700 | INFO:     Uvicorn running on http://0.0.0.0:8002 (Press CTRL+C to quit)                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 | Exception in thread Thread-1 (_listen):                                                                   | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 | Traceback (most recent call last):                                                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 357, in connect                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 |     sock = self.retry.call_with_retry(                                                                    | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^                                                                    | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836734 |   File "/usr/local/lib/python3.12/site-packages/redis/retry.py", line 62, in call_with_retry              | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |     return do()                                                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |            ^^^^                                                                                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 358, in <lambda>               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |     lambda: self._connect(), lambda error: self.disconnect(error)                                         | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |             ^^^^^^^^^^^^^^^                                                                               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 730, in _connect               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |     raise err                                                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 718, in _connect               | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |     sock.connect(socket_address)                                                                          | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 | OSError: [Errno 99] Cannot assign requested address                                                       | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 | During handling of the above exception, another exception occurred:                                       | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 | Traceback (most recent call last):                                                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836735 |   File "/usr/local/lib/python3.12/threading.py", line 1075, in _bootstrap_inner                           | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |     self.run()                                                                                            | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |   File "/usr/local/lib/python3.12/threading.py", line 1012, in run                                        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |     self._target(*self._args, **self._kwargs)                                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |   File "/app/app/events.py", line 44, in _listen                                                          | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |     pubsub.subscribe("order.created", "order.status_updated")                                             | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |   File "/usr/local/lib/python3.12/site-packages/redis/client.py", line 957, in subscribe                  | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |     ret_val = self.execute_command("SUBSCRIBE", *new_channels.keys())                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                     | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836736 |   File "/usr/local/lib/python3.12/site-packages/redis/client.py", line 786, in execute_command            | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |     self.connection = self.connection_pool.get_connection(                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 1422, in get_connection        | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |     connection.connect()                                                                                  | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |   File "/usr/local/lib/python3.12/site-packages/redis/connection.py", line 363, in connect                | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 |     raise ConnectionError(self._error_message(e))                                                         | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735836737 | redis.exceptions.ConnectionError: Error 99 connecting to localhost:6379. Cannot assign requested address. | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735865728 | INFO:     127.0.0.1:44336 - "GET /health HTTP/1.1" 200 OK                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+| 1778735895792 | INFO:     127.0.0.1:46816 - "GET /health HTTP/1.1" 200 OK                                                 | dev/invoice-service/82293aef35f44ef1ae25add2cf6e77fc |
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
