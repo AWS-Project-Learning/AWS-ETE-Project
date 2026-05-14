@@ -1,16 +1,25 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
 
 from .client import order_client, invoice_client
 from .routes import orders, invoices, dashboard
 from .config import settings
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting BFF...")
+    logger.info(f"ORDER_SERVICE_URL  = {settings.ORDER_SERVICE_URL}")
+    logger.info(f"INVOICE_SERVICE_URL = {settings.INVOICE_SERVICE_URL}")
+    logger.info(f"CORS_ORIGINS        = {settings.CORS_ORIGINS}")
     yield
-    # Close HTTP clients gracefully on shutdown
+    logger.info("BFF shutting down — closing HTTP clients.")
     await order_client.aclose()
     await invoice_client.aclose()
 

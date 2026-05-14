@@ -1,20 +1,34 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+import logging
 from contextlib import asynccontextmanager
 
-from .database import engine, Base
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+
+from .database import engine, Base, SessionLocal
 from .routes import invoices
 from .events import start_listener
 
-Base.metadata.create_all(bind=engine)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start Redis listener in background thread on startup
+    logger.info("Starting invoice-service...")
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified.")
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        logger.info("Database connection OK.")
+    except Exception as e:
+        logger.error(f"Database connection FAILED: {e}")
+        raise
     start_listener()
+    logger.info("Redis listener started (fails silently if Redis unavailable).")
     yield
-    # Shutdown — listener thread is daemon so exits automatically
+    logger.info("invoice-service shutting down.")
 
 
 app = FastAPI(
