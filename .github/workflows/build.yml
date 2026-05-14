@@ -4,10 +4,11 @@ name: Build — Backend Services
 # This pipeline's ONLY job is:
 #   1. Detect which services changed (on push)
 #   2. Build Docker images and push to ECR
-#   3. Call deploy.yml for dev  (auto-applies)
-#   4. Call deploy.yml for sit  (waits for approval — starts after dev passes)
+#   3. Auto-deploy to dev
 #
-# For redeployments (no new build needed), trigger deploy.yml directly.
+# sit deployments are manual — take the image_tag from the build job output
+# and trigger deploy.yml directly:
+#   Actions → Deploy — ECS Service → Run workflow → service, env=sit, image_tag
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -181,44 +182,3 @@ jobs:
       image_tag: ${{ needs.detect.outputs.image_tag }}
     secrets: inherit
 
-
-  # ── 4. Deploy to sit (approval required) ──────────────────────────────────
-  # Starts only after the corresponding dev deploy succeeds.
-  # deploy-sit has required reviewers — the apply job inside deploy.yml
-  # pauses until someone approves via Actions UI.
-  #
-  # Flow: dev passes → sit render runs (shows what will change) → reviewer
-  # downloads the manifest artifact, validates, clicks Approve → sit applies.
-
-  deploy-bff-sit:
-    name: Deploy bff → sit
-    needs: [detect, deploy-bff-dev]
-    if: needs.detect.outputs.bff == 'true' && needs.deploy-bff-dev.result == 'success'
-    uses: ./.github/workflows/deploy.yml
-    with:
-      service:   bff
-      env:       sit
-      image_tag: ${{ needs.detect.outputs.image_tag }}
-    secrets: inherit
-
-  deploy-order-sit:
-    name: Deploy order-service → sit
-    needs: [detect, deploy-order-dev]
-    if: needs.detect.outputs['order-service'] == 'true' && needs.deploy-order-dev.result == 'success'
-    uses: ./.github/workflows/deploy.yml
-    with:
-      service:   order-service
-      env:       sit
-      image_tag: ${{ needs.detect.outputs.image_tag }}
-    secrets: inherit
-
-  deploy-invoice-sit:
-    name: Deploy invoice-service → sit
-    needs: [detect, deploy-invoice-dev]
-    if: needs.detect.outputs['invoice-service'] == 'true' && needs.deploy-invoice-dev.result == 'success'
-    uses: ./.github/workflows/deploy.yml
-    with:
-      service:   invoice-service
-      env:       sit
-      image_tag: ${{ needs.detect.outputs.image_tag }}
-    secrets: inherit
