@@ -81,80 +81,26 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_ssm" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TASK ROLES — one per service
+# TASK ROLES — owned by the deploy pipeline, NOT Terraform
 # ═══════════════════════════════════════════════════════════════════════════════
-
-resource "aws_iam_role" "ecs_task" {
-  for_each = toset(local.services)
-
-  name               = "ecs-task-role-${each.key}"
-  assume_role_policy = data.aws_iam_policy_document.ecs_assume_role.json
-
-  tags = {
-    Name    = "ecs-task-role-${each.key}"
-    Service = each.key
-  }
-}
-
-# ── order-service task policy ──────────────────────────────────────────────────
-# Currently no AWS API calls from application code.
-# MySQL and Redis are accessed over TCP (Security Groups handle this).
-# Extend this when order-service needs to call AWS APIs directly.
-resource "aws_iam_role_policy" "task_order_service" {
-  name = "order-service-policy-${var.environment}"
-  role = aws_iam_role.ecs_task["order-service"].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/orderflow/${var.environment}/order-service/*"
-      }
-    ]
-  })
-}
-
-# ── invoice-service task policy ───────────────────────────────────────────────
-# Placeholder for S3 access when invoice PDF storage is implemented.
-resource "aws_iam_role_policy" "task_invoice_service" {
-  name = "invoice-service-policy-${var.environment}"
-  role = aws_iam_role.ecs_task["invoice-service"].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/orderflow/${var.environment}/invoice-service/*"
-      }
-      # Future: add s3:PutObject for invoice PDF uploads
-      # {
-      #   Effect   = "Allow"
-      #   Action   = ["s3:PutObject", "s3:GetObject"]
-      #   Resource = "arn:aws:s3:::orderflow-invoices-${var.environment}/*"
-      # }
-    ]
-  })
-}
-
-# ── bff task policy ───────────────────────────────────────────────────────────
-# BFF only calls order-service and invoice-service over HTTP (internal DNS).
-# No direct AWS API calls needed currently.
-resource "aws_iam_role_policy" "task_bff" {
-  name = "bff-policy-${var.environment}"
-  role = aws_iam_role.ecs_task["bff"].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter"]
-        Resource = "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.current.account_id}:parameter/orderflow/${var.environment}/bff/*"
-      }
-    ]
-  })
-}
+#
+# Each service declares its own IAM permissions in deploy/{service}/service.yaml:
+#
+#   iam:
+#     policies:
+#       - sid: SSMRead
+#         actions: ["ssm:GetParameter"]
+#         resources: ["arn:aws:ssm:{{region}}:{{account_id}}:parameter/orderflow/{{env}}/bff/*"]
+#       - sid: S3Write
+#         actions: ["s3:PutObject"]
+#         resources: ["arn:aws:s3:::orderflow-invoices-*"]
+#
+# deploy.py reads this block and calls:
+#   iam create-role   → ecs-task-role-{service}  (if not exists)
+#   iam put-role-policy → inline policy built from the policies list (always updated)
+#
+# Benefits:
+#   - Dev team controls their own permissions — no infra PR needed
+#   - Each service is least-privilege by default
+#   - Adding a new service = write service.yaml, push, done
+#   - Removing permissions = edit service.yaml, redeploy

@@ -14,12 +14,9 @@
 # is tracked by the image tag (e.g. order-service:dev-a3f9c12)
 
 resource "aws_ecr_repository" "services" {
-  # for_each creates one ECR repo for each service in the list above.
-  # Result:
-  #   aws_ecr_repository.services["order-service"]
-  #   aws_ecr_repository.services["invoice-service"]
-  #   aws_ecr_repository.services["bff"]
-  for_each = toset(local.services)
+  # ecr_services = toset([...]) — one ECR repo per service name.
+  # Add a new service name to ecr_services in main.tf to get a new repo.
+  for_each = local.ecr_services
 
   name                 = "${var.project}/${each.key}" # e.g. orderflow/order-service
   image_tag_mutability = "MUTABLE"                    # allows overwriting tags like "latest"
@@ -46,7 +43,7 @@ resource "aws_ecr_repository" "services" {
 # Real world: Like a wardrobe rule — keep the 10 newest shirts, donate the rest.
 
 resource "aws_ecr_lifecycle_policy" "services" {
-  for_each   = toset(local.services)
+  for_each   = local.ecr_services
   repository = aws_ecr_repository.services[each.key].name
 
   policy = jsonencode({

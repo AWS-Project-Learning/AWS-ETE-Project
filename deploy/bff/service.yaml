@@ -1,0 +1,43 @@
+# ── BFF (Backend For Frontend) ────────────────────────────────────────────────
+# Public entry point. All /api/* traffic from CloudFront lands here.
+# BFF fans out to internal services via Cloud Map private DNS.
+# This file is environment-agnostic — env-specific values are in values-{env}.yaml.
+
+name: bff
+
+container:
+  port: 8000
+  health_check_command: "curl -f http://localhost:8000/health || exit 1"
+
+# BFF is the only service registered with ALB.
+# deploy.py reads the target group ARN from the SSM path below
+# and wires the ECS service to it.
+load_balancer:
+  target_group_ssm: /orderflow/{env}/infra/tg-bff-arn
+  health_check_path: /health
+  deregistration_delay: 30
+
+# BFF also registers itself under Cloud Map so internal services
+# can optionally discover it. Optional but consistent.
+service_discovery:
+  discovery_name: bff
+
+deployment:
+  circuit_breaker: true
+  rollback_on_failure: true
+
+# IAM permissions for the BFF task role.
+# deploy.py creates ecs-task-role-bff with this inline policy.
+# Add new blocks here when BFF needs new AWS permissions.
+iam:
+  policies:
+    - sid: SSMRead
+      actions:
+        - "ssm:GetParameter"
+        - "ssm:GetParameters"
+      resources:
+        - "arn:aws:ssm:{region}:{account_id}:parameter/orderflow/{env}/bff/*"
+
+tags:
+  tier: api
+  component: gateway

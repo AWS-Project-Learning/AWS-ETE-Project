@@ -1,0 +1,29 @@
+# ── Shared Infrastructure References ─────────────────────────────────────────
+# Values here are account/region-level constants read by deploy.py.
+# Environment-specific infra references (cluster name, TG ARNs) are read
+# from SSM at deploy time — not hardcoded here.
+#
+# This file is maintained by the platform team.
+# Service teams should not need to touch this.
+
+account_id:     "109653023631"
+region:         us-east-1
+project:        orderflow
+ecr_registry:   "109653023631.dkr.ecr.us-east-1.amazonaws.com"
+
+# ECS task execution role — shared by all services.
+# deploy.py reads the ARN from SSM: /orderflow/{env}/infra/execution-role-arn
+execution_role: ecs-task-execution-role
+
+# Network mode for all EC2-based services
+network_mode: bridge
+
+# Default compute — services can override in their values-{env}.yaml
+defaults:
+  cpu:                    256
+  memory:                 256
+  desired_count:          1
+  health_check_interval:  30
+  health_check_timeout:   5
+  health_check_retries:   3
+  health_check_start_period: 60

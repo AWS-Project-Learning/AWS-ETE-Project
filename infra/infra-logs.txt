@@ -1,340 +1,275 @@
-  
+Run terraform plan -no-color -out=tfplan 2>&1 | tee plan-output.txt
 data.aws_caller_identity.current: Reading...
+data.aws_iam_policy_document.ecs_assume_role: Reading...
+aws_ecr_repository.services["bff"]: Refreshing state... [id=orderflow/bff]
+aws_ecr_repository.services["order-service"]: Refreshing state... [id=orderflow/order-service]
+aws_vpc.main: Refreshing state... [id=vpc-0a2a518e20b9c4dd8]
+aws_ecr_repository.services["invoice-service"]: Refreshing state... [id=orderflow/invoice-service]
+data.aws_iam_policy_document.ecs_assume_role: Read complete after 0s [id=1077804475]
+aws_cloudfront_origin_access_control.frontend: Refreshing state... [id=EBNHQUHUJMPT6]
+aws_db_parameter_group.main: Refreshing state... [id=orderflow-mysql8-dev]
+aws_iam_role.ecs_task["invoice-service"]: Refreshing state... [id=ecs-task-role-invoice-service]
+aws_iam_role.ecs_execution: Refreshing state... [id=ecs-task-execution-role]
+aws_iam_role.ecs_task["bff"]: Refreshing state... [id=ecs-task-role-bff]
 data.aws_caller_identity.current: Read complete after 0s [id=109653023631]
+aws_iam_role.ecs_task["order-service"]: Refreshing state... [id=ecs-task-role-order-service]
+aws_s3_bucket.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
+aws_iam_policy.ecs_execution_ssm: Refreshing state... [id=arn:aws:iam::109653023631:policy/ecs-execution-ssm-dev]
+aws_ecr_lifecycle_policy.services["bff"]: Refreshing state... [id=orderflow/bff]
+aws_ecr_lifecycle_policy.services["invoice-service"]: Refreshing state... [id=orderflow/invoice-service]
+aws_ecr_lifecycle_policy.services["order-service"]: Refreshing state... [id=orderflow/order-service]
+aws_iam_role_policy_attachment.ecs_execution_managed: Refreshing state... [id=ecs-task-execution-role-20260513024111350500000001]
+aws_iam_role_policy.task_order_service: Refreshing state... [id=ecs-task-role-order-service:order-service-policy-dev]
+aws_iam_role_policy.task_bff: Refreshing state... [id=ecs-task-role-bff:bff-policy-dev]
+aws_iam_role_policy.task_invoice_service: Refreshing state... [id=ecs-task-role-invoice-service:invoice-service-policy-dev]
+aws_iam_role_policy_attachment.ecs_execution_ssm: Refreshing state... [id=ecs-task-execution-role-20260513024111350900000002]
+aws_s3_bucket_public_access_block.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
+aws_s3_bucket_server_side_encryption_configuration.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
+aws_s3_bucket_versioning.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
+aws_cloudfront_distribution.frontend: Refreshing state... [id=E3HDWKPHQETVYE]
+aws_subnet.public: Refreshing state... [id=subnet-0df8e70155837faf9]
+aws_subnet.private_db_a: Refreshing state... [id=subnet-0fd0543f7801dbf93]
+aws_lb_target_group.invoice_service: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-invoice-dev/c5b5e2c144ff3ae1]
+aws_lb_target_group.order_service: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-order-dev/cc5805f3d7235cc4]
+aws_internet_gateway.main: Refreshing state... [id=igw-045cbe8ea3fa9a98b]
+aws_subnet.private_app: Refreshing state... [id=subnet-08b0778caeb7c4a9a]
+aws_security_group.alb: Refreshing state... [id=sg-003d32a5ea9ffe229]
+aws_lb_target_group.bff: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49]
+aws_subnet.private_db_b: Refreshing state... [id=subnet-02198e9dfdac35f55]
+aws_route_table.private: Refreshing state... [id=rtb-01956145281c5eecf]
+data.aws_iam_policy_document.frontend_bucket: Reading...
+data.aws_iam_policy_document.frontend_bucket: Read complete after 0s [id=164751590]
+aws_route_table.public: Refreshing state... [id=rtb-040a5aba47b338d7b]
+aws_security_group.ecs: Refreshing state... [id=sg-0d74705d5fbe7c6e7]
+aws_s3_bucket_policy.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
+aws_route_table_association.private_db_a: Refreshing state... [id=rtbassoc-0703971753d1080f5]
+aws_route_table_association.private_app: Refreshing state... [id=rtbassoc-06ee2dd76350ac3e9]
+aws_vpc_endpoint.s3: Refreshing state... [id=vpce-058bfea0e54f60ef7]
+aws_route_table_association.public: Refreshing state... [id=rtbassoc-04893eba8df69b9e3]
+aws_route_table_association.private_db_b: Refreshing state... [id=rtbassoc-06e0ec266bf342022]
+aws_db_subnet_group.main: Refreshing state... [id=orderflow-db-subnet-group-dev]
+aws_security_group.rds: Refreshing state... [id=sg-0e8050613038df1c3]
+aws_security_group.vpc_endpoints: Refreshing state... [id=sg-0b15177002abf1aef]
+aws_vpc_endpoint.ecr_dkr: Refreshing state... [id=vpce-0cbfcdeacbcea1c41]
+aws_vpc_endpoint.ecr_api: Refreshing state... [id=vpce-06f8263caeded3a23]
+aws_vpc_endpoint.logs: Refreshing state... [id=vpce-09881e30ae79e8c7e]
+aws_db_instance.main: Refreshing state... [id=db-772QLLYHWPZBT42ILFI3UQOXRQ]
+
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
   + create
- <= read (data resources)
+
 Terraform will perform the following actions:
-  # data.aws_iam_policy_document.frontend_bucket will be read during apply
-  # (config refers to values not yet known)
- <= data "aws_iam_policy_document" "frontend_bucket" {
-      + id            = (known after apply)
-      + json          = (known after apply)
-      + minified_json = (known after apply)
-      + statement {
-          + actions   = [
-              + "s3:GetObject",
-            ]
-          + effect    = "Allow"
-          + resources = [
-              + (known after apply),
-            ]
-          + sid       = "AllowCloudFrontRead"
-          + condition {
-              + test     = "StringEquals"
-              + values   = [
-                  + (known after apply),
-                ]
-              + variable = "AWS:SourceArn"
-            }
-          + principals {
-              + identifiers = [
-                  + "cloudfront.amazonaws.com",
-                ]
-              + type        = "Service"
-            }
+
+  # aws_lb.main will be created
+  + resource "aws_lb" "main" {
+      + arn                                                          = (known after apply)
+      + arn_suffix                                                   = (known after apply)
+      + client_keep_alive                                            = 3600
+      + desync_mitigation_mode                                       = "defensive"
+      + dns_name                                                     = (known after apply)
+      + drop_invalid_header_fields                                   = false
+      + enable_deletion_protection                                   = false
+      + enable_http2                                                 = true
+      + enable_tls_version_and_cipher_suite_headers                  = false
+      + enable_waf_fail_open                                         = false
+      + enable_xff_client_port                                       = false
+      + enable_zonal_shift                                           = false
+      + enforce_security_group_inbound_rules_on_private_link_traffic = (known after apply)
+      + id                                                           = (known after apply)
+      + idle_timeout                                                 = 60
+      + internal                                                     = false
+      + ip_address_type                                              = (known after apply)
+      + load_balancer_type                                           = "application"
+      + name                                                         = "orderflow-alb-dev"
+      + name_prefix                                                  = (known after apply)
+      + preserve_host_header                                         = false
+      + security_groups                                              = [
+          + "sg-003d32a5ea9ffe229",
+        ]
+      + subnets                                                      = (known after apply)
+      + tags                                                         = {
+          + "Name" = "orderflow-alb-dev"
         }
+      + tags_all                                                     = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "orderflow-alb-dev"
+          + "Project"     = "orderflow"
+        }
+      + vpc_id                                                       = (known after apply)
+      + xff_header_processing_mode                                   = "append"
+      + zone_id                                                      = (known after apply)
     }
-  # aws_cloudfront_distribution.frontend will be created
-  + resource "aws_cloudfront_distribution" "frontend" {
-      + arn                             = (known after apply)
-      + caller_reference                = (known after apply)
-      + comment                         = "orderflow frontend — dev"
-      + continuous_deployment_policy_id = (known after apply)
-      + default_root_object             = "index.html"
-      + domain_name                     = (known after apply)
-      + enabled                         = true
-      + etag                            = (known after apply)
-      + hosted_zone_id                  = (known after apply)
-      + http_version                    = "http2"
-      + id                              = (known after apply)
-      + in_progress_validation_batches  = (known after apply)
-      + is_ipv6_enabled                 = false
-      + last_modified_time              = (known after apply)
-      + price_class                     = "PriceClass_All"
-      + retain_on_delete                = false
-      + staging                         = false
-      + status                          = (known after apply)
-      + tags_all                        = {
+
+  # aws_lb_listener.http will be created
+  + resource "aws_lb_listener" "http" {
+      + arn                                                                   = (known after apply)
+      + id                                                                    = (known after apply)
+      + load_balancer_arn                                                     = (known after apply)
+      + port                                                                  = 80
+      + protocol                                                              = "HTTP"
+      + routing_http_request_x_amzn_mtls_clientcert_header_name               = (known after apply)
+      + routing_http_request_x_amzn_mtls_clientcert_issuer_header_name        = (known after apply)
+      + routing_http_request_x_amzn_mtls_clientcert_leaf_header_name          = (known after apply)
+      + routing_http_request_x_amzn_mtls_clientcert_serial_number_header_name = (known after apply)
+      + routing_http_request_x_amzn_mtls_clientcert_subject_header_name       = (known after apply)
+      + routing_http_request_x_amzn_mtls_clientcert_validity_header_name      = (known after apply)
+      + routing_http_request_x_amzn_tls_cipher_suite_header_name              = (known after apply)
+      + routing_http_request_x_amzn_tls_version_header_name                   = (known after apply)
+      + routing_http_response_access_control_allow_credentials_header_value   = (known after apply)
+      + routing_http_response_access_control_allow_headers_header_value       = (known after apply)
+      + routing_http_response_access_control_allow_methods_header_value       = (known after apply)
+      + routing_http_response_access_control_allow_origin_header_value        = (known after apply)
+      + routing_http_response_access_control_expose_headers_header_value      = (known after apply)
+      + routing_http_response_access_control_max_age_header_value             = (known after apply)
+      + routing_http_response_content_security_policy_header_value            = (known after apply)
+      + routing_http_response_server_enabled                                  = (known after apply)
+      + routing_http_response_strict_transport_security_header_value          = (known after apply)
+      + routing_http_response_x_content_type_options_header_value             = (known after apply)
+      + routing_http_response_x_frame_options_header_value                    = (known after apply)
+      + ssl_policy                                                            = (known after apply)
+      + tags_all                                                              = {
           + "Environment" = "dev"
           + "ManagedBy"   = "terraform"
           + "Project"     = "orderflow"
         }
-      + trusted_key_groups              = (known after apply)
-      + trusted_signers                 = (known after apply)
-      + wait_for_deployment             = true
-      + custom_error_response {
-          + error_code         = 403
-          + response_code      = 200
-          + response_page_path = "/index.html"
-        }
-      + custom_error_response {
-          + error_code         = 404
-          + response_code      = 200
-          + response_page_path = "/index.html"
-        }
-      + default_cache_behavior {
-          + allowed_methods        = [
-              + "GET",
-              + "HEAD",
-            ]
-          + cached_methods         = [
-              + "GET",
-              + "HEAD",
-            ]
-          + compress               = true
-          + default_ttl            = 3600
-          + max_ttl                = 86400
-          + min_ttl                = 0
-          + target_origin_id       = "s3-frontend"
-          + trusted_key_groups     = (known after apply)
-          + trusted_signers        = (known after apply)
-          + viewer_protocol_policy = "redirect-to-https"
-          + forwarded_values {
-              + headers                 = (known after apply)
-              + query_string            = false
-              + query_string_cache_keys = (known after apply)
-              + cookies {
-                  + forward           = "none"
-                  + whitelisted_names = (known after apply)
-                }
-            }
-        }
-      + origin {
-          + connection_attempts      = 3
-          + connection_timeout       = 10
-          + domain_name              = (known after apply)
-          + origin_access_control_id = (known after apply)
-          + origin_id                = "s3-frontend"
-        }
-      + restrictions {
-          + geo_restriction {
-              + locations        = (known after apply)
-              + restriction_type = "none"
-            }
-        }
-      + viewer_certificate {
-          + cloudfront_default_certificate = true
-          + minimum_protocol_version       = "TLSv1"
+      + tcp_idle_timeout_seconds                                              = (known after apply)
+
+      + default_action {
+          + order            = (known after apply)
+          + target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49"
+          + type             = "forward"
         }
     }
-  # aws_cloudfront_origin_access_control.frontend will be created
-  + resource "aws_cloudfront_origin_access_control" "frontend" {
-      + arn                               = (known after apply)
-      + description                       = "Managed by Terraform"
-      + etag                              = (known after apply)
-      + id                                = (known after apply)
-      + name                              = "orderflow-frontend-oac-dev"
-      + origin_access_control_origin_type = "s3"
-      + signing_behavior                  = "always"
-      + signing_protocol                  = "sigv4"
-    }
-  # aws_ecr_lifecycle_policy.services["bff"] will be created
-  + resource "aws_ecr_lifecycle_policy" "services" {
-      + id          = (known after apply)
-      + policy      = jsonencode(
-            {
-              + rules = [
-                  + {
-                      + action       = {
-                          + type = "expire"
-                        }
-                      + description  = "Keep last 10 images"
-                      + rulePriority = 1
-                      + selection    = {
-                          + countNumber = 10
-                          + countType   = "imageCountMoreThan"
-                          + tagStatus   = "any"
-                        }
-                    },
+
+  # aws_lb_listener_rule.bff will be created
+  + resource "aws_lb_listener_rule" "bff" {
+      + arn          = (known after apply)
+      + id           = (known after apply)
+      + listener_arn = (known after apply)
+      + priority     = 30
+      + tags_all     = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "orderflow"
+        }
+
+      + action {
+          + order            = (known after apply)
+          + target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49"
+          + type             = "forward"
+        }
+
+      + condition {
+          + path_pattern {
+              + values = [
+                  + "/api/*",
                 ]
             }
-        )
-      + registry_id = (known after apply)
-      + repository  = "orderflow/bff"
+        }
     }
-  # aws_ecr_lifecycle_policy.services["invoice-service"] will be created
-  + resource "aws_ecr_lifecycle_policy" "services" {
-      + id          = (known after apply)
-      + policy      = jsonencode(
-            {
-              + rules = [
-                  + {
-                      + action       = {
-                          + type = "expire"
-                        }
-                      + description  = "Keep last 10 images"
-                      + rulePriority = 1
-                      + selection    = {
-                          + countNumber = 10
-                          + countType   = "imageCountMoreThan"
-                          + tagStatus   = "any"
-                        }
-                    },
+
+  # aws_lb_listener_rule.invoice_service will be created
+  + resource "aws_lb_listener_rule" "invoice_service" {
+      + arn          = (known after apply)
+      + id           = (known after apply)
+      + listener_arn = (known after apply)
+      + priority     = 20
+      + tags_all     = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "orderflow"
+        }
+
+      + action {
+          + order            = (known after apply)
+          + target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-invoice-dev/c5b5e2c144ff3ae1"
+          + type             = "forward"
+        }
+
+      + condition {
+          + path_pattern {
+              + values = [
+                  + "/api/invoices",
+                  + "/api/invoices/*",
                 ]
             }
-        )
-      + registry_id = (known after apply)
-      + repository  = "orderflow/invoice-service"
+        }
     }
-  # aws_ecr_lifecycle_policy.services["order-service"] will be created
-  + resource "aws_ecr_lifecycle_policy" "services" {
-      + id          = (known after apply)
-      + policy      = jsonencode(
-            {
-              + rules = [
-                  + {
-                      + action       = {
-                          + type = "expire"
-                        }
-                      + description  = "Keep last 10 images"
-                      + rulePriority = 1
-                      + selection    = {
-                          + countNumber = 10
-                          + countType   = "imageCountMoreThan"
-                          + tagStatus   = "any"
-                        }
-                    },
+
+  # aws_lb_listener_rule.order_service will be created
+  + resource "aws_lb_listener_rule" "order_service" {
+      + arn          = (known after apply)
+      + id           = (known after apply)
+      + listener_arn = (known after apply)
+      + priority     = 10
+      + tags_all     = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "orderflow"
+        }
+
+      + action {
+          + order            = (known after apply)
+          + target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-order-dev/cc5805f3d7235cc4"
+          + type             = "forward"
+        }
+
+      + condition {
+          + path_pattern {
+              + values = [
+                  + "/api/orders",
+                  + "/api/orders/*",
                 ]
             }
-        )
-      + registry_id = (known after apply)
-      + repository  = "orderflow/order-service"
+        }
     }
-  # aws_ecr_repository.services["bff"] will be created
-  + resource "aws_ecr_repository" "services" {
-      + arn                  = (known after apply)
-      + id                   = (known after apply)
-      + image_tag_mutability = "MUTABLE"
-      + name                 = "orderflow/bff"
-      + registry_id          = (known after apply)
-      + repository_url       = (known after apply)
-      + tags_all             = {
+
+  # aws_route_table_association.public_b will be created
+  + resource "aws_route_table_association" "public_b" {
+      + id             = (known after apply)
+      + route_table_id = "rtb-040a5aba47b338d7b"
+      + subnet_id      = (known after apply)
+    }
+
+  # aws_subnet.public_b will be created
+  + resource "aws_subnet" "public_b" {
+      + arn                                            = (known after apply)
+      + assign_ipv6_address_on_creation                = false
+      + availability_zone                              = "us-east-1b"
+      + availability_zone_id                           = (known after apply)
+      + cidr_block                                     = "10.0.5.0/24"
+      + enable_dns64                                   = false
+      + enable_resource_name_dns_a_record_on_launch    = false
+      + enable_resource_name_dns_aaaa_record_on_launch = false
+      + id                                             = (known after apply)
+      + ipv6_cidr_block_association_id                 = (known after apply)
+      + ipv6_native                                    = false
+      + map_public_ip_on_launch                        = true
+      + owner_id                                       = (known after apply)
+      + private_dns_hostname_type_on_launch            = (known after apply)
+      + tags                                           = {
+          + "Name" = "orderflow-subnet-public-b-dev"
+        }
+      + tags_all                                       = {
           + "Environment" = "dev"
           + "ManagedBy"   = "terraform"
+          + "Name"        = "orderflow-subnet-public-b-dev"
           + "Project"     = "orderflow"
         }
-      + encryption_configuration {
-          + encryption_type = "AES256"
-          + kms_key         = (known after apply)
-        }
-      + image_scanning_configuration {
-          + scan_on_push = true
-        }
+      + vpc_id                                         = "vpc-0a2a518e20b9c4dd8"
     }
-  # aws_ecr_repository.services["invoice-service"] will be created
-  + resource "aws_ecr_repository" "services" {
-      + arn                  = (known after apply)
-      + id                   = (known after apply)
-      + image_tag_mutability = "MUTABLE"
-      + name                 = "orderflow/invoice-service"
-      + registry_id          = (known after apply)
-      + repository_url       = (known after apply)
-      + tags_all             = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "orderflow"
-        }
-      + encryption_configuration {
-          + encryption_type = "AES256"
-          + kms_key         = (known after apply)
-        }
-      + image_scanning_configuration {
-          + scan_on_push = true
-        }
-    }
-  # aws_ecr_repository.services["order-service"] will be created
-  + resource "aws_ecr_repository" "services" {
-      + arn                  = (known after apply)
-      + id                   = (known after apply)
-      + image_tag_mutability = "MUTABLE"
-      + name                 = "orderflow/order-service"
-      + registry_id          = (known after apply)
-      + repository_url       = (known after apply)
-      + tags_all             = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "orderflow"
-        }
-      + encryption_configuration {
-          + encryption_type = "AES256"
-          + kms_key         = (known after apply)
-        }
-      + image_scanning_configuration {
-          + scan_on_push = true
-        }
-    }
-  # aws_s3_bucket.frontend will be created
-  + resource "aws_s3_bucket" "frontend" {
-      + acceleration_status         = (known after apply)
-      + acl                         = (known after apply)
-      + arn                         = (known after apply)
-      + bucket                      = "orderflow-frontend-dev"
-      + bucket_domain_name          = (known after apply)
-      + bucket_prefix               = (known after apply)
-      + bucket_regional_domain_name = (known after apply)
-      + force_destroy               = false
-      + hosted_zone_id              = (known after apply)
-      + id                          = (known after apply)
-      + object_lock_enabled         = (known after apply)
-      + policy                      = (known after apply)
-      + region                      = (known after apply)
-      + request_payer               = (known after apply)
-      + tags_all                    = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "orderflow"
-        }
-      + website_domain              = (known after apply)
-      + website_endpoint            = (known after apply)
-    }
-  # aws_s3_bucket_policy.frontend will be created
-  + resource "aws_s3_bucket_policy" "frontend" {
-      + bucket = (known after apply)
-      + id     = (known after apply)
-      + policy = (known after apply)
-    }
-  # aws_s3_bucket_public_access_block.frontend will be created
-  + resource "aws_s3_bucket_public_access_block" "frontend" {
-      + block_public_acls       = true
-      + block_public_policy     = true
-      + bucket                  = (known after apply)
-      + id                      = (known after apply)
-      + ignore_public_acls      = true
-      + restrict_public_buckets = true
-    }
-  # aws_s3_bucket_server_side_encryption_configuration.frontend will be created
-  + resource "aws_s3_bucket_server_side_encryption_configuration" "frontend" {
-      + bucket = (known after apply)
-      + id     = (known after apply)
-      + rule {
-          + apply_server_side_encryption_by_default {
-              + sse_algorithm = "AES256"
-            }
-        }
-    }
-  # aws_s3_bucket_versioning.frontend will be created
-  + resource "aws_s3_bucket_versioning" "frontend" {
-      + bucket = (known after apply)
-      + id     = (known after apply)
-      + versioning_configuration {
-          + mfa_delete = (known after apply)
-          + status     = "Enabled"
-        }
-    }
-Plan: 13 to add, 0 to change, 0 to destroy.
+
+Plan: 7 to add, 0 to change, 0 to destroy.
+
 Changes to Outputs:
-  + cloudfront_distribution_id = (known after apply)
-  + cloudfront_domain          = (known after apply)
-  + ecr_registry               = "109653023631.dkr.ecr.us-east-1.amazonaws.com"
-  + ecr_repository_urls        = {
-      + bff             = (known after apply)
-      + invoice-service = (known after apply)
-      + order-service   = (known after apply)
-    }
-  + frontend_bucket_name       = "orderflow-frontend-dev"
+  + alb_arn                    = (known after apply)
+  + alb_dns_name               = (known after apply)
+
 ─────────────────────────────────────────────────────────────────────────────
+
 Saved the plan to: tfplan
+
 To perform exactly these actions, run the following command to apply:
     terraform apply "tfplan"

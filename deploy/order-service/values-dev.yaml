@@ -1,0 +1,17 @@
+# ── Order Service — Dev Environment ───────────────────────────────────────────
+
+compute:
+  cpu:           256
+  memory:        256
+  desired_count: 1
+
+env:
+  ENV:       dev
+  LOG_LEVEL: debug
+  REDIS_URL: "redis://localhost:6379"
+
+# SSM paths are created by Terraform (it knows the RDS endpoint + password).
+# deploy.py injects these as ECS secrets — the container reads DATABASE_URL normally.
+env_secrets:
+  DATABASE_URL:
+    ssm_path: /orderflow/dev/order-service/db-url

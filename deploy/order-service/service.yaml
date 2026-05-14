@@ -1,0 +1,35 @@
+# ── Order Service ─────────────────────────────────────────────────────────────
+# Internal service — never exposed to the internet.
+# Reachable only via Cloud Map DNS: order-service.orderflow-{env}.local:8001
+# No load_balancer block — deploy.py will NOT register this with ALB.
+
+name: order-service
+
+container:
+  port: 8001
+  health_check_command: "curl -f http://localhost:8001/health || exit 1"
+
+# Registers this service under the Cloud Map namespace so BFF can call it.
+# deploy.py creates the Cloud Map service entry using the namespace ID from SSM.
+service_discovery:
+  discovery_name: order-service
+
+deployment:
+  circuit_breaker: true
+  rollback_on_failure: true
+
+# IAM permissions for this service's task role.
+# Add new policy blocks here when order-service needs new AWS permissions
+# (e.g. SQS for async order events, S3 for order attachments).
+iam:
+  policies:
+    - sid: SSMRead
+      actions:
+        - "ssm:GetParameter"
+        - "ssm:GetParameters"
+      resources:
+        - "arn:aws:ssm:{region}:{account_id}:parameter/orderflow/{env}/order-service/*"
+
+tags:
+  tier: backend
+  component: orders

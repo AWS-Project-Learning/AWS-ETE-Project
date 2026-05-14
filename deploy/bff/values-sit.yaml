@@ -1,0 +1,14 @@
+# ── BFF — SIT Environment ─────────────────────────────────────────────────────
+
+compute:
+  cpu:           256
+  memory:        512
+  desired_count: 1
+
+env:
+  ENV:                  sit
+  LOG_LEVEL:            info
+  ORDER_SERVICE_URL:    "http://order-service.orderflow-sit.local:8001"
+  INVOICE_SERVICE_URL:  "http://invoice-service.orderflow-sit.local:8002"
+
+env_secrets: {}

@@ -1,0 +1,37 @@
+# ── Invoice Service ───────────────────────────────────────────────────────────
+# Internal service — never exposed to the internet.
+# Reachable only via Cloud Map DNS: invoice-service.orderflow-{env}.local:8002
+# No load_balancer block — deploy.py will NOT register this with ALB.
+
+name: invoice-service
+
+container:
+  port: 8002
+  health_check_command: "curl -f http://localhost:8002/health || exit 1"
+
+service_discovery:
+  discovery_name: invoice-service
+
+deployment:
+  circuit_breaker: true
+  rollback_on_failure: true
+
+iam:
+  policies:
+    - sid: SSMRead
+      actions:
+        - "ssm:GetParameter"
+        - "ssm:GetParameters"
+      resources:
+        - "arn:aws:ssm:{region}:{account_id}:parameter/orderflow/{env}/invoice-service/*"
+    # Invoice service generates PDFs — needs S3 write access.
+    - sid: S3Invoices
+      actions:
+        - "s3:PutObject"
+        - "s3:GetObject"
+      resources:
+        - "arn:aws:s3:::orderflow-invoices-{env}/*"
+
+tags:
+  tier: backend
+  component: invoices

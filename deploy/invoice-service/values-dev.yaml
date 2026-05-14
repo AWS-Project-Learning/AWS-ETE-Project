@@ -1,0 +1,15 @@
+# ── Invoice Service — Dev Environment ─────────────────────────────────────────
+
+compute:
+  cpu:           256
+  memory:        256
+  desired_count: 1
+
+env:
+  ENV:       dev
+  LOG_LEVEL: debug
+  REDIS_URL: "redis://localhost:6379"
+
+env_secrets:
+  DATABASE_URL:
+    ssm_path: /orderflow/dev/invoice-service/db-url
