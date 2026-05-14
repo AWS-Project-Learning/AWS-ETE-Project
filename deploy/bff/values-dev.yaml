@@ -8,11 +8,10 @@ compute:
 env:
   ENV:                  dev
   LOG_LEVEL:            debug
-  # All three containers run on the same EC2 instance with fixed host ports.
-  # Bridge mode + SRV records are not resolvable by standard HTTP clients (httpx).
-  # localhost works reliably since all services share the same EC2 host.
-  ORDER_SERVICE_URL:    "http://localhost:8001"
-  INVOICE_SERVICE_URL:  "http://localhost:8002"
+  # awsvpc mode: each task gets its own private IP registered in Cloud Map (Type A).
+  # Standard DNS resolution works — httpx resolves the hostname to the task IP.
+  ORDER_SERVICE_URL:    "http://order-service.orderflow-dev.local:8001"
+  INVOICE_SERVICE_URL:  "http://invoice-service.orderflow-dev.local:8002"
   # CORS — allow CloudFront origin + local dev server
   CORS_ORIGINS:         "https://d7v98dznpwca9.cloudfront.net,http://localhost:5173"
 

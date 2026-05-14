@@ -15,8 +15,12 @@ ecr_registry:   "109653023631.dkr.ecr.us-east-1.amazonaws.com"
 # deploy.py reads the ARN from SSM: /orderflow/{env}/infra/execution-role-arn
 execution_role: ecs-task-execution-role
 
-# Network mode for all EC2-based services
-network_mode: bridge
+# Network mode for all EC2-based services.
+# awsvpc gives each task its own ENI + private IP → Cloud Map Type A records work
+# → standard DNS resolution works (http://order-service.orderflow-dev.local:8001).
+# ENI trunking (managed by Terraform in ecs-settings.tf) removes the ENI limit
+# on small instances so all 3 services can run on a single t3.micro.
+network_mode: awsvpc
 
 # Default compute — services can override in their values-{env}.yaml
 defaults:

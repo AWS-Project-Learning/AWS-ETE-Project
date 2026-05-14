@@ -139,15 +139,13 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
     cluster      = ecs_svc_doc["cluster"]
     service_name = ecs_svc_doc["serviceName"]
 
-    # Resolve Cloud Map placeholder (_cloudmap_name) → real registryArn at apply time
+    # Resolve Cloud Map placeholder (_cloudmap_name) → real registryArn at apply time.
+    # awsvpc + Type A records: only registryArn needed.
+    # containerName/containerPort are only for SRV records (bridge mode) — omitted here.
     service_registries = []
     for r in ecs_svc_doc.get("serviceRegistries", []):
         if "_cloudmap_name" in r and sd_arn:
-            service_registries.append({
-                "registryArn":   sd_arn,
-                "containerName": r["containerName"],
-                "containerPort": r["containerPort"]
-            })
+            service_registries.append({"registryArn": sd_arn})
         elif "registryArn" in r:
             service_registries.append(r)
 
@@ -157,15 +155,18 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
 
     if existing:
         print(f"[ecs] Updating existing service.")
-        ecs_client.update_service(
-            cluster=cluster,
-            service=service_name,
-            taskDefinition=task_def_arn,
-            desiredCount=ecs_svc_doc["desiredCount"],
-            deploymentConfiguration=ecs_svc_doc.get("deploymentConfiguration", {}),
-            healthCheckGracePeriodSeconds=ecs_svc_doc.get("healthCheckGracePeriodSeconds", 0),
-            forceNewDeployment=True
-        )
+        update_kwargs = {
+            "cluster":                       cluster,
+            "service":                       service_name,
+            "taskDefinition":                task_def_arn,
+            "desiredCount":                  ecs_svc_doc["desiredCount"],
+            "deploymentConfiguration":       ecs_svc_doc.get("deploymentConfiguration", {}),
+            "healthCheckGracePeriodSeconds": ecs_svc_doc.get("healthCheckGracePeriodSeconds", 0),
+            "forceNewDeployment":            True,
+        }
+        if ecs_svc_doc.get("networkConfiguration"):
+            update_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
+        ecs_client.update_service(**update_kwargs)
         print(f"[ecs] Updated — new deployment started.")
     else:
         print(f"[ecs] Creating new service.")
@@ -181,6 +182,8 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
             "propagateTags":                 "SERVICE",
             "tags":                          ecs_svc_doc.get("tags", [])
         }
+        if ecs_svc_doc.get("networkConfiguration"):
+            create_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
         if ecs_svc_doc.get("loadBalancers"):
             create_kwargs["loadBalancers"] = ecs_svc_doc["loadBalancers"]
         if service_registries:

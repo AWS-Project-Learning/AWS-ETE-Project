@@ -198,13 +198,16 @@ def build_cloudmap(service: str, cfg: dict, namespace_id: str) -> dict | None:
     sd_cfg = cfg.get("service_discovery", {})
     if not sd_cfg:
         return None
+    # Type A records work with awsvpc network mode — each task gets its own
+    # private IP which Cloud Map registers as an A record.
+    # Standard HTTP clients (httpx) can resolve A records normally.
     return {
         "Name":        sd_cfg["discovery_name"],
         "NamespaceId": namespace_id,
         "DnsConfig": {
-            "NamespaceId": namespace_id,
-            "DnsRecords":  [{"TTL": 10, "Type": "SRV"}],
-            "RoutingPolicy": "WEIGHTED"
+            "NamespaceId":  namespace_id,
+            "DnsRecords":   [{"TTL": 10, "Type": "A"}],
+            "RoutingPolicy": "MULTIVALUE"
         },
         "HealthCheckCustomConfig": {"FailureThreshold": 1},
         "Tags": [
@@ -219,6 +222,8 @@ def build_ecs_service(
     cfg: dict,
     cluster_name: str,
     tg_arn: str | None,
+    subnet_id: str,
+    sg_id: str,
 ) -> dict:
     compute    = cfg["compute"]
     lb_cfg     = cfg.get("load_balancer", {})
@@ -236,15 +241,11 @@ def build_ecs_service(
             "containerPort":  int(cfg["container"]["port"])
         }]
 
-    # Cloud Map ARN is unknown at render time — apply.py resolves it.
-    # The _cloudmap_name field signals apply.py to look it up.
+    # awsvpc mode + Type A records: only registryArn needed.
+    # containerName/containerPort are only required for SRV records (bridge mode).
     service_registries = []
     if sd_cfg:
-        service_registries = [{
-            "_cloudmap_name": sd_cfg["discovery_name"],
-            "containerName":  service,
-            "containerPort":  int(cfg["container"]["port"])
-        }]
+        service_registries = [{"_cloudmap_name": sd_cfg["discovery_name"]}]
 
     deployment_config = {}
     if deployment.get("circuit_breaker"):
@@ -262,6 +263,14 @@ def build_ecs_service(
         "deploymentConfiguration":       deployment_config,
         "loadBalancers":                 load_balancers,
         "serviceRegistries":             service_registries,
+        # awsvpc mode requires explicit subnet + security group
+        "networkConfiguration": {
+            "awsvpcConfiguration": {
+                "subnets":        [subnet_id],
+                "securityGroups": [sg_id],
+                "assignPublicIp": "DISABLED"
+            }
+        },
         "enableECSManagedTags":          True,
         "propagateTags":                 "SERVICE",
         "tags": [
@@ -298,6 +307,8 @@ def main():
     execution_role_arn = ssm_get(ssm, f"/orderflow/{env}/infra/execution-role-arn")
     cluster_name       = ssm_get(ssm, f"/orderflow/{env}/infra/cluster-name")
     namespace_id       = ssm_get(ssm, f"/orderflow/{env}/infra/cloudmap-namespace-id")
+    subnet_id          = ssm_get(ssm, f"/orderflow/{env}/infra/private-app-subnet-id")
+    sg_id              = ssm_get(ssm, f"/orderflow/{env}/infra/ecs-sg-id")
 
     tg_arn = None
     lb_cfg = cfg.get("load_balancer", {})
@@ -325,7 +336,7 @@ def main():
     iam_policy = build_iam_policy(service, cfg)
     task_def   = build_task_def(service, env, image_tag, cfg, execution_role_arn, task_role_arn, log_group)
     cloudmap   = build_cloudmap(service, cfg, namespace_id)
-    ecs_svc    = build_ecs_service(service, cfg, cluster_name, tg_arn)
+    ecs_svc    = build_ecs_service(service, cfg, cluster_name, tg_arn, subnet_id, sg_id)
 
     # ── Write all files ────────────────────────────────────────────────────────
     out = OUT_DIR / service / env
