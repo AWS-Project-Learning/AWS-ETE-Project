@@ -12,6 +12,8 @@ env:
   # Format: http://{service}.{project}-{env}.local:{port}
   ORDER_SERVICE_URL:    "http://order-service.orderflow-dev.local:8001"
   INVOICE_SERVICE_URL:  "http://invoice-service.orderflow-dev.local:8002"
+  # CORS — allow CloudFront origin + local dev server
+  CORS_ORIGINS:         "https://d7v98dznpwca9.cloudfront.net,http://localhost:5173"
 
 # No secrets for BFF — it doesn't have a database.
 env_secrets: {}

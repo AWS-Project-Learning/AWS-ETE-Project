@@ -1,13 +1,45 @@
+import { useState, useEffect } from 'react'
 import { ShoppingCart, DollarSign, Clock, CheckCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts'
 import { useNavigate } from 'react-router-dom'
 import StatCard from '../components/StatCard'
 import StatusBadge from '../components/StatusBadge'
-import { orders, stats, revenueData, statusDistribution } from '../data/mockData'
+import { getDashboard } from '../api/client'
+
+const STATUS_COLORS = {
+  Delivered:  '#22c55e',
+  Processing: '#6366f1',
+  Pending:    '#f59e0b',
+  Shipped:    '#3b82f6',
+  Cancelled:  '#ef4444',
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const recent = orders.slice(0, 6)
+  const [data,    setData]    = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(null)
+
+  useEffect(() => {
+    getDashboard()
+      .then(setData)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="p-8 text-gray-400">Loading dashboard…</div>
+  if (error)   return <div className="p-8 text-red-500">Error: {error}</div>
+
+  const { stats, recent_orders } = data
+
+  // Build status distribution from stats for pie chart
+  const statusDistribution = Object.entries({
+    Delivered:  stats.delivered_orders,
+    Processing: stats.processing_orders,
+    Pending:    stats.pending_orders,
+    Shipped:    stats.shipped_orders,
+    Cancelled:  stats.cancelled_orders,
+  }).map(([name, value]) => ({ name, value, color: STATUS_COLORS[name] }))
 
   return (
     <div className="p-8">
@@ -27,31 +59,15 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Orders"    value={stats.totalOrders}                        icon={ShoppingCart} color="bg-indigo-500" sub="All time" />
-        <StatCard label="Total Revenue"   value={`$${stats.totalRevenue.toLocaleString()}`} icon={DollarSign}  color="bg-green-500"  sub="All time" />
-        <StatCard label="Pending Orders"  value={stats.pendingOrders}                       icon={Clock}        color="bg-amber-500"  sub="Awaiting processing" />
-        <StatCard label="Delivered"       value={stats.deliveredOrders}                     icon={CheckCircle}  color="bg-blue-500"   sub="Successfully delivered" />
+        <StatCard label="Total Orders"   value={stats.total_orders}                          icon={ShoppingCart} color="bg-indigo-500" sub="All time" />
+        <StatCard label="Total Revenue"  value={`$${stats.total_revenue.toLocaleString()}`}  icon={DollarSign}   color="bg-green-500"  sub="All time" />
+        <StatCard label="Pending Orders" value={stats.pending_orders}                         icon={Clock}        color="bg-amber-500"  sub="Awaiting processing" />
+        <StatCard label="Delivered"      value={stats.delivered_orders}                       icon={CheckCircle}  color="bg-blue-500"   sub="Successfully delivered" />
       </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
-        {/* Revenue Bar Chart */}
-        <div className="xl:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Monthly Revenue</h2>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={revenueData} barSize={36}>
-              <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-              <Tooltip
-                formatter={(v) => [`$${v.toLocaleString()}`, 'Revenue']}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}
-              />
-              <Bar dataKey="revenue" fill="#6366f1" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Order Status Pie Chart */}
+        {/* Status Pie Chart */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-4">Order Status</h2>
           <ResponsiveContainer width="100%" height={220}>
@@ -86,18 +102,20 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {recent.map((o, i) => (
+              {recent_orders.length === 0 ? (
+                <tr><td colSpan={6} className="text-center text-gray-400 py-12">No orders yet.</td></tr>
+              ) : recent_orders.map((o, i) => (
                 <tr
                   key={o.id}
                   onClick={() => navigate(`/orders/${o.id}`)}
-                  className={`cursor-pointer hover:bg-gray-50 transition-colors ${i !== recent.length - 1 ? 'border-b border-gray-50' : ''}`}
+                  className={`cursor-pointer hover:bg-gray-50 transition-colors ${i !== recent_orders.length - 1 ? 'border-b border-gray-50' : ''}`}
                 >
                   <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{o.id}</td>
-                  <td className="px-6 py-4 font-medium text-gray-900">{o.customer}</td>
-                  <td className="px-6 py-4 text-gray-500">{o.items}</td>
-                  <td className="px-6 py-4 font-semibold text-gray-900">${o.total.toLocaleString()}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{o.customer_name}</td>
+                  <td className="px-6 py-4 text-gray-500">{o.item_count ?? '-'}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900">${o.total?.toLocaleString()}</td>
                   <td className="px-6 py-4"><StatusBadge status={o.status} /></td>
-                  <td className="px-6 py-4 text-gray-400">{o.date}</td>
+                  <td className="px-6 py-4 text-gray-400">{o.created_at?.split('T')[0]}</td>
                 </tr>
               ))}
             </tbody>

@@ -10,5 +10,6 @@ env:
   LOG_LEVEL:            info
   ORDER_SERVICE_URL:    "http://order-service.orderflow-sit.local:8001"
   INVOICE_SERVICE_URL:  "http://invoice-service.orderflow-sit.local:8002"
+  CORS_ORIGINS:         "https://d7v98dznpwca9.cloudfront.net"
 
 env_secrets: {}

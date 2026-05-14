@@ -1,25 +1,38 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Download } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
-import { invoices } from '../data/mockData'
+import { listInvoices } from '../api/client'
 
 const STATUS_FILTERS = ['All', 'Paid', 'Unpaid', 'Overdue', 'Refunded']
 
 export default function Invoices() {
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('All')
+  const [invoices, setInvoices] = useState([])
+  const [loading,  setLoading]  = useState(true)
+  const [error,    setError]    = useState(null)
+  const [search,   setSearch]   = useState('')
+  const [status,   setStatus]   = useState('All')
+
+  useEffect(() => {
+    listInvoices()
+      .then(setInvoices)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = invoices.filter(inv => {
-    const matchSearch = inv.customer.toLowerCase().includes(search.toLowerCase()) || inv.id.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = inv.customer_name?.toLowerCase().includes(search.toLowerCase()) || inv.id?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = status === 'All' || inv.status === status
     return matchSearch && matchStatus
   })
 
-  const totalUnpaid  = invoices.filter(i => i.status === 'Unpaid').reduce((s, i) => s + i.amount, 0)
-  const totalOverdue = invoices.filter(i => i.status === 'Overdue').reduce((s, i) => s + i.amount, 0)
-  const totalPaid    = invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0)
+  const totalUnpaid  = invoices.filter(i => i.status === 'Unpaid').reduce((s, i)  => s + (i.total ?? 0), 0)
+  const totalOverdue = invoices.filter(i => i.status === 'Overdue').reduce((s, i) => s + (i.total ?? 0), 0)
+  const totalPaid    = invoices.filter(i => i.status === 'Paid').reduce((s, i)    => s + (i.total ?? 0), 0)
+
+  if (loading) return <div className="p-8 text-gray-400">Loading invoices…</div>
+  if (error)   return <div className="p-8 text-red-500">Error: {error}</div>
 
   return (
     <div className="p-8">
@@ -32,9 +45,9 @@ export default function Invoices() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         {[
-          { label: 'Total Paid',    value: `$${totalPaid.toLocaleString()}`,    color: 'bg-green-50 border-green-100',  text: 'text-green-700'  },
-          { label: 'Unpaid',        value: `$${totalUnpaid.toLocaleString()}`,   color: 'bg-amber-50 border-amber-100',  text: 'text-amber-700'  },
-          { label: 'Overdue',       value: `$${totalOverdue.toLocaleString()}`,  color: 'bg-red-50 border-red-100',      text: 'text-red-700'    },
+          { label: 'Total Paid', value: `$${totalPaid.toLocaleString()}`,    color: 'bg-green-50 border-green-100',  text: 'text-green-700'  },
+          { label: 'Unpaid',     value: `$${totalUnpaid.toLocaleString()}`,   color: 'bg-amber-50 border-amber-100',  text: 'text-amber-700'  },
+          { label: 'Overdue',    value: `$${totalOverdue.toLocaleString()}`,  color: 'bg-red-50 border-red-100',      text: 'text-red-700'    },
         ].map(card => (
           <div key={card.label} className={`rounded-2xl border p-5 ${card.color}`}>
             <p className="text-sm text-gray-500">{card.label}</p>
@@ -85,14 +98,14 @@ export default function Invoices() {
                   <tr key={inv.id} className={`hover:bg-gray-50 transition-colors ${i !== filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
                     <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{inv.id}</td>
                     <td className="px-6 py-4">
-                      <button onClick={() => navigate(`/orders/${inv.orderId}`)} className="font-mono text-gray-500 hover:text-indigo-600 hover:underline transition-colors">
-                        {inv.orderId}
+                      <button onClick={() => navigate(`/orders/${inv.order_id}`)} className="font-mono text-gray-500 hover:text-indigo-600 hover:underline transition-colors">
+                        {inv.order_id}
                       </button>
                     </td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{inv.customer}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-900">${inv.amount.toLocaleString()}</td>
-                    <td className="px-6 py-4 text-gray-400">{inv.issued}</td>
-                    <td className={`px-6 py-4 font-medium ${inv.status === 'Overdue' ? 'text-red-500' : 'text-gray-400'}`}>{inv.due}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{inv.customer_name}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">${inv.total?.toLocaleString()}</td>
+                    <td className="px-6 py-4 text-gray-400">{inv.issued_at?.split('T')[0]}</td>
+                    <td className={`px-6 py-4 font-medium ${inv.status === 'Overdue' ? 'text-red-500' : 'text-gray-400'}`}>{inv.due_at?.split('T')[0]}</td>
                     <td className="px-6 py-4"><StatusBadge status={inv.status} /></td>
                     <td className="px-6 py-4">
                       <button className="text-gray-400 hover:text-indigo-600 transition-colors" title="Download invoice">

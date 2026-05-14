@@ -6,13 +6,11 @@ on:
       - main
     paths:
       - "infra/**"
-      - ".github/workflows/infra.yml"
   pull_request:
     branches:
       - main
     paths:
       - "infra/**"
-      - ".github/workflows/infra.yml"
   workflow_dispatch:
     inputs:
       action:

@@ -1,21 +1,34 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Filter } from 'lucide-react'
 import StatusBadge from '../components/StatusBadge'
-import { orders } from '../data/mockData'
+import { listOrders } from '../api/client'
 
 const STATUS_FILTERS = ['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
 
 export default function Orders() {
   const navigate = useNavigate()
-  const [search, setSearch]   = useState('')
-  const [status, setStatus]   = useState('All')
+  const [orders,  setOrders]  = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState(null)
+  const [search,  setSearch]  = useState('')
+  const [status,  setStatus]  = useState('All')
+
+  useEffect(() => {
+    listOrders()
+      .then(setOrders)
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = orders.filter(o => {
-    const matchSearch = o.customer.toLowerCase().includes(search.toLowerCase()) || o.id.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = o.customer_name?.toLowerCase().includes(search.toLowerCase()) || o.id?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = status === 'All' || o.status === status
     return matchSearch && matchStatus
   })
+
+  if (loading) return <div className="p-8 text-gray-400">Loading orders…</div>
+  if (error)   return <div className="p-8 text-red-500">Error: {error}</div>
 
   return (
     <div className="p-8">
@@ -35,7 +48,6 @@ export default function Orders() {
 
       {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6 flex flex-col sm:flex-row gap-3">
-        {/* Search */}
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -46,8 +58,6 @@ export default function Orders() {
             className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </div>
-
-        {/* Status filter pills */}
         <div className="flex items-center gap-2 flex-wrap">
           <Filter size={14} className="text-gray-400" />
           {STATUS_FILTERS.map(s => (
@@ -87,13 +97,13 @@ export default function Orders() {
                     className={`cursor-pointer hover:bg-indigo-50 transition-colors ${i !== filtered.length - 1 ? 'border-b border-gray-50' : ''}`}
                   >
                     <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{o.id}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{o.customer}</td>
+                    <td className="px-6 py-4 font-medium text-gray-900">{o.customer_name}</td>
                     <td className="px-6 py-4 text-gray-400">{o.email}</td>
-                    <td className="px-6 py-4 text-gray-500">{o.items}</td>
-                    <td className="px-6 py-4 font-semibold text-gray-900">${o.total.toLocaleString()}</td>
-                    <td className="px-6 py-4"><StatusBadge status={o.paymentStatus} /></td>
+                    <td className="px-6 py-4 text-gray-500">{o.item_count ?? '-'}</td>
+                    <td className="px-6 py-4 font-semibold text-gray-900">${o.total?.toLocaleString()}</td>
+                    <td className="px-6 py-4"><StatusBadge status={o.payment_status} /></td>
                     <td className="px-6 py-4"><StatusBadge status={o.status} /></td>
-                    <td className="px-6 py-4 text-gray-400">{o.date}</td>
+                    <td className="px-6 py-4 text-gray-400">{o.created_at?.split('T')[0]}</td>
                   </tr>
                 ))
               )}

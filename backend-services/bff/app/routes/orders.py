@@ -1,13 +1,36 @@
 from fastapi import APIRouter, Query
 from typing import Optional
-from ..client import order_client, forward
+import logging
+
+from ..client import order_client, invoice_client, forward
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
 
 
 @router.post("", status_code=201)
 async def create_order(payload: dict):
-    return await forward(order_client, "POST", "/orders", json=payload)
+    order = await forward(order_client, "POST", "/orders", json=payload)
+
+    # Create the invoice synchronously — invoice-service listens for a Redis
+    # event in the ideal architecture, but we don't have Redis yet. Creating
+    # it here in the BFF is the reliable fallback.
+    try:
+        subtotal = round(order["total"] / 1.10, 2)
+        tax      = round(order["total"] - subtotal, 2)
+        await forward(invoice_client, "POST", "/invoices", json={
+            "order_id":      order["id"],
+            "customer_name": order["customer_name"],
+            "email":         order["email"],
+            "subtotal":      subtotal,
+            "tax":           tax,
+            "total":         order["total"],
+        })
+    except Exception as e:
+        logger.warning(f"Invoice auto-create failed for order {order.get('id')}: {e}")
+
+    return order
 
 
 @router.get("")

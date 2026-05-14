@@ -24,14 +24,52 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
   comment             = "${var.project} frontend — ${var.environment}"
 
-  # Origin — where CloudFront fetches files from (the private S3 bucket)
+  # Origin 1 — S3 for static frontend files
   origin {
     domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id                = "s3-frontend"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }
 
-  # Cache behaviour — applies to all requests
+  # Origin 2 — ALB for API requests (/api/*)
+  # CloudFront forwards /api/* to the BFF via HTTP on port 80.
+  # This keeps the UI on HTTPS (no mixed content) and avoids CORS entirely —
+  # the browser sees one domain (CloudFront) for both UI and API calls.
+  origin {
+    domain_name = aws_lb.main.dns_name
+    origin_id   = "alb-bff"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # API cache behaviour — /api/* routed to ALB, never cached
+  ordered_cache_behavior {
+    path_pattern           = "/api/*"
+    target_origin_id       = "alb-bff"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Accept", "Origin"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0   # never cache API responses
+    max_ttl     = 0
+  }
+
+  # Static file cache behaviour — applies to all non-API requests
   default_cache_behavior {
     target_origin_id       = "s3-frontend"
     viewer_protocol_policy = "redirect-to-https" # HTTP → HTTPS automatically
