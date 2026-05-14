@@ -1,90 +1,93 @@
-Run terraform apply -auto-approve tfplan
-aws_iam_role_policy.task_invoice_service: Destroying... [id=ecs-task-role-invoice-service:invoice-service-policy-dev]
-aws_iam_role_policy.task_order_service: Destroying... [id=ecs-task-role-order-service:order-service-policy-dev]
-aws_lb_listener_rule.bff: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/cd68fdca48524bf2]
-aws_lb_listener_rule.order_service: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/6c5d4e5ad6c39f40]
-aws_iam_role_policy.task_bff: Destroying... [id=ecs-task-role-bff:bff-policy-dev]
-aws_lb_listener_rule.invoice_service: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/621728dd67477b41]
-aws_ecs_cluster.main: Creating...
-aws_service_discovery_private_dns_namespace.main: Creating...
-aws_iam_role.ecs_instance: Creating...
-aws_lb_target_group.services["bff"]: Creating...
-aws_iam_role_policy.task_invoice_service: Destruction complete after 0s
-aws_ssm_parameter.execution_role_arn: Creating...
-aws_iam_role_policy.task_bff: Destruction complete after 0s
-aws_iam_role_policy.task_order_service: Destruction complete after 0s
-aws_ssm_parameter.db_url["invoice-service"]: Creating...
-aws_ssm_parameter.db_url["order-service"]: Creating...
-aws_iam_role.ecs_task["order-service"]: Destroying... [id=ecs-task-role-order-service]
-aws_lb_listener_rule.invoice_service: Destruction complete after 0s
-aws_lb_listener_rule.order_service: Destruction complete after 0s
-aws_iam_role.ecs_task["invoice-service"]: Destroying... [id=ecs-task-role-invoice-service]
-aws_iam_role.ecs_task["bff"]: Destroying... [id=ecs-task-role-bff]
-aws_lb_listener_rule.bff: Destruction complete after 0s
-aws_lb_target_group.invoice_service: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-invoice-dev/c5b5e2c144ff3ae1]
-aws_lb_target_group.invoice_service: Destruction complete after 0s
-aws_lb_target_group.order_service: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-order-dev/cc5805f3d7235cc4]
-aws_iam_role.ecs_instance: Creation complete after 0s [id=ecs-instance-role-dev]
-aws_lb_target_group.bff: Destroying... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49]
-aws_iam_role.ecs_task["order-service"]: Destruction complete after 0s
-aws_iam_instance_profile.ecs_instance: Creating...
-aws_iam_role.ecs_task["invoice-service"]: Destruction complete after 0s
-aws_iam_role.ecs_task["bff"]: Destruction complete after 0s
-aws_iam_role_policy_attachment.ecs_instance: Creating...
-aws_lb_target_group.order_service: Destruction complete after 0s
-aws_ssm_parameter.execution_role_arn: Creation complete after 1s [id=/orderflow/dev/infra/execution-role-arn]
-aws_iam_role_policy_attachment.ecs_instance: Creation complete after 1s [id=ecs-instance-role-dev-20260514005558549900000002]
-aws_lb_target_group.services["bff"]: Creation complete after 1s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-bff-dev/40a0e8fb99edf102]
-aws_ssm_parameter.tg_arn["bff"]: Creating...
-aws_ssm_parameter.db_url["order-service"]: Creation complete after 1s [id=/orderflow/dev/order-service/db-url]
-aws_ssm_parameter.db_url["invoice-service"]: Creation complete after 1s [id=/orderflow/dev/invoice-service/db-url]
-aws_ssm_parameter.tg_arn["bff"]: Creation complete after 0s [id=/orderflow/dev/infra/tg-bff-arn]
-aws_iam_instance_profile.ecs_instance: Creation complete after 6s [id=ecs-instance-profile-dev]
-aws_ecs_cluster.main: Still creating... [10s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 10s elapsed]
-aws_ecs_cluster.main: Creation complete after 11s [id=arn:aws:ecs:us-east-1:109653023631:cluster/orderflow-dev]
-aws_ssm_parameter.cluster_name: Creating...
-aws_launch_template.ecs: Creating...
-aws_ssm_parameter.cluster_name: Creation complete after 0s [id=/orderflow/dev/infra/cluster-name]
-aws_launch_template.ecs: Creation complete after 6s [id=lt-00a295702bdcfd814]
-aws_autoscaling_group.ecs: Creating...
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 20s elapsed]
-aws_autoscaling_group.ecs: Still creating... [10s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 30s elapsed]
-aws_autoscaling_group.ecs: Still creating... [20s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 40s elapsed]
-aws_autoscaling_group.ecs: Still creating... [30s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 50s elapsed]
-aws_autoscaling_group.ecs: Still creating... [40s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m0s elapsed]
-aws_autoscaling_group.ecs: Still creating... [50s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m10s elapsed]
-aws_autoscaling_group.ecs: Still creating... [1m0s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m20s elapsed]
-aws_autoscaling_group.ecs: Still creating... [1m10s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m30s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m40s elapsed]
-aws_lb_target_group.bff: Still destroying... [id=arn:aws:elasticloadbalancing:us-east-1:.../orderflow-tg-bff-dev/a06a36f12e78fb49, 1m50s elapsed]
-╷
-│ Error: deleting ELBv2 Target Group (arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49): operation error Elastic Load Balancing v2: DeleteTargetGroup, https response error StatusCode: 400, RequestID: f9042c0c-2709-47a1-8dd2-c310c1fe3852, ResourceInUse: Target group 'arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-tg-bff-dev/a06a36f12e78fb49' is currently in use by a listener or a rule
-│ 
-│ 
-╵
-╷
-│ Error: creating Service Discovery Private DNS Namespace (orderflow-dev.local): operation error ServiceDiscovery: CreatePrivateDnsNamespace, https response error StatusCode: 400, RequestID: 8cb2899a-5fa7-40e0-96bf-48bb8aa208a9, api error AccessDeniedException: User: arn:aws:sts::109653023631:assumed-role/github-actions-terraform/GitHubActions is not authorized to perform: servicediscovery:TagResource on resource: arn:aws:servicediscovery:us-east-1:109653023631:*/* because no identity-based policy allows the servicediscovery:TagResource action
-│ 
-│   with aws_service_discovery_private_dns_namespace.main,
-│   on cluster.tf line 60, in resource "aws_service_discovery_private_dns_namespace" "main":
-│   60: resource "aws_service_discovery_private_dns_namespace" "main" {
-│ 
-╵
-╷
-│ Error: waiting for Auto Scaling Group (orderflow-ecs-asg-dev) capacity satisfied: scaling activity (0966788f-f3d4-7692-36dd-9d54c6b0da14): Failed: The specified instance type is not eligible for Free Tier. For a list of Free Tier instance types, run 'describe-instance-types' with the filter 'free-tier-eligible=true'. Launching EC2 instance failed.
-│ 
-│   with aws_autoscaling_group.ecs,
-│   on ec2.tf line 109, in resource "aws_autoscaling_group" "ecs":
-│  109: resource "aws_autoscaling_group" "ecs" {
-│ 
-╵
-Error: Terraform exited with code 1.
-Error: Process completed with exit code 1.
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # aws_autoscaling_group.ecs is tainted, so must be replaced
++/- resource "aws_autoscaling_group" "ecs" {
+      ~ arn                              = "arn:aws:autoscaling:us-east-1:109653023631:autoScalingGroup:822eda4f-6aca-44eb-9818-8d3017c02f1a:autoScalingGroupName/orderflow-ecs-asg-dev" -> (known after apply)
+      ~ availability_zones               = [
+          - "us-east-1a",
+        ] -> (known after apply)
+      - capacity_rebalance               = false -> null
+      ~ default_cooldown                 = 300 -> (known after apply)
+      - default_instance_warmup          = 0 -> null
+      ~ desired_capacity                 = 0 -> 1
+      - enabled_metrics                  = [] -> null
+      ~ health_check_type                = "EC2" -> (known after apply)
+      ~ id                               = "orderflow-ecs-asg-dev" -> (known after apply)
+      ~ load_balancers                   = [] -> (known after apply)
+      - max_instance_lifetime            = 0 -> null
+      ~ max_size                         = 0 -> 1
+      ~ min_size                         = 0 -> 1
+        name                             = "orderflow-ecs-asg-dev"
+      + name_prefix                      = (known after apply)
+      ~ predicted_capacity               = 0 -> (known after apply)
+      ~ service_linked_role_arn          = "arn:aws:iam::109653023631:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling" -> (known after apply)
+      - suspended_processes              = [] -> null
+      ~ target_group_arns                = [] -> (known after apply)
+      - termination_policies             = [] -> null
+      ~ warm_pool_size                   = 0 -> (known after apply)
+        # (8 unchanged attributes hidden)
+
+      - availability_zone_distribution {
+          - capacity_distribution_strategy = "balanced-best-effort" -> null
+        }
+
+      - capacity_reservation_specification {
+          - capacity_reservation_preference = "default" -> null
+        }
+
+      ~ launch_template {
+            id      = "lt-00a295702bdcfd814"
+          ~ name    = "orderflow-ecs-dev-20260514005608842800000003" -> (known after apply)
+            # (1 unchanged attribute hidden)
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+  # aws_ecs_capacity_provider.main will be created
+  + resource "aws_ecs_capacity_provider" "main" {
+      + arn      = (known after apply)
+      + id       = (known after apply)
+      + name     = "orderflow-cap-dev"
+      + tags_all = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "orderflow"
+        }
+
+      + auto_scaling_group_provider {
+          + auto_scaling_group_arn         = (known after apply)
+          + managed_draining               = (known after apply)
+          + managed_termination_protection = (known after apply)
+
+          + managed_scaling {
+              + instance_warmup_period    = (known after apply)
+              + maximum_scaling_step_size = (known after apply)
+              + minimum_scaling_step_size = (known after apply)
+              + status                    = "ENABLED"
+              + target_capacity           = 80
+            }
+        }
+    }
+
+  # aws_ecs_cluster_capacity_providers.main will be created
+  + resource "aws_ecs_cluster_capacity_providers" "main" {
+      + capacity_providers = [
+          + "orderflow-cap-dev",
+        ]
+      + cluster_name       = "orderflow-dev"
+      + id                 = (known after apply)
+
+      + default_capacity_provider_strategy {
+          + base              = 0
+          + capacity_provider = "orderflow-cap-dev"
+          + weight            = 1
+        }
+    }
+
+Plan: 3 to add, 0 to change, 1 to destroy.

@@ -80,6 +80,25 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 }
 
+# ── SSM Handoff — read by build-ui.yml pipeline ───────────────────────────────
+# Avoids hardcoding IDs in the pipeline. Pattern matches other infra handoff params.
+
+resource "aws_ssm_parameter" "cloudfront_id" {
+  name  = "/orderflow/${var.environment}/infra/cloudfront-id"
+  type  = "String"
+  value = aws_cloudfront_distribution.frontend.id
+
+  tags = { Name = "infra-cloudfront-id-${var.environment}" }
+}
+
+resource "aws_ssm_parameter" "frontend_bucket" {
+  name  = "/orderflow/${var.environment}/infra/frontend-bucket"
+  type  = "String"
+  value = aws_s3_bucket.frontend.bucket
+
+  tags = { Name = "infra-frontend-bucket-${var.environment}" }
+}
+
 # ── Bucket Policy Document ────────────────────────────────────────────────────
 # Kept here (not in s3.tf) because it references the CloudFront distribution ARN.
 # Grants s3:GetObject only to this specific CloudFront distribution.

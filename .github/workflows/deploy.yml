@@ -1,0 +1,187 @@
+name: Deploy — ECS Service
+
+# ── Responsibility ────────────────────────────────────────────────────────────
+# Reusable deploy pipeline. Called by build.yml after a successful image build,
+# or triggered manually to redeploy an existing image tag (no build needed).
+#
+# Stages:
+#   render  — reads service.yaml + values-{env}.yaml + SSM → writes JSON manifests
+#             uploads as artifact (inspect before approving)
+#   apply   — downloads artifact → applies to AWS
+#             dev:  no approval needed (auto-applies)
+#             sit:  pauses for required reviewer approval
+#
+# How to redeploy without a new build:
+#   Actions → Run workflow → pick service, env, image_tag
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  # Called by build.yml after a successful image push
+  workflow_call:
+    inputs:
+      service:
+        required: true
+        type: string
+        description: "e.g. bff, order-service, invoice-service"
+      env:
+        required: true
+        type: string
+        description: "dev | sit"
+      image_tag:
+        required: true
+        type: string
+        description: "7-digit SHA or manually supplied tag"
+
+  # Manual trigger — redeploy an existing image without rebuilding
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to deploy"
+        required: true
+        type: choice
+        options:
+          - bff
+          - order-service
+          - invoice-service
+      env:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - sit
+      image_tag:
+        description: "Existing ECR image tag to deploy (7-digit SHA)"
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+
+  # ── 1. Render (dry run / plan) ────────────────────────────────────────────
+  # Reads config from repo + platform values from AWS SSM.
+  # Writes all AWS manifests (task-def, IAM policy, ECS service, etc.) to JSON.
+  # Uploads JSON as artifact — download and inspect before approving apply.
+  #
+  # This is equivalent to `terraform plan`.
+
+  render:
+    name: Render — ${{ inputs.service }} → ${{ inputs.env }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install boto3 pyyaml
+
+      - name: Render manifests
+        run: |
+          python deploy/render.py \
+            --service   ${{ inputs.service }} \
+            --env       ${{ inputs.env }} \
+            --image-tag ${{ inputs.image_tag }}
+
+      - name: Print dry run summary
+        run: |
+          SVC=${{ inputs.service }}
+          ENV=${{ inputs.env }}
+          echo "========================================"
+          echo "  DRY RUN: $SVC → $ENV (${{ inputs.image_tag }})"
+          echo "========================================"
+          echo ""
+          echo "--- task-def.json ---"
+          cat deploy/out/$SVC/$ENV/task-def.json
+          echo ""
+          echo "--- iam-policy.json ---"
+          cat deploy/out/$SVC/$ENV/iam-policy.json 2>/dev/null || echo "(no IAM policy)"
+          echo ""
+          echo "--- ecs-service.json ---"
+          cat deploy/out/$SVC/$ENV/ecs-service.json
+
+      - name: Upload manifests artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manifests-${{ inputs.service }}-${{ inputs.env }}-${{ inputs.image_tag }}
+          path: deploy/out/${{ inputs.service }}/${{ inputs.env }}/
+          retention-days: 7
+
+
+  # ── 2. Apply ──────────────────────────────────────────────────────────────
+  # Downloads the rendered manifests and applies them to AWS.
+  #
+  # dev environment (deploy-dev):
+  #   No required reviewers → runs automatically after render.
+  #
+  # sit environment (deploy-sit):
+  #   Required reviewers configured → pauses here.
+  #   Reviewer flow:
+  #     1. Go to Actions → this run → "Apply" job
+  #     2. Click "Review deployments"
+  #     3. Download the manifests artifact to verify what will change
+  #     4. Click Approve & deploy
+  #
+  # This is equivalent to `terraform apply` after reviewing the plan.
+
+  apply:
+    name: Apply — ${{ inputs.service }} → ${{ inputs.env }}
+    runs-on: ubuntu-latest
+    needs: render
+    environment: App-deploy-approver
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install boto3 pyyaml
+
+      - name: Download rendered manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: manifests-${{ inputs.service }}-${{ inputs.env }}-${{ inputs.image_tag }}
+          path: deploy/out/${{ inputs.service }}/${{ inputs.env }}/
+
+      - name: Apply to AWS
+        run: |
+          python deploy/apply.py \
+            --service ${{ inputs.service }} \
+            --env     ${{ inputs.env }}
+
+      - name: Wait for service stability
+        run: |
+          SVC=${{ inputs.service }}
+          ENV=${{ inputs.env }}
+          echo "Waiting for $SVC to stabilise in $ENV..."
+          aws ecs wait services-stable \
+            --cluster orderflow-$ENV \
+            --services $SVC
+          echo "Done — $SVC is stable in $ENV."

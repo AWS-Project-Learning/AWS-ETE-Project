@@ -1,0 +1,191 @@
+name: Build & Deploy — Frontend (UI)
+
+# ── How it works ──────────────────────────────────────────────────────────────
+# No Docker. No ECS. Static files only.
+#
+#   npm run build  →  dist/   (Vite compiles React → HTML/CSS/JS)
+#        ↓
+#   aws s3 sync dist/ s3://orderflow-frontend-{env}-{account}/
+#        ↓
+#   aws cloudfront create-invalidation  (clears CDN cache so users get new files)
+#
+# The Dockerfile in frontend/ is not used in CI — it exists for local preview only.
+#   To preview locally:  docker build frontend/ -t ui && docker run -p 8080:80 ui
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/build-ui.yml"
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - sit
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+
+  # ── 1. Build ──────────────────────────────────────────────────────────────
+  # Installs dependencies and runs `vite build`.
+  # Output: frontend/dist/ — plain HTML, CSS, and JS files.
+
+  build:
+    name: Build UI
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+        # Output: frontend/dist/
+
+      - name: Set artifact name
+        id: meta
+        run: |
+          echo "artifact_name=ui-dist-$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: frontend/dist/
+          retention-days: 7
+
+
+  # ── 2. Deploy to dev ──────────────────────────────────────────────────────
+  # Syncs built files to the dev S3 bucket and invalidates CloudFront cache.
+  # Requires approval via App-deploy-approver environment.
+
+  deploy-dev:
+    name: Deploy UI → dev
+    runs-on: ubuntu-latest
+    needs: build
+    environment: App-deploy-approver
+
+    steps:
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: dist/
+
+      - name: Read infra values from SSM
+        run: |
+          BUCKET=$(aws ssm get-parameter \
+            --name "/orderflow/dev/infra/frontend-bucket" \
+            --query "Parameter.Value" --output text)
+          CF_ID=$(aws ssm get-parameter \
+            --name "/orderflow/dev/infra/cloudfront-id" \
+            --query "Parameter.Value" --output text)
+          echo "BUCKET=$BUCKET" >> $GITHUB_ENV
+          echo "CF_ID=$CF_ID"   >> $GITHUB_ENV
+          echo "S3 bucket : $BUCKET"
+          echo "CloudFront: $CF_ID"
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync dist/ s3://$BUCKET/ \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html"
+          aws s3 cp dist/index.html s3://$BUCKET/index.html \
+            --cache-control "no-cache,no-store,must-revalidate"
+          echo "Synced to s3://$BUCKET"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $CF_ID \
+            --paths "/*"
+          echo "CloudFront cache invalidated — dev UI is live."
+
+
+  # ── 3. Deploy to sit ──────────────────────────────────────────────────────
+  # Starts only after dev deploy succeeds.
+  # Also requires approval (same App-deploy-approver environment).
+
+  deploy-sit:
+    name: Deploy UI → sit
+    runs-on: ubuntu-latest
+    needs: [build, deploy-dev]
+    if: needs.deploy-dev.result == 'success'
+    environment: App-deploy-approver
+
+    steps:
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: dist/
+
+      - name: Read infra values from SSM
+        run: |
+          BUCKET=$(aws ssm get-parameter \
+            --name "/orderflow/sit/infra/frontend-bucket" \
+            --query "Parameter.Value" --output text)
+          CF_ID=$(aws ssm get-parameter \
+            --name "/orderflow/sit/infra/cloudfront-id" \
+            --query "Parameter.Value" --output text)
+          echo "BUCKET=$BUCKET" >> $GITHUB_ENV
+          echo "CF_ID=$CF_ID"   >> $GITHUB_ENV
+          echo "S3 bucket : $BUCKET"
+          echo "CloudFront: $CF_ID"
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync dist/ s3://$BUCKET/ \
+            --delete \
+            --cache-control "public,max-age=31536000,immutable" \
+            --exclude "index.html"
+          aws s3 cp dist/index.html s3://$BUCKET/index.html \
+            --cache-control "no-cache,no-store,must-revalidate"
+          echo "Synced to s3://$BUCKET"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $CF_ID \
+            --paths "/*"
+          echo "CloudFront cache invalidated — sit UI is live."
