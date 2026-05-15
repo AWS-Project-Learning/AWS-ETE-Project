@@ -45,6 +45,17 @@ resource "aws_iam_role_policy_attachment" "ecs_instance" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
 }
 
+# AWS-managed policy that lets SSM Session Manager and Run Command reach the
+# instance without opening port 22. Required for:
+#   - Reading /var/log/ecs/ecs-agent.log to debug agent issues (e.g. trunking)
+#   - Running ad-hoc shell commands without SSH keys or bastion hosts
+# The SSM agent is already pre-installed on the ECS-optimized AMI; only the
+# IAM permission was missing.
+resource "aws_iam_role_policy_attachment" "ecs_instance_ssm" {
+  role       = aws_iam_role.ecs_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Instance profile wraps the IAM role so it can be attached to an EC2 instance.
 # EC2 cannot use an IAM role directly — it must go through an instance profile.
 resource "aws_iam_instance_profile" "ecs_instance" {
