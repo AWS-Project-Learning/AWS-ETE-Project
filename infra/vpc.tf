@@ -183,24 +183,23 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# ECS — only accepts traffic from the ALB, not directly from internet.
-# Description is intentionally unchanged from the original — AWS treats SG
-# description as immutable, so editing it would force recreation of the SG
-# and cascade-replace dependent resources (launch template, dependent SG
-# ingress rules, etc.). Inline ALB ingress rule is kept in place so it
-# is never briefly absent during apply.
+# ECS — security group for all ECS task ENIs (awsvpc mode).
+#
+# Ingress rules are intentionally NOT declared inline. Terraform treats inline
+# `ingress` blocks as authoritative — any rule not in the inline list is
+# removed on the next apply. Mixing inline blocks with `aws_security_group_rule`
+# resources for the same SG causes oscillating drift on every plan/apply cycle.
+# All ingress is therefore managed via separate `aws_security_group_rule`
+# resources below.
+#
+# Description is unchanged from the original — AWS treats SG description as
+# immutable, so editing it would force recreation of the SG and cascade
+# through every dependent resource (launch template, dependent SG ingress
+# rules, etc.).
 resource "aws_security_group" "ecs" {
   name        = "${var.project}-sg-ecs-${var.environment}"
   description = "ECS containers - inbound from ALB only"
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description     = "From ALB"
-    from_port       = 0
-    to_port         = 65535
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
 
   egress {
     description = "All outbound (VPC endpoints + RDS)"
@@ -215,11 +214,23 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-# Self-reference rule — added separately to avoid recreating the SG.
-# Required for awsvpc mode: each task has its own ENI with this SG attached,
-# so BFF → order-service → invoice-service traffic must be allowed explicitly.
-# Without this, Cloud Map resolves DNS correctly but the connection is dropped
-# at the task ENI.
+# Inbound from ALB — required for the ALB to reach BFF tasks on their ENI IPs.
+# Range covers any container port; ALB only ever sends to the registered port,
+# so the wide range is safe and avoids editing this rule when ports change.
+resource "aws_security_group_rule" "ecs_from_alb" {
+  type                     = "ingress"
+  description              = "From ALB"
+  from_port                = 0
+  to_port                  = 65535
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb.id
+  security_group_id        = aws_security_group.ecs.id
+}
+
+# Inbound from sibling ECS tasks — required for awsvpc service-to-service
+# calls (BFF → order-service, BFF → invoice-service). Each task has its own
+# ENI with this SG attached, so without this rule Cloud Map DNS resolves
+# correctly but the connection is dropped at the destination task ENI.
 resource "aws_security_group_rule" "ecs_from_self" {
   type                     = "ingress"
   description              = "From sibling ECS tasks (awsvpc)"
