@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { createOrder } from '../api/client'
 
 const PRODUCTS = [
   { id: 1, name: 'Wireless Keyboard',  price: 120.00 },
@@ -17,7 +18,9 @@ export default function NewOrder() {
   const [email, setEmail]       = useState('')
   const [address, setAddress]   = useState('')
   const [items, setItems]       = useState([{ productId: '', qty: 1 }])
-  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [error, setError]           = useState(null)
 
   const addItem    = () => setItems(prev => [...prev, { productId: '', qty: 1 }])
   const removeItem = (i) => setItems(prev => prev.filter((_, idx) => idx !== i))
@@ -32,10 +35,37 @@ export default function NewOrder() {
   const tax   = subtotal * 0.1
   const total = subtotal + tax
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => navigate('/orders'), 1500)
+    setError(null)
+
+    const payloadItems = items
+      .map(it => {
+        const p = getProduct(it.productId)
+        if (!p) return null
+        return { product_name: p.name, quantity: Number(it.qty), unit_price: p.price }
+      })
+      .filter(Boolean)
+
+    if (payloadItems.length === 0) {
+      setError('Please select at least one product.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await createOrder({
+        customer_name: customer,
+        email,
+        address: address || null,
+        items: payloadItems,
+      })
+      setSubmitted(true)
+      setTimeout(() => navigate('/orders'), 1200)
+    } catch (err) {
+      setError(err.message || 'Failed to create order')
+      setSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -137,14 +167,20 @@ export default function NewOrder() {
           </div>
         </div>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+            {error}
+          </div>
+        )}
+
         <div className="flex gap-3">
-          <button type="button" onClick={() => navigate('/orders')}
-            className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+          <button type="button" disabled={submitting} onClick={() => navigate('/orders')}
+            className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50">
             Cancel
           </button>
-          <button type="submit"
-            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors">
-            Create Order
+          <button type="submit" disabled={submitting}
+            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+            {submitting ? 'Creating…' : 'Create Order'}
           </button>
         </div>
       </form>

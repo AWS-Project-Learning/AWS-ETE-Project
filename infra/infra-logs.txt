@@ -1,32 +1,39 @@
-  
-aws_ecs_capacity_provider.main: Destroying... [id=arn:aws:ecs:us-east-1:109653023631:capacity-provider/orderflow-cap-dev]
-aws_subnet.public_a: Creating...
-aws_ecs_capacity_provider.main: Destruction complete after 0s
-aws_security_group.ecs: Modifying... [id=sg-0d74705d5fbe7c6e7]
-aws_security_group.ecs: Modifications complete after 1s [id=sg-0d74705d5fbe7c6e7]
-aws_autoscaling_group.ecs: Destroying... [id=orderflow-ecs-asg-dev]
-aws_security_group_rule.ecs_from_self: Modifying... [id=sgrule-2476768457]
-aws_security_group_rule.ecs_from_self: Modifications complete after 0s [id=sgrule-2476768457]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 10s elapsed]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 20s elapsed]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 30s elapsed]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 40s elapsed]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 50s elapsed]
-aws_autoscaling_group.ecs: Still destroying... [id=orderflow-ecs-asg-dev, 1m0s elapsed]
-aws_autoscaling_group.ecs: Destruction complete after 1m2s
-aws_launch_template.ecs: Destroying... [id=lt-00a295702bdcfd814]
-aws_launch_template.ecs: Destruction complete after 0s
-aws_iam_instance_profile.ecs_instance: Destroying... [id=ecs-instance-profile-dev]
-aws_iam_instance_profile.ecs_instance: Destruction complete after 0s
-aws_iam_role.ecs_instance: Destroying... [id=ecs-instance-role-dev]
-aws_iam_role.ecs_instance: Destruction complete after 0s
-╷
-│ Error: creating EC2 Subnet: operation error EC2: CreateSubnet, https response error StatusCode: 400, RequestID: cd6ebff9-a206-4d79-8f81-b768ab5cf34f, api error InvalidSubnet.Conflict: The CIDR '10.0.1.0/24' conflicts with another subnet
-│ 
-│   with aws_subnet.public_a,
-│   on vpc.tf line 47, in resource "aws_subnet" "public_a":
-│   47: resource "aws_subnet" "public_a" {
-│ 
-╵
-Error: Terraform exited with code 1.
-Error: Process completed with exit code 1.
+aws logs tail /ecs/orderflow/dev/bff --since 5m --no-cli-pager
+2026-05-16T01:56:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:34826 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:56:19.971000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:13380 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:56:23.212000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
+2026-05-16T01:56:23.213000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12074 - "GET /api/orders HTTP/1.1" 200 OK
+2026-05-16T01:56:24.103000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
+2026-05-16T01:56:24.108000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://invoice-service.orderflow-dev.local:8002/invoices "HTTP/1.1 200 OK"
+2026-05-16T01:56:24.108000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12074 - "GET /api/dashboard HTTP/1.1" 200 OK
+2026-05-16T01:56:30.252000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12076 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:56:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:58802 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:56:49.999000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:6306 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:00.283000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:28044 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:53902 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:19.999000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:51238 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:30.313000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:37080 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:48.167000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:33626 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:57:50.027000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:62610 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:00.318000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:38252 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:46654 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:20.060000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:30246 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:30.328000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:55766 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:47398 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:58:50.087000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:7576 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:00.330000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:64292 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:44578 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:20.118000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:59502 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:30.345000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:61862 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:40732 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T01:59:50.147000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:64700 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:00.378000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:35776 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:18.247000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:51910 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:20.155000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:45182 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:28.156000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
+2026-05-16T02:00:28.156000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:15174 - "GET /api/orders HTTP/1.1" 200 OK
+2026-05-16T02:00:30.407000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:44886 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:41690 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:00:50.172000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:58392 - "GET /health HTTP/1.1" 200 OK
+2026-05-16T02:01:00.435000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:56778 - "GET /health HTTP/1.1" 200 OK
+➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
