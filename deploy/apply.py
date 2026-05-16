@@ -248,13 +248,18 @@ def deploy_ecs_service(ecs_client, ecs_svc_doc: dict, task_def_arn: str, sd_arn:
         "serviceName":                   service_name,
         "taskDefinition":                task_def_arn,
         "desiredCount":                  ecs_svc_doc["desiredCount"],
-        "launchType":                    "EC2",
+        # launchType (FARGATE) and platformVersion (LATEST) come from the
+        # rendered manifest — render.py owns the launch-type decision.
+        "launchType":                    ecs_svc_doc.get("launchType", "FARGATE"),
         "deploymentConfiguration":       ecs_svc_doc.get("deploymentConfiguration", {}),
         "healthCheckGracePeriodSeconds": ecs_svc_doc.get("healthCheckGracePeriodSeconds", 0),
         "enableECSManagedTags":          True,
         "propagateTags":                 "SERVICE",
         "tags":                          ecs_svc_doc.get("tags", [])
     }
+    # platformVersion is only valid for Fargate launch type.
+    if create_kwargs["launchType"] == "FARGATE" and ecs_svc_doc.get("platformVersion"):
+        create_kwargs["platformVersion"] = ecs_svc_doc["platformVersion"]
     if ecs_svc_doc.get("networkConfiguration"):
         create_kwargs["networkConfiguration"] = ecs_svc_doc["networkConfiguration"]
     if ecs_svc_doc.get("loadBalancers"):

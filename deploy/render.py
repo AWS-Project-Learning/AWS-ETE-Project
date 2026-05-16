@@ -152,20 +152,26 @@ def build_task_def(
 
     image = f"{shared['ecr_registry']}/{shared['project']}/{service}:{image_tag}"
 
+    # Fargate requires CPU/memory at the TASK level (not just the container).
+    # Container-level cpu is optional and informational only — Fargate enforces
+    # via the task-level values. Valid combinations are fixed pairs documented at:
+    # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html
     return {
         "family":                  f"{service}-{env}",
-        "networkMode":             shared.get("network_mode", "bridge"),
-        "requiresCompatibilities": ["EC2"],
+        "networkMode":             "awsvpc",         # Fargate requires awsvpc
+        "requiresCompatibilities": ["FARGATE"],
+        "cpu":                     str(int(compute["cpu"])),
+        "memory":                  str(int(compute["memory"])),
         "executionRoleArn":        execution_role_arn,
         "taskRoleArn":             task_role_arn,
         "containerDefinitions": [{
             "name":      service,
             "image":     image,
             "essential": True,
-            "memory":    int(compute["memory"]),
-            "cpu":       int(compute["cpu"]),
             "portMappings": [{
                 "containerPort": int(ctr["port"]),
+                # In awsvpc mode the host port MUST equal the container port,
+                # and explicitly setting hostPort is required by the ECS API.
                 "hostPort":      int(ctr["port"]),
                 "protocol":      "tcp"
             }],
@@ -258,17 +264,21 @@ def build_ecs_service(
         "cluster":                       cluster_name,
         "serviceName":                   service,
         "desiredCount":                  desired,
-        "launchType":                    "EC2",
+        "launchType":                    "FARGATE",
+        "platformVersion":               "LATEST",
         "healthCheckGracePeriodSeconds": grace,
         "deploymentConfiguration":       deployment_config,
         "loadBalancers":                 load_balancers,
         "serviceRegistries":             service_registries,
-        # awsvpc mode requires explicit subnet + security group
+        # Fargate tasks live in public subnets and get a public IP so they can
+        # reach ECR/CloudWatch/SSM through the IGW without VPC endpoints or a
+        # NAT Gateway. They remain unreachable from the internet because the
+        # ECS security group only accepts inbound from the ALB SG.
         "networkConfiguration": {
             "awsvpcConfiguration": {
                 "subnets":        [subnet_id],
                 "securityGroups": [sg_id],
-                "assignPublicIp": "DISABLED"
+                "assignPublicIp": "ENABLED"
             }
         },
         "enableECSManagedTags":          True,
@@ -307,7 +317,7 @@ def main():
     execution_role_arn = ssm_get(ssm, f"/orderflow/{env}/infra/execution-role-arn")
     cluster_name       = ssm_get(ssm, f"/orderflow/{env}/infra/cluster-name")
     namespace_id       = ssm_get(ssm, f"/orderflow/{env}/infra/cloudmap-namespace-id")
-    subnet_id          = ssm_get(ssm, f"/orderflow/{env}/infra/private-app-subnet-id")
+    subnet_id          = ssm_get(ssm, f"/orderflow/{env}/infra/task-subnet-id")
     sg_id              = ssm_get(ssm, f"/orderflow/{env}/infra/ecs-sg-id")
 
     tg_arn = None

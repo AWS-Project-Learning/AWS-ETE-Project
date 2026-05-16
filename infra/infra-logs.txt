@@ -1,305 +1,227 @@
-CI_ARN=$(aws ecs list-container-instances --cluster orderflow-dev --query "containerInstanceArns[0]" --output text)
 
-aws ecs describe-container-instances --cluster orderflow-dev \
-  --container-instances "$CI_ARN" \
-  --query "containerInstances[0].attributes[*].[name,value]" \
-  --output json --no-cli-pager
-[
-    [
-        "ecs.capability.secrets.asm.environment-variables",
-        null
-    ],
-    [
-        "ecs.capability.branch-cni-plugin-version",
-        "unknown-"
-    ],
-    [
-        "ecs.ami-id",
-        "ami-0ca235225aa64b184"
-    ],
-    [
-        "ecs.capability.storage.ebsta-non-root-user",
-        null
-    ],
-    [
-        "ecs.capability.secrets.asm.bootstrap.log-driver",
-        null
-    ],
-    [
-        "ecs.capability.task-eia.optimized-cpu",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.none",
-        null
-    ],
-    [
-        "ecs.capability.ecr-endpoint",
-        null
-    ],
-    [
-        "ecs.capability.ipv6-only",
-        null
-    ],
-    [
-        "ecs.capability.docker-plugin.local",
-        null
-    ],
-    [
-        "ecs.capability.task-cpu-mem-limit",
-        null
-    ],
-    [
-        "ecs.capability.secrets.ssm.bootstrap.log-driver",
-        null
-    ],
-    [
-        "ecs.capability.efsAuth",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.30",
-        null
-    ],
-    [
-        "ecs.capability.full-sync",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.32",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.fluentd",
-        null
-    ],
-    [
-        "ecs.capability.storage.ebs-supported-instance",
-        null
-    ],
-    [
-        "ecs.capability.firelens.options.config.file",
-        null
-    ],
-    [
-        "ecs.capability.logging-driver.awsfirelens.log-driver-buffer-limit",
-        null
-    ],
-    [
-        "ecs.availability-zone",
-        "us-east-1a"
-    ],
-    [
-        "ecs.capability.aws-appmesh",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.awslogs",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.24",
-        null
-    ],
-    [
-        "ecs.os-type-detailed",
-        "amzn_2"
-    ],
-    [
-        "ecs.capability.task-eni-trunking",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.25",
-        null
-    ],
-    [
-        "ecs.capability.container-restart-policy",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.privileged-container",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.28",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.29",
-        null
-    ],
-    [
-        "ecs.cpu-architecture",
-        "x86_64"
-    ],
-    [
-        "com.amazonaws.ecs.capability.ecr-auth",
-        null
-    ],
-    [
-        "ecs.capability.firelens.fluentbit",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.20",
-        null
-    ],
-    [
-        "ecs.capability.service-connect-v1",
-        null
-    ],
-    [
-        "ecs.os-type",
-        "linux"
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.21",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.22",
-        null
-    ],
-    [
-        "ecs.capability.private-registry-authentication.secretsmanager",
-        null
-    ],
-    [
-        "ecs.capability.task-eia",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.23",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.syslog",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.awsfirelens",
-        null
-    ],
-    [
-        "ecs.capability.firelens.options.config.s3",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.logging-driver.json-file",
-        null
-    ],
-    [
-        "ecs.capability.execution-role-awslogs",
-        null
-    ],
-    [
-        "ecs.vpc-id",
-        "vpc-0a2a518e20b9c4dd8"
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.17",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.18",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.docker-remote-api.1.19",
-        null
-    ],
-    [
-        "ecs.capability.docker-plugin.amazon-ecs-volume-plugin",
-        null
-    ],
-    [
-        "ecs.capability.task-eni",
-        null
-    ],
-    [
-        "ecs.capability.firelens.fluentd",
-        null
-    ],
-    [
-        "ecs.capability.efs",
-        null
-    ],
-    [
-        "ecs.capability.execution-role-ecr-pull",
-        null
-    ],
-    [
-        "ecs.capability.storage.ebs-task-volume-attach",
-        null
-    ],
-    [
-        "ecs.capability.task-eni.ipv6",
-        null
-    ],
-    [
-        "ecs.capability.container-health-check",
-        null
-    ],
-    [
-        "ecs.os-family",
-        "LINUX"
-    ],
-    [
-        "ecs.capability.execute-command",
-        null
-    ],
-    [
-        "ecs.subnet-id",
-        "subnet-0df8e70155837faf9"
-    ],
-    [
-        "ecs.instance-type",
-        "t3.micro"
-    ],
-    [
-        "ecs.capability.firelens.non-root-user",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.task-iam-role-network-host",
-        null
-    ],
-    [
-        "ecs.capability.increased-task-cpu-limit",
-        null
-    ],
-    [
-        "ecs.capability.network.container-port-range",
-        null
-    ],
-    [
-        "ecs.capability.fault-injection",
-        null
-    ],
-    [
-        "ecs.capability.container-ordering",
-        null
-    ],
-    [
-        "ecs.capability.cni-plugin-version",
-        "unknown-"
-    ],
-    [
-        "ecs.capability.env-files.s3",
-        null
-    ],
-    [
-        "ecs.capability.pid-ipc-namespace-sharing",
-        null
-    ],
-    [
-        "ecs.capability.secrets.ssm.environment-variables",
-        null
-    ],
-    [
-        "com.amazonaws.ecs.capability.task-iam-role",
-        null
-    ]
-]
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
+
+
+
+
+
+
+
+~ $ # 1. Check what region CloudShell defaulted to
+~ $ echo "Default region:"; aws configure get region; aws ec2 describe-availability-zones --query "AvailabilityZones[0].RegionName" --output text
+Default region:
+us-east-1
+~ $ # 2. Check trunking setting in us-east-1 specifically
+~ $ INSTANCE_ID=$(aws ecs list-container-instances \
+>   --cluster orderflow-dev \
+>   --query "containerInstanceArns[0]" \
+>   --output text \
+>   | xargs -I{} aws ecs describe-container-instances \
+>       --cluster orderflow-dev \
+>       --container-instances {} \
+>       --query "containerInstances[0].ec2InstanceId" \
+>       --output text)
+
+~ $ 
+~ $ echo "Instance: $INSTANCE_ID"
+Instance: i-043f3bab5c05a8e4d
+~ $ CMD_ID=$(aws ssm send-command \
+>   --instance-ids "$INSTANCE_ID" \
+>   --document-name "AWS-RunShellScript" \
+>   --comment "trunking-debug" \
+>   --parameters 'commands=[
+> "echo === AGENT VERSION ===",
+> "docker exec ecs-agent /agent --version 2>/dev/null || echo agent exec failed",
+> "echo === ECS CONFIG ===",
+> "cat /etc/ecs/ecs.config 2>/dev/null || echo no ecs.config",
+> "echo === CNI PLUGIN BINARIES ===",
+> "ls -la /usr/libexec/amazon-ecs-cni-plugins/ 2>/dev/null || echo path missing",
+> "ls -la /var/lib/ecs/data/ 2>/dev/null | head -10",
+> "echo === BRANCH CNI VERSION FILE ===",
+> "find / -name VERSION -path *cni* 2>/dev/null",
+> "find / -name vpc-branch-eni 2>/dev/null",
+> "echo === AGENT LOG: trunking decisions ===",
+> "grep -iE \"trunk|branch.eni|opt.in|account.setting|cni.plugin\" /var/log/ecs/ecs-agent.log 2>/dev/null | tail -40",
+> "echo === AGENT LOG: errors ===",
+> "grep -iE \"level=error|level=warn\" /var/log/ecs/ecs-agent.log 2>/dev/null | tail -20"
+> ]' \
+>   --query "Command.CommandId" \
+>   --output text)
+~ $ 
+~ $ echo "Command ID: $CMD_ID"
+Command ID: e7b96860-233c-4b7f-a9bc-672ec10492b2
+~ $ sleep 8
+
+~ $ 
+~ $ aws ssm get-command-invocation \
+>   --command-id "$CMD_ID" \
+>   --instance-id "$INSTANCE_ID" \
+>   --query "StandardOutputContent" \
+>   --output text \
+>   --no-cli-pager
+=== AGENT VERSION ===
+Amazon ECS Agent:
+        Version: 1.103.1
+        Commit: c3e91f61
+        Dirty: true
+=== ECS CONFIG ===
+ECS_CLUSTER=orderflow-dev
+ECS_ENABLE_TASK_IAM_ROLE=true
+~ $ CMD_ID=$(aws ssm send-command \
+>   --instance-ids "$INSTANCE_ID" \
+>   --document-name "AWS-RunShellScript" \
+>   --comment "trunking-debug-2" \
+>   --parameters 'commands=[
+> "echo === LOG FILES IN /var/log/ecs ===",
+> "ls -la /var/log/ecs/ 2>/dev/null",
+> "echo === ECS-INIT LOG (handles capability negotiation) ===",
+> "ls -la /var/log/ecs/ecs-init.log* 2>/dev/null",
+> "tail -100 /var/log/ecs/ecs-init.log 2>/dev/null",
+> "echo === FIRST 80 LINES OF AGENT LOG (startup capability check) ===",
+> "head -80 /var/log/ecs/ecs-agent.log 2>/dev/null",
+> "echo === ANY MENTION OF capabilities/registration ===",
+> "grep -iE \"capabilit|register|opt-in|DiscoverPoll\" /var/log/ecs/ecs-agent.log 2>/dev/null | head -30",
+> "echo === amazon-ecs-init PACKAGE VERSION ===",
+> "rpm -q amazon-ecs-init 2>/dev/null || echo not installed via rpm",
+> "echo === SYSTEMD STATUS ===",
+> "systemctl status ecs --no-pager 2>/dev/null | head -20"
+> ]' \
+>   --query "Command.CommandId" \
+>   --output text)
+
+~ $ 
+~ $ echo "Command ID: $CMD_ID"
+Command ID: 71d62e10-d3b3-4cbf-a5b1-64712cbde33d
+~ $ sleep 8
+~ $ 
+~ $ aws ssm get-command-invocation \
+>   --command-id "$CMD_ID" \
+>   --instance-id "$INSTANCE_ID" \
+>   --query "StandardOutputContent" \
+~ $ aws ssm get-command-invocation \
+>   --command-id "$CMD_ID" \
+>   --instance-id "$INSTANCE_ID" \
+>   --query "StandardOutputContent" \
+>   --output text \
+>   --no-cli-pager
+=== LOG FILES IN /var/log/ecs ===
+total 80
+drwxr--r-x  3 root root   178 May 15 23:42 .
+drwxr-xr-x. 7 root root  4096 May 15 23:41 ..
+-rw-r--r--  1 root root   313 May 15 23:42 audit.log
+-rw-r--r--  1 root root 54358 May 16 00:24 ecs-agent.log
+-rw-r--r--  1 root root  2012 May 15 23:42 ecs-cni-bridge-plugin.log
+-rw-r--r--  1 root root  1687 May 15 23:41 ecs-init.log
+-rw-r--r--  1 root root   144 May 15 23:41 ecs-volume-plugin.log
+drwxr-xr-x  2 root root     6 May 15 23:41 exec
+-rw-r--r--  1 root root  1390 May 15 23:42 vpc-branch-eni.log.2026-05-15-23
+
+~ $ aws ssm get-command-invocation \
+>   --command-id "$CMD_ID" \
+>   --instance-id "$INSTANCE_ID" \
+>   --query "StandardOutputContent" \
+>   --output text \
+> 
+=== LOG FILES IN /var/log/ecs ===
+total 80
+drwxr--r-x  3 root root   178 May 15 23:42 .
+drwxr-xr-x. 7 root root  4096 May 15 23:41 ..
+-rw-r--r--  1 root root   313 May 15 23:42 audit.log
+-rw-r--r--  1 root root 54358 May 16 00:24 ecs-agent.log
+-rw-r--r--  1 root root  2012 May 15 23:42 ecs-cni-bridge-plugin.log
+-rw-r--r--  1 root root  1687 May 15 23:41 ecs-init.log
+-rw-r--r--  1 root root   144 May 15 23:41 ecs-volume-plugin.log
+drwxr-xr-x  2 root root     6 May 15 23:41 exec
+-rw-r--r--  1 root root  1390 May 15 23:42 vpc-branch-eni.log.2026-05-15-23
+
+~ $ CMD_ID2=$(aws ssm send-command \
+>   --instance-ids "$INSTANCE_ID" \
+>   --document-name "AWS-RunShellScript" \
+>   --comment "branch-eni-log" \
+>   --parameters 'commands=[
+> "echo === VPC-BRANCH-ENI PLUGIN LOG ===",
+> "cat /var/log/ecs/vpc-branch-eni.log.2026-05-15-23 2>/dev/null",
+> "echo === BRIDGE CNI LOG ===",
+> "cat /var/log/ecs/ecs-cni-bridge-plugin.log 2>/dev/null",
+> "echo === AGENT LOG: ENI/branch/trunk mentions ===",
+> "grep -iE \"eni|trunk|branch\" /var/log/ecs/ecs-agent.log 2>/dev/null | tail -30"
+> ]' \
+>   --query "Command.CommandId" \
+>   --output text)
+~ $ 
+~ $ echo "Command: $CMD_ID2"
+Command: bfb8965c-e643-401e-b2af-33108f6d76c8
+~ $ sleep 6
+~ $ 
+~ $ aws ssm get-command-invocation \
+>   --command-id "$CMD_ID2" \
+>   --instance-id "$INSTANCE_ID" \
+>   --query "StandardOutputContent" \
+>   --output text \
+>   --no-cli-pager
+=== VPC-BRANCH-ENI PLUGIN LOG ===
+2026-05-15T23:42:07Z [INFO] Plugin vpc-eni version  executing CNI command.
+2026-05-15T23:42:07Z [INFO] Executing ADD with netconfig: &{NetConf:{CNIVersion:0.3.0 Name:network-name Type:vpc-eni Capabilities:map[] IPAM:{Type:} DNS:{Nameservers:[] Domain: Search:[] Options:[]} RawPrevResult:map[] PrevResult:<nil>} ENIName: ENIMACAddress:02:aa:9e:4b:87:d3 ENIIPAddresses:[{IP:10.0.2.253 Mask:ffffff00}] GatewayIPAddresses:[10.0.2.1] OpState:true UseExistingNetwork:false BlockIMDS:false} ContainerID:ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b Netns:/host/proc/4330/ns/net IfName:eth0 Args:.
+2026-05-15T23:42:07Z [INFO] Searching for netns /host/proc/4330/ns/net.
+2026-05-15T23:42:07Z [INFO] Moving ENI link {linkName:eth1 macAddress:02:aa:9e:4b:87:d3} to netns /host/proc/4330/ns/net.
+2026-05-15T23:42:07Z [INFO] Renaming ENI link {linkName:eth1 macAddress:02:aa:9e:4b:87:d3} to eth0.
+2026-05-15T23:42:07Z [INFO] Setting ENI link state up.
+2026-05-15T23:42:07Z [INFO] Adding default IP route {Ifindex: 4 Dst: <nil> Src: <nil> Gw: 10.0.2.1 Flags: [] Table: 0 Realm: 0}.
+2026-05-15T23:42:07Z [INFO] Writing CNI result to stdout: &{CNIVersion:1.0.0 Interfaces:[{Name:eth0 Mac:02:aa:9e:4b:87:d3 Sandbox:/host/proc/4330/ns/net}] IPs:[{Interface:0xc00008b080 Address:{IP:10.0.2.253 Mask:ffffff00} Gateway:10.0.2.1}] Routes:[] DNS:{Nameservers:[] Domain: Search:[] Options:[]}}
+=== BRIDGE CNI LOG ===
+2026-05-15T23:42:07Z [INFO] msg="Creating the bridge" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam
+2026-05-15T23:42:07Z [INFO] Setting ecs-bridge hardware addr (MAC) 56:59:4e:09:4d:ca
+2026-05-15T23:42:07Z [INFO] msg="Creating veth pair for namespace" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam
+2026-05-15T23:42:07Z [INFO] msg="Attaching veth pair to bridge" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam hostVethName=vethb99fce8a
+2026-05-15T23:42:07Z [INFO] msg="Running IPAM plugin ADD" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam hostVethName=vethb99fce8a
+2026-05-15T23:42:07Z [INFO] msg="Configuring bridge" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam hostVethName=vethb99fce8a
+2026-05-15T23:42:07Z [INFO] ConfigureBridge called with 1 IP configs
+2026-05-15T23:42:07Z [INFO] Processing IP config - Address=169.254.172.2/22, Gateway=169.254.172.1
+2026-05-15T23:42:07Z [INFO] Bridge has 0 existing addresses for family 2
+2026-05-15T23:42:07Z [INFO] Gateway IP=169.254.172.1, IsLinkLocal=true, To4=169.254.172.1, ContainerMask=fffffc00
+2026-05-15T23:42:07Z [INFO] Applying /22 mask to link-local gateway
+2026-05-15T23:42:07Z [INFO] Bridge will get IP=169.254.172.1/22
+2026-05-15T23:42:07Z [INFO] msg="Configuring container's interface" netns=/host/proc/4330/ns/net ifname=ecs-eth0 containerID=ea723773ee66f980db534953678737d26818f61beb013c2e793d2e183af7893b bridgeName=ecs-bridge ipamType=ecs-ipam hostVethName=vethb99fce8a
+=== AGENT LOG: ENI/branch/trunk mentions ===
+level=info time=2026-05-15T23:41:41Z msg="Event stream ContainerChange start listening..." module=eventstream.go
+level=info time=2026-05-15T23:41:42Z msg="ENI Watcher: initialized" primaryMAC="02:1a:1a:82:d4:ef"
+level=info time=2026-05-15T23:41:42Z msg="ENI Watcher: udev event handler started, listening for network device events" primaryMAC="02:1a:1a:82:d4:ef"
+level=info time=2026-05-15T23:41:52Z msg="Event stream DeregisterContainerInstance start listening..." module=eventstream.go
+level=info time=2026-05-15T23:42:01Z msg="Handling ENI attachment: arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e" module=attach_eni_common.go
+level=info time=2026-05-15T23:42:01Z msg="Starting ENI ack timer" attachmentARN="arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e" attachmentType="task-eni" attachmentSent=false mac="02:aa:9e:4b:87:d3" status="NONE" expiresAt="2026-05-15T23:47:01Z" task="6655e8909b604204a661bb05c8757cde" duration="4m59.99930914s"
+level=info time=2026-05-15T23:42:01Z msg="Adding eni attachment info to state for task" task="6655e8909b604204a661bb05c8757cde" attachmentARN="arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e" mac="02:aa:9e:4b:87:d3"
+level=info time=2026-05-15T23:42:01Z msg="ENI Watcher: received udev event" subsystem="net" interface="eth1" devpath="/devices/pci0000:00/0000:00:06.0/net/eth1" primaryMAC="02:1a:1a:82:d4:ef" action="add"
+level=info time=2026-05-15T23:42:01Z msg="ENI Watcher: obtained MAC address for interface, sending state change" primaryMAC="02:1a:1a:82:d4:ef" interface="eth1" macAddress="02:aa:9e:4b:87:d3"
+level=info time=2026-05-15T23:42:01Z msg="ENI Watcher: found ENI attachment in agent state" macAddress="02:aa:9e:4b:87:d3" primaryMAC="02:1a:1a:82:d4:ef"
+level=info time=2026-05-15T23:42:01Z msg="ENI Watcher: successfully processed ENI attachment" primaryMAC="02:1a:1a:82:d4:ef" interface="eth1" macAddress="02:aa:9e:4b:87:d3"
+level=info time=2026-05-15T23:42:01Z msg="ENI Watcher: emitting task ENI attached event" taskARN="arn:aws:ecs:us-east-1:109653023631:task/orderflow-dev/6655e8909b604204a661bb05c8757cde" primaryMAC="02:1a:1a:82:d4:ef" attachmentARN="arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e" attachmentType="task-eni" attachmentSent=false macAddress="02:aa:9e:4b:87:d3" status="ATTACHED" expiresAt="2026-05-15T23:47:01Z"
+level=info time=2026-05-15T23:42:01Z msg="Sending state change to ECS" taskArn="arn:aws:ecs:us-east-1:109653023631:task/orderflow-dev/6655e8909b604204a661bb05c8757cde" taskStatus="NONE" taskReason="" eniAttachment="ENI Attachment: task=arn:aws:ecs:us-east-1:109653023631:task/orderflow-dev/6655e8909b604204a661bb05c8757cde attachment=arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e attachmentType=task-eni attachmentSent=false mac=02:aa:9e:4b:87:d3 status=ATTACHED expiresAt=2026-05-15T23:47:01Z" eventType="TaskStateChange"
+level=info time=2026-05-15T23:42:07Z msg="ENI Watcher: received udev event" interface="eth1" devpath="/devices/pci0000:00/0000:00:06.0/net/eth1" primaryMAC="02:1a:1a:82:d4:ef" action="remove" subsystem="net"
+level=info time=2026-05-15T23:42:07Z msg="ENI Watcher: received udev event" primaryMAC="02:1a:1a:82:d4:ef" action="add" subsystem="net" interface="ecs-bridge" devpath="/devices/virtual/net/ecs-bridge"
+level=info time=2026-05-15T23:42:07Z msg="ENI Watcher: received udev event" primaryMAC="02:1a:1a:82:d4:ef" action="add" subsystem="net" interface="vethb99fce8a" devpath="/devices/virtual/net/vethb99fce8a"
+level=info time=2026-05-15T23:42:07Z msg="ENI Watcher: received udev event" primaryMAC="02:1a:1a:82:d4:ef" action="move" subsystem="net" interface="vethb99fce8a" devpath="/devices/virtual/net/vethb99fce8a"
+
+~ $ aws ec2 describe-network-interfaces \
+>   --filters "Name=attachment.instance-id,Values=$INSTANCE_ID" \
+>   --query "NetworkInterfaces[].[NetworkInterfaceId,InterfaceType,Status,Description]" \
+>   --output table \
+>   --no-cli-pager
+----------------------------------------------------------------------------------------------------------------------------------------
+|                                                       DescribeNetworkInterfaces                                                      |
+>   --no-cli-pager
+----------------------------------------------------------------------------------------------------------------------------------------
+|                                                       DescribeNetworkInterfaces                                                      |
++-----------------------+------------+---------+---------------------------------------------------------------------------------------+
+|  eni-0b70e02edc3d3567d|  interface |  in-use |                                                                                       |
+|  eni-0f257bfc9738dbfed|  interface |  in-use |  arn:aws:ecs:us-east-1:109653023631:attachment/9cb5bb98-3317-46cd-bc2b-58902ed0090e   |
++-----------------------+------------+---------+---------------------------------------------------------------------------------------+
+~ $ 
+~ $ echo "--- All branch/trunk ENIs in the account ---"
+--- All branch/trunk ENIs in the account ---
+~ $ 
+~ $ aws ec2 describe-network-interfaces \
+>   --filters "Name=interface-type,Values=trunk,branch" \
+>   --query "NetworkInterfaces[].[NetworkInterfaceId,InterfaceType,Status,Attachment.InstanceId]" \
+>   --output table \
+>   --no-cli-pager
+~ $ 
+~ $ 

@@ -1,34 +1,32 @@
 name: Infrastructure Lifecycle — Teardown / Startup
 
 # ── Purpose ──────────────────────────────────────────────────────────────────
-# Cost-management workflow that safely tears down expensive AWS resources
-# (~$50/month) while preserving ALL data, and restores them on demand.
+# Cost-management workflow for the Fargate platform.
+# Tears down the two billable resources between demos and restores them on
+# demand. Fargate itself is pay-per-second, so when ECS tasks are stopped
+# there is no compute cost — only the ALB and RDS incur idle charges.
 #
-# Resources DESTROYED (saves ~$50/month when idle):
+# Resources DESTROYED on teardown (saves ~$29/month when idle):
 #   - ALB                          (~$16/month)
-#   - EC2 t3.micro (ECS host)      (~$8/month)
-#   - RDS db.t3.micro              (~$13/month)
-#   - VPC Interface Endpoints ×3   (~$21/month)
+#   - RDS db.t3.micro              (~$13/month after the 12-month free tier)
+#   - ECS services scaled to 0    (Fargate per-second billing → $0)
 #
 # Resources PRESERVED (free / negligible cost):
 #   - VPC, subnets, security groups, route tables, IGW
-#   - ECS cluster, Cloud Map namespace
-#   - ECR image repositories
-#   - S3 buckets
-#   - CloudFront distribution (UI stays accessible, API calls will 502)
-#   - IAM roles and policies
-#   - SSM parameters
+#   - ECS cluster, Cloud Map namespace, Fargate capacity provider association
+#   - ECR image repositories (~$0.10/GB/month for storage)
+#   - S3 buckets, CloudFront distribution (UI stays accessible; API will 502)
+#   - IAM roles and policies, SSM parameters
 #
 # Data safety:
 #   TEARDOWN → takes a manual RDS snapshot before destroying RDS.
-#              Saves snapshot ID + ECS image tags to SSM for restore.
-#   STARTUP  → restores RDS from that snapshot via Terraform.
+#              Saves snapshot ID + last ECS image tags to SSM for restore.
+#   STARTUP  → restores RDS from the snapshot via Terraform.
 #              Re-deploys all ECS services using saved image tags.
 #
 # Zero error tolerance:
-#   Every step uses `set -euo pipefail`.
-#   Any failure stops the workflow immediately — no partial states.
-#   Teardown is sequenced so dependencies are removed before dependents.
+#   Every shell step uses `set -euo pipefail`.
+#   Teardown is sequenced so dependents are removed before dependencies.
 #   Startup is sequenced so infrastructure exists before services deploy.
 #
 # Prerequisites:
@@ -38,8 +36,8 @@ name: Infrastructure Lifecycle — Teardown / Startup
 #
 # Usage:
 #   Actions → Infrastructure Lifecycle → Run workflow
-#   action = teardown  →  snapshots DB, destroys expensive resources
-#   action = startup   →  recreates resources, restores DB, redeploys services
+#   action = teardown  →  snapshots DB, destroys ALB + RDS, stops Fargate
+#   action = startup   →  recreates ALB + RDS, restores DB, redeploys services
 #   confirm            →  type the environment name exactly (e.g. dev) as a safety check
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -75,9 +73,6 @@ permissions:
 jobs:
 
   # ── Safety gate ─────────────────────────────────────────────────────────────
-  # Runs before everything else. Fails fast if the confirmation does not match.
-  # This prevents accidental teardowns from misclicks.
-
   preflight:
     name: Safety check
     runs-on: ubuntu-latest
@@ -94,20 +89,15 @@ jobs:
 
   # ── TEARDOWN ─────────────────────────────────────────────────────────────────
   # Sequence (strict, fail-fast):
-  #   1. Save ECS image tags → SSM  (so startup can redeploy the same images)
-  #   2. Scale ECS services → 0     (graceful drain before deleting)
+  #   1. Save current ECS image tags → SSM    (so startup can redeploy the same images)
+  #   2. Scale ECS services → 0               (Fargate stops billing on running tasks)
   #   3. Wait for tasks to drain
-  #   4. Delete ECS services        (so ALB target groups can be destroyed)
-  #   5. Take RDS manual snapshot   (data backup before DB is destroyed)
-  #   6. Wait for snapshot ready
-  #   7. Save snapshot ID → SSM
-  #   8. terraform destroy (in dependency order):
-  #       a. cluster capacity providers association
-  #       b. capacity provider + ASG + launch template
-  #       c. RDS instance
-  #       d. ALB listener rules + listener + target groups + ALB
-  #       e. VPC Interface endpoints (ECR API, ECR DKR, CloudWatch Logs)
-  #   9. Verify all expensive resources are gone
+  #   4. Delete ECS services                  (so ALB target groups can be destroyed)
+  #   5. Take an RDS manual snapshot          (data backup before DB is destroyed)
+  #   6. Wait for snapshot ready, save ID → SSM
+  #   7. terraform destroy (in dependency order):
+  #       a. RDS instance
+  #       b. ALB listener rules → listener → target groups → ALB
 
   teardown:
     name: "Teardown — ${{ inputs.environment }}"
@@ -146,7 +136,7 @@ jobs:
           echo "snapshot_id=${PROJECT}-${ENV}-$(date +%Y%m%d%H%M%S)"  >> $GITHUB_OUTPUT
           echo "env=${ENV}"                                            >> $GITHUB_OUTPUT
 
-      # ── Step 2: Persist image tags before anything is deleted ─────────────────
+      # ── Step 2: Persist image tags before anything is deleted ────────────────
       - name: Save current ECS image tags to SSM
         run: |
           set -euo pipefail
@@ -210,7 +200,7 @@ jobs:
             fi
           done
 
-      - name: Wait for ECS tasks to drain (max 4 min)
+      - name: Wait for Fargate tasks to drain (max 4 min)
         run: |
           set -euo pipefail
           CLUSTER="${{ steps.ids.outputs.cluster }}"
@@ -307,25 +297,7 @@ jobs:
         working-directory: infra
         run: terraform init -input=false
 
-      - name: "Destroy [1/5] — ECS cluster capacity provider association"
-        working-directory: infra
-        run: |
-          terraform destroy -auto-approve -input=false \
-            -target=aws_ecs_cluster_capacity_providers.main
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-
-      - name: "Destroy [2/5] — ECS capacity provider, ASG and launch template"
-        working-directory: infra
-        run: |
-          terraform destroy -auto-approve -input=false \
-            -target=aws_ecs_capacity_provider.main \
-            -target=aws_autoscaling_group.ecs \
-            -target=aws_launch_template.ecs
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-
-      - name: "Destroy [3/5] — RDS instance (data already snapshotted)"
+      - name: "Destroy [1/2] — RDS instance (data already snapshotted)"
         working-directory: infra
         run: |
           terraform destroy -auto-approve -input=false \
@@ -333,7 +305,7 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      - name: "Destroy [4/5] — ALB (rules → listener → target groups → ALB)"
+      - name: "Destroy [2/2] — ALB (rules → listener → target groups → ALB)"
         working-directory: infra
         run: |
           terraform destroy -auto-approve -input=false \
@@ -342,16 +314,6 @@ jobs:
             -target='aws_lb_target_group.services["bff"]' \
             -target='aws_ssm_parameter.tg_arn["bff"]' \
             -target=aws_lb.main
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-
-      - name: "Destroy [5/5] — VPC Interface endpoints (ECR API, ECR DKR, CloudWatch Logs)"
-        working-directory: infra
-        run: |
-          terraform destroy -auto-approve -input=false \
-            -target=aws_vpc_endpoint.ecr_api \
-            -target=aws_vpc_endpoint.ecr_dkr \
-            -target=aws_vpc_endpoint.logs
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
@@ -375,17 +337,6 @@ jobs:
             echo "OK  : ALB destroyed"
           fi
 
-          ASG=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-names "${PROJECT}-ecs-asg-${ENV}" \
-            --query                    'AutoScalingGroups[0].AutoScalingGroupName' \
-            --output                   text 2>/dev/null || echo "")
-          if [ -n "$ASG" ] && [ "$ASG" != "None" ]; then
-            echo "FAIL: ASG still exists — ${ASG}"
-            ERRORS=$((ERRORS+1))
-          else
-            echo "OK  : ASG destroyed"
-          fi
-
           DB=$(aws rds describe-db-instances \
             --db-instance-identifier "${PROJECT}-mysql-${ENV}" \
             --query                  'DBInstances[0].DBInstanceStatus' \
@@ -397,15 +348,17 @@ jobs:
             echo "OK  : RDS destroyed"
           fi
 
-          VPCE_COUNT=$(aws ec2 describe-vpc-endpoints \
-            --filters "Name=tag:Name,Values=${PROJECT}-vpce-ecr-*-${ENV}" \
-            --query   'length(VpcEndpoints[?State!=`deleted`])' \
-            --output  text 2>/dev/null || echo "0")
-          if [ "$VPCE_COUNT" != "0" ]; then
-            echo "FAIL: $VPCE_COUNT VPC Interface endpoint(s) still exist"
+          # Sanity check: confirm no Fargate tasks are still billing.
+          RUNNING_TASKS=$(aws ecs list-tasks \
+            --cluster        "${PROJECT}-${ENV}" \
+            --desired-status RUNNING \
+            --query          'length(taskArns)' \
+            --output         text 2>/dev/null || echo "0")
+          if [ "$RUNNING_TASKS" != "0" ]; then
+            echo "FAIL: ${RUNNING_TASKS} Fargate task(s) still running"
             ERRORS=$((ERRORS+1))
           else
-            echo "OK  : VPC Interface endpoints destroyed"
+            echo "OK  : No Fargate tasks running"
           fi
 
           if [ "$ERRORS" -gt "0" ]; then
@@ -415,7 +368,7 @@ jobs:
           fi
 
           echo ""
-          echo "SUCCESS: All expensive resources confirmed destroyed."
+          echo "SUCCESS: All billable resources confirmed destroyed."
 
       - name: Teardown summary
         if: always()
@@ -427,8 +380,8 @@ jobs:
           echo " Snapshot ID : ${{ steps.ids.outputs.snapshot_id }}"
           echo " SSM path    : /orderflow/${{ inputs.environment }}/lifecycle/latest-snapshot"
           echo ""
-          echo " Preserved: VPC, subnets, security groups, ECS cluster,"
-          echo "   Cloud Map, ECR repos, S3, CloudFront, IAM, SSM params."
+          echo " Preserved: VPC, subnets, security groups, ECS cluster + capacity"
+          echo "   provider, Cloud Map, ECR repos, S3, CloudFront, IAM, SSM params."
           echo ""
           echo " To restart: Run this workflow with action=startup"
           echo "=============================="
@@ -437,13 +390,14 @@ jobs:
   # ── STARTUP ──────────────────────────────────────────────────────────────────
   # Sequence (strict, fail-fast):
   #   1. Load snapshot ID + image tags from SSM
-  #   2. terraform plan  (with snapshot_identifier if snapshot exists)
-  #   3. terraform apply (recreates: VPC endpoints, EC2, capacity provider, RDS, ALB)
-  #      Terraform waits for RDS to reach 'available' before completing.
-  #   4. Wait for EC2 instance to register with ECS cluster
-  #   5. Deploy each service via render.py + apply.py (using saved image tags)
-  #   6. Wait for all ECS services to stabilize
-  #   7. Verify all resources are healthy
+  #   2. terraform plan / apply  (recreates RDS-from-snapshot + ALB)
+  #   3. Deploy each service via render.py + apply.py (using saved image tags)
+  #   4. Wait for all Fargate services to stabilize
+  #   5. Verify all resources are healthy
+  #
+  # Note: there is no "wait for EC2 to register" step (as with the old EC2
+  # launch type) — Fargate has no container instances; AWS provisions task
+  # capacity on demand the moment a service requests a desired count > 0.
 
   startup:
     name: "Startup — ${{ inputs.environment }}"
@@ -489,7 +443,7 @@ jobs:
           echo "db_instance=${PROJECT}-mysql-${ENV}" >> $GITHUB_OUTPUT
           echo "env=${ENV}" >> $GITHUB_OUTPUT
 
-      # ── Step 2: Load saved state from SSM ───────────────────────────────────
+      # ── Step 2: Load saved state from SSM ────────────────────────────────────
       - name: Load snapshot ID and image tags from SSM
         id: ssm
         run: |
@@ -514,7 +468,6 @@ jobs:
               --query  'Parameter.Value' \
               --output text 2>/dev/null || echo "")
 
-            # Convert service name to valid env var name (bff, order_service, invoice_service)
             VAR=$(echo "$SERVICE" | tr '-' '_')
             echo "${VAR}_tag=${TAG}" >> $GITHUB_OUTPUT
 
@@ -529,11 +482,6 @@ jobs:
         run: |
           set -euo pipefail
           MISSING=0
-
-          for VAR_NAME in bff_tag order_service_tag invoice_service_tag; do
-            # Check via the outputs step
-            echo "Checking $VAR_NAME ..."
-          done
 
           BFF_TAG="${{ steps.ssm.outputs.bff_tag }}"
           ORDER_TAG="${{ steps.ssm.outputs.order_service_tag }}"
@@ -555,7 +503,7 @@ jobs:
 
           echo "All image tags verified."
 
-      # ── Step 3: Terraform — recreate infrastructure ──────────────────────────
+      # ── Step 3: Terraform — recreate ALB + RDS ───────────────────────────────
       - name: Terraform Init
         working-directory: infra
         run: terraform init -input=false
@@ -586,7 +534,7 @@ jobs:
             | head -60 \
             || true
 
-      - name: Terraform Apply — recreate all infrastructure
+      - name: Terraform Apply — recreate ALB + RDS
         working-directory: infra
         run: |
           echo "Applying plan... RDS restore may take 10-15 minutes."
@@ -594,34 +542,11 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      # ── Step 4: Wait for EC2 instance to join ECS cluster ───────────────────
-      - name: Wait for EC2 to register with ECS cluster (max 10 min)
-        run: |
-          set -euo pipefail
-          CLUSTER="${{ steps.ids.outputs.cluster }}"
-          echo "Waiting for EC2 container instance to register ..."
-
-          for i in $(seq 1 40); do
-            COUNT=$(aws ecs list-container-instances \
-              --cluster "$CLUSTER" \
-              --status  ACTIVE \
-              --query   'length(containerInstanceArns)' \
-              --output  text 2>/dev/null || echo "0")
-
-            echo "Registered instances: $COUNT  (check $i/40)"
-
-            [ "$COUNT" -ge "1" ] && echo "EC2 instance registered with ECS cluster." && break
-            [ "$i"     = "40" ] && echo "FAIL: Timed out — no EC2 instance registered." && exit 1
-
-            sleep 15
-          done
-
-      # ── Step 5: Deploy all services ──────────────────────────────────────────
-      # We re-run render.py + apply.py for each service. This:
+      # ── Step 4: Deploy all services ──────────────────────────────────────────
+      # Re-run render.py + apply.py for each service. This:
       #   - recreates ECS services (deleted during teardown)
-      #   - wires them to the NEW target group ARNs (ALB was recreated, new ARNs)
+      #   - wires them to the NEW target group ARNs (ALB was recreated)
       #   - uses the exact same image tags that were running before teardown
-
       - name: Deploy services using saved image tags
         run: |
           set -euo pipefail
@@ -658,8 +583,8 @@ jobs:
           deploy_service "invoice-service" "$INVOICE_TAG"
           deploy_service "bff"             "$BFF_TAG"
 
-      # ── Step 6: Wait for services to reach steady state ─────────────────────
-      - name: Wait for ECS services to stabilize (max 10 min each)
+      # ── Step 5: Wait for services to reach steady state ──────────────────────
+      - name: Wait for Fargate services to stabilize (max 10 min each)
         run: |
           set -euo pipefail
           CLUSTER="${{ steps.ids.outputs.cluster }}"
@@ -685,7 +610,7 @@ jobs:
             --services "${SERVICES[@]}"
           echo "All services stable."
 
-      # ── Step 7: Verify startup ───────────────────────────────────────────────
+      # ── Step 6: Verify startup ───────────────────────────────────────────────
       - name: Verify all resources are healthy
         run: |
           set -euo pipefail
@@ -716,17 +641,20 @@ jobs:
             ERRORS=$((ERRORS+1))
           fi
 
-          INSTANCES=$(aws ecs list-container-instances \
-            --cluster "${PROJECT}-${ENV}" \
-            --status  ACTIVE \
-            --query   'length(containerInstanceArns)' \
-            --output  text 2>/dev/null || echo "0")
-          if [ "$INSTANCES" -ge "1" ]; then
-            echo "OK  : $INSTANCES EC2 instance(s) registered in ECS"
-          else
-            echo "FAIL: No EC2 instances registered in ECS cluster"
-            ERRORS=$((ERRORS+1))
-          fi
+          # Check that at least one task per service is actually running.
+          for SERVICE in bff order-service invoice-service; do
+            RUNNING=$(aws ecs describe-services \
+              --cluster  "${PROJECT}-${ENV}" \
+              --services "$SERVICE" \
+              --query    'services[0].runningCount' \
+              --output   text 2>/dev/null || echo "0")
+            if [ "$RUNNING" -ge "1" ]; then
+              echo "OK  : $SERVICE has $RUNNING running task(s)"
+            else
+              echo "FAIL: $SERVICE has no running tasks"
+              ERRORS=$((ERRORS+1))
+            fi
+          done
 
           if [ "$ERRORS" -gt "0" ]; then
             echo ""
@@ -735,7 +663,7 @@ jobs:
           fi
 
           echo ""
-          echo "SUCCESS: All resources verified — infrastructure is up and running."
+          echo "SUCCESS: All resources verified — platform is up and running."
 
       - name: Startup summary
         run: |

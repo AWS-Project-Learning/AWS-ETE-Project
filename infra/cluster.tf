@@ -1,13 +1,20 @@
 # ── ECS Cluster — Platform Layer ──────────────────────────────────────────────
-# This file contains cluster-level platform resources only.
+# Cluster-level platform resources only.
 # Per-service resources (task definitions, ECS services, log groups,
-# Cloud Map service entries, IAM task roles) are created by the deploy pipeline
-# reading deploy/{service}/service.yaml — not by Terraform.
+# Cloud Map service entries, IAM task roles) are created by the deploy
+# pipeline reading deploy/{service}/service.yaml.
+#
+# Launch type: Fargate (serverless ECS).
+#   No EC2 instances, no Auto Scaling Group, no Launch Template, no ECS agent
+#   to manage. AWS provisions a managed micro-VM per task, charges per second
+#   only while the task runs.
 #
 # Terraform → Pipeline handoff via SSM:
-#   /orderflow/{env}/infra/cluster-name          → pipeline uses to create/update ECS services
-#   /orderflow/{env}/infra/cloudmap-namespace-id → pipeline uses to register Cloud Map entries
-#   /orderflow/{env}/infra/execution-role-arn    → pipeline injects into task definitions
+#   /orderflow/{env}/infra/cluster-name           apply.py uses to create/update ECS services
+#   /orderflow/{env}/infra/cloudmap-namespace-id  apply.py uses to register Cloud Map entries
+#   /orderflow/{env}/infra/execution-role-arn     apply.py injects into task definitions
+#   /orderflow/{env}/infra/task-subnet-id         apply.py uses for awsvpc networkConfiguration
+#   /orderflow/{env}/infra/ecs-sg-id              apply.py uses for awsvpc networkConfiguration
 
 # ── ECS Cluster ───────────────────────────────────────────────────────────────
 
@@ -24,38 +31,31 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
-# ── Capacity Provider ─────────────────────────────────────────────────────────
-
-resource "aws_ecs_capacity_provider" "main" {
-  name = "${var.project}-cap-${var.environment}"
-
-  auto_scaling_group_provider {
-    auto_scaling_group_arn = aws_autoscaling_group.ecs.arn
-
-    managed_scaling {
-      status          = "ENABLED"
-      target_capacity = 80
-    }
-  }
-}
-
+# ── Fargate Capacity Providers ────────────────────────────────────────────────
+# FARGATE        — on-demand serverless ECS (used here).
+# FARGATE_SPOT   — up to 70% cheaper, but tasks can be interrupted with 2-min
+#                  notice. Acceptable for stateless web services in dev/sit;
+#                  not enabled by default. To opt in: add "FARGATE_SPOT" to
+#                  capacity_providers and define a strategy with a non-zero
+#                  weight.
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name       = aws_ecs_cluster.main.name
-  capacity_providers = [aws_ecs_capacity_provider.main.name]
+  capacity_providers = ["FARGATE"]
 
   default_capacity_provider_strategy {
-    capacity_provider = aws_ecs_capacity_provider.main.name
+    capacity_provider = "FARGATE"
     weight            = 1
+    base              = 1
   }
 }
 
 # ── Cloud Map — Private DNS Namespace ─────────────────────────────────────────
 # Platform resource — created once, shared by all services.
-# Namespace: orderflow-dev.local
+# Namespace: orderflow-{env}.local
 #
 # Services register themselves under this namespace via the deploy pipeline.
-# deploy.py reads the namespace ID from SSM and creates the Cloud Map
-# service entry (order-service.orderflow-dev.local) during each service deploy.
+# apply.py reads the namespace ID from SSM and creates the Cloud Map service
+# entry (order-service.orderflow-dev.local) during each service deploy.
 
 resource "aws_service_discovery_private_dns_namespace" "main" {
   name = "${var.project}-${var.environment}.local"
@@ -69,8 +69,6 @@ resource "aws_service_discovery_private_dns_namespace" "main" {
 # ── SSM Handoff Parameters ────────────────────────────────────────────────────
 # Terraform writes these after creating platform resources.
 # The deploy pipeline reads them — no hardcoded values in pipeline scripts.
-#
-# Pattern: /orderflow/{env}/infra/{resource}
 
 resource "aws_ssm_parameter" "cluster_name" {
   name  = "/orderflow/${var.environment}/infra/cluster-name"
@@ -94,4 +92,24 @@ resource "aws_ssm_parameter" "execution_role_arn" {
   value = aws_iam_role.ecs_execution.arn
 
   tags = { Name = "infra-execution-role-arn-${var.environment}" }
+}
+
+# Fargate task placement: public subnet + public IP so tasks reach ECR /
+# CloudWatch / SSM via the IGW (no VPC endpoints, no NAT, ~$0 networking cost).
+# The ECS security group only allows inbound from the ALB SG, so tasks remain
+# unreachable from the public internet despite having a public IP.
+resource "aws_ssm_parameter" "task_subnet_id" {
+  name  = "/orderflow/${var.environment}/infra/task-subnet-id"
+  type  = "String"
+  value = aws_subnet.public_a.id
+
+  tags = { Name = "infra-task-subnet-id-${var.environment}" }
+}
+
+resource "aws_ssm_parameter" "ecs_security_group" {
+  name  = "/orderflow/${var.environment}/infra/ecs-sg-id"
+  type  = "String"
+  value = aws_security_group.ecs.id
+
+  tags = { Name = "infra-ecs-sg-id-${var.environment}" }
 }

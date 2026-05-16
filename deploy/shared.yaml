@@ -15,17 +15,22 @@ ecr_registry:   "109653023631.dkr.ecr.us-east-1.amazonaws.com"
 # deploy.py reads the ARN from SSM: /orderflow/{env}/infra/execution-role-arn
 execution_role: ecs-task-execution-role
 
-# Network mode for all EC2-based services.
-# awsvpc gives each task its own ENI + private IP → Cloud Map Type A records work
-# → standard DNS resolution works (http://order-service.orderflow-dev.local:8001).
-# ENI trunking (managed by Terraform in ecs-settings.tf) removes the ENI limit
-# on small instances so all 3 services can run on a single t3.micro.
+# Network mode for all Fargate services.
+# awsvpc is the only mode Fargate supports — each task gets its own ENI and
+# private IP, which Cloud Map registers as an A record. Standard DNS resolution
+# works (http://order-service.orderflow-dev.local:8001).
 network_mode: awsvpc
 
 # Default compute — services can override in their values-{env}.yaml
+# Fargate has FIXED valid CPU/memory combinations (not arbitrary):
+#   cpu=256  → memory must be 512, 1024, or 2048
+#   cpu=512  → memory must be 1024, 2048, 3072, or 4096
+#   cpu=1024 → memory must be 2048 .. 8192 (in 1024 steps)
+#   ... see render.py comment for the link to the full table.
+# 256 + 512 is the smallest valid combo and the cheapest option (~$0.012/hr per task).
 defaults:
   cpu:                    256
-  memory:                 256
+  memory:                 512
   desired_count:          1
   health_check_interval:  30
   health_check_timeout:   5

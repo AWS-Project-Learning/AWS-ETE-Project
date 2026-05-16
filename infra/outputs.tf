@@ -38,8 +38,8 @@ output "vpc_id" {
 }
 
 output "subnet_public_ids" {
-  description = "Public subnet IDs (ALB + EC2)"
-  value       = [aws_subnet.public.id, aws_subnet.public_b.id]
+  description = "Public subnet IDs (ALB + Fargate tasks)"
+  value       = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 }
 
 output "subnet_private_db_ids" {

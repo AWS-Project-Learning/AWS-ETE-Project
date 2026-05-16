@@ -4,8 +4,8 @@
 #
 # After creating each target group, Terraform writes its ARN to SSM.
 # The deploy pipeline reads the ARN from SSM and wires the ECS service to it.
-# This is the clean handoff point — Terraform and the deploy pipeline
-# never directly depend on each other.
+# Clean handoff — Terraform and the deploy pipeline never directly depend on
+# each other.
 #
 # Path written to SSM: /orderflow/{env}/infra/tg-{service}-arn
 # Referenced in service.yaml:
@@ -19,7 +19,7 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.public.id, aws_subnet.public_b.id]
+  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
   enable_deletion_protection = false
 
@@ -30,11 +30,10 @@ resource "aws_lb" "main" {
 
 # ── Target Groups ─────────────────────────────────────────────────────────────
 # Created per entry in local.alb_routing (only BFF currently).
-# target_type = "ip" because tasks run in awsvpc mode — each task has its own
-# ENI/IP, so ALB targets the task IP directly on the container port instead of
-# the EC2 instance + dynamic host port (which would require target_type=instance).
+# target_type = "ip" is required for Fargate (awsvpc mode) — each task has its
+# own ENI/IP, so the ALB targets task IPs directly on the container port.
 #
-# A name_prefix + create_before_destroy is used so changing the name (or any
+# name_prefix + create_before_destroy is used so changing the name (or any
 # immutable attribute like target_type) does a smooth rotation: new TG is
 # created → SSM param flips → listener rule swaps → old TG is removed.
 
@@ -68,9 +67,9 @@ resource "aws_lb_target_group" "services" {
 }
 
 # ── SSM Handoff — Target Group ARNs ──────────────────────────────────────────
-# deploy.py reads these to wire ECS services to the correct target group.
-# The service.yaml declares: load_balancer.target_group_ssm = /orderflow/dev/infra/tg-bff-arn
-# deploy.py fetches the ARN from SSM and passes it to ecs create-service.
+# apply.py reads these to wire ECS services to the correct target group.
+# service.yaml declares: load_balancer.target_group_ssm = /orderflow/dev/infra/tg-bff-arn
+# apply.py fetches the ARN from SSM and passes it to ecs create-service.
 
 resource "aws_ssm_parameter" "tg_arn" {
   for_each = local.alb_routing
