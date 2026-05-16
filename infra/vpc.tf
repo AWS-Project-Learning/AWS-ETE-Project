@@ -44,6 +44,17 @@ resource "aws_internet_gateway" "main" {
 #   - Required by the ALB (it must live in at least 2 AZs)
 #   - Fargate tasks are placed in subnet_a only (single-task, no HA per user spec)
 
+# Rename history: this used to be `aws_subnet.public`. The `moved` block tells
+# Terraform that the resource was renamed, not destroyed and recreated. Without
+# this, a fresh apply against existing AWS state would try to create a new
+# subnet with the same CIDR (10.0.1.0/24) before destroying the old one and
+# fail with InvalidSubnet.Conflict. The `moved` block is honoured during plan
+# and rewrites the state reference automatically.
+moved {
+  from = aws_subnet.public
+  to   = aws_subnet.public_a
+}
+
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
