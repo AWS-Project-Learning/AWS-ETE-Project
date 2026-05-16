@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, CheckCircle, Circle, Download } from 'lucide-react'
-import StatusBadge from '../components/StatusBadge'
-import { getOrder } from '../api/client'
+import { ArrowLeft, Download } from 'lucide-react'
+import StatusSelect from '../components/StatusSelect'
+import { getOrder, updateOrderStatus, updateOrderPayment } from '../api/client'
+
+const STATUS_OPTIONS  = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+const PAYMENT_OPTIONS = ['Unpaid', 'Paid', 'Refunded']
 
 export default function OrderDetail() {
   const { id } = useParams()
@@ -10,6 +13,8 @@ export default function OrderDetail() {
   const [order,   setOrder]   = useState(null)
   const [loading, setLoading] = useState(true)
   const [error,   setError]   = useState(null)
+  const [saving,    setSaving]    = useState(null)   // 'status' | 'payment' | null
+  const [updateErr, setUpdateErr] = useState(null)
 
   useEffect(() => {
     getOrder(id)
@@ -17,6 +22,31 @@ export default function OrderDetail() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  // Optimistic update: flip the field immediately, call API, roll back on failure.
+  // Keeps the UI snappy even if the BFF/order-service is slow.
+  const updateField = async (field, apiCall, newValue) => {
+    if (!order || saving) return
+    const prev = order[field]
+    if (prev === newValue) return
+
+    setSaving(field)
+    setUpdateErr(null)
+    setOrder(o => ({ ...o, [field]: newValue }))
+
+    try {
+      const updated = await apiCall(order.id, newValue)
+      setOrder(updated)
+    } catch (e) {
+      setOrder(o => ({ ...o, [field]: prev }))
+      setUpdateErr(e.message || `Failed to update ${field}`)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const onChangeStatus  = (v) => updateField('status',         updateOrderStatus,  v)
+  const onChangePayment = (v) => updateField('payment_status', updateOrderPayment, v)
 
   if (loading) return <div className="p-8 text-gray-400">Loading order…</div>
   if (error)   return (
@@ -40,12 +70,23 @@ export default function OrderDetail() {
           <p className="text-gray-400 text-sm mt-1">Placed on {order.created_at?.split('T')[0]}</p>
         </div>
         <div className="flex items-center gap-3">
-          <StatusBadge status={order.status} />
+          <StatusSelect
+            value={order.status}
+            options={STATUS_OPTIONS}
+            onChange={onChangeStatus}
+            saving={saving === 'status'}
+          />
           <button className="flex items-center gap-2 border border-gray-200 text-gray-600 text-sm px-4 py-2 rounded-xl hover:bg-gray-50 transition-colors">
             <Download size={14} /> Invoice
           </button>
         </div>
       </div>
+
+      {updateErr && (
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          {updateErr}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left — items + totals */}
@@ -101,9 +142,14 @@ export default function OrderDetail() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <h2 className="font-semibold text-gray-900 mb-4">Payment</h2>
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
+              <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-400">Status</span>
-                <StatusBadge status={order.payment_status} />
+                <StatusSelect
+                  value={order.payment_status}
+                  options={PAYMENT_OPTIONS}
+                  onChange={onChangePayment}
+                  saving={saving === 'payment'}
+                />
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-400">Order Total</span>

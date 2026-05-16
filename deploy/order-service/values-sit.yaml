@@ -8,8 +8,16 @@ compute:
 env:
   ENV:       sit
   LOG_LEVEL: info
-  REDIS_URL: "redis://localhost:6379"
 
 env_secrets:
   DATABASE_URL:
     ssm_path: /orderflow/sit/order-service/db-url
+
+  # Published to after every successful order commit. Read by events.py.
+  ORDER_CREATED_TOPIC_ARN:
+    ssm_path: /orderflow/sit/infra/order-created-topic-arn
+
+  # Published to whenever the order status changes (Pending → Shipped, etc.).
+  # The Lambda subscribed to it filters out noisy intermediate statuses.
+  ORDER_STATUS_UPDATED_TOPIC_ARN:
+    ssm_path: /orderflow/sit/infra/order-status-updated-topic-arn

@@ -8,3 +8,6 @@
 *.tfvars.local
 override.tf
 override.tf.json
+
+# Lambda zips built by the archive_file data source at apply time
+*.zip

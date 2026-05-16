@@ -9,6 +9,12 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+    # archive provider is used by infra/email.tf to zip the email-receipt
+    # Lambda's source code at apply time (data "archive_file").
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.4"
+    }
   }
 
   # Remote state — stores terraform.tfstate in S3 instead of your laptop.

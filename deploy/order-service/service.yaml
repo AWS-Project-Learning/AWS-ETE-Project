@@ -30,6 +30,16 @@ iam:
       resources:
         - "arn:aws:ssm:{region}:{account_id}:parameter/orderflow/{env}/order-service/*"
 
+    # Publish order-lifecycle events to SNS. The topics themselves are created
+    # by Terraform (infra/email.tf). Locked to JUST our two topics — the
+    # service cannot publish anywhere else in the account.
+    - sid: SNSPublishOrderEvents
+      actions:
+        - "sns:Publish"
+      resources:
+        - "arn:aws:sns:{region}:{account_id}:orderflow-{env}-order-created"
+        - "arn:aws:sns:{region}:{account_id}:orderflow-{env}-order-status-updated"
+
 tags:
   tier: backend
   component: orders

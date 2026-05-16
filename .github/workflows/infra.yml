@@ -3,16 +3,22 @@ name: Infrastructure — Terraform
 on:
   # Auto-plan on every push/PR that touches infra/ — shows what will change.
   # Apply is intentionally NOT triggered automatically; run it manually below.
+  #
+  # The email-receipt Lambda is also covered: its source code is zipped by
+  # the `archive_file` data source in infra/email.tf, so a code-only change
+  # produces a Terraform plan (new source_code_hash → Lambda redeploy).
   push:
     branches:
       - main
     paths:
       - "infra/**"
+      - "backend-services/email-receipt-lambda/**"
   pull_request:
     branches:
       - main
     paths:
       - "infra/**"
+      - "backend-services/email-receipt-lambda/**"
 
   # Manual trigger — use this to actually apply or destroy.
   # Go to Actions → Infrastructure — Terraform → Run workflow.

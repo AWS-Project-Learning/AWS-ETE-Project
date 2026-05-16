@@ -1,0 +1,6 @@
+# No external dependencies — boto3 is built into the AWS Lambda Python runtime.
+# Listing it here would only bloat the deployment zip.
+#
+# If we ever need a third-party library (e.g. jinja2 for templates), pin it
+# here and add a build step to `pip install -r requirements.txt -t .` before
+# zipping the lambda directory.
