@@ -9,7 +9,7 @@ name: Infrastructure Lifecycle — Teardown / Startup
 # Resources DESTROYED on teardown (saves ~$29/month when idle):
 #   - ALB                          (~$16/month)
 #   - RDS db.t3.micro              (~$13/month after the 12-month free tier)
-#   - ECS services scaled to 0    (Fargate per-second billing → $0)
+#   - ECS services scaled to 0     (Fargate per-second billing → $0)
 #
 # Resources PRESERVED (free / negligible cost):
 #   - VPC, subnets, security groups, route tables, IGW
@@ -29,10 +29,18 @@ name: Infrastructure Lifecycle — Teardown / Startup
 #   Teardown is sequenced so dependents are removed before dependencies.
 #   Startup is sequenced so infrastructure exists before services deploy.
 #
+# Approval gates:
+#   Both flows are split into PLAN → APPROVE → APPLY jobs.
+#   The plan job is read-only and runs immediately — it prints exactly what the
+#   apply job will do. The apply job is bound to the `infra-approver-list`
+#   GitHub environment, so it pauses for a human reviewer to click "Approve"
+#   before any destructive action runs. If you reject the deployment, nothing
+#   destructive happens — the plan is purely informational.
+#
 # Prerequisites:
 #   GitHub repo variable : AWS_ROLE_ARN
 #   GitHub repo secret   : DB_PASSWORD
-#   GitHub environment   : infra-approver-list  (required reviewers)
+#   GitHub environment   : infra-approver-list  (required reviewers configured)
 #
 # Usage:
 #   Actions → Infrastructure Lifecycle → Run workflow
@@ -87,22 +95,122 @@ jobs:
           echo "PASS: Confirmation matches environment '${{ inputs.environment }}'."
 
 
-  # ── TEARDOWN ─────────────────────────────────────────────────────────────────
-  # Sequence (strict, fail-fast):
-  #   1. Save current ECS image tags → SSM    (so startup can redeploy the same images)
-  #   2. Scale ECS services → 0               (Fargate stops billing on running tasks)
-  #   3. Wait for tasks to drain
-  #   4. Delete ECS services                  (so ALB target groups can be destroyed)
-  #   5. Take an RDS manual snapshot          (data backup before DB is destroyed)
-  #   6. Wait for snapshot ready, save ID → SSM
-  #   7. terraform destroy (in dependency order):
-  #       a. RDS instance
-  #       b. ALB listener rules → listener → target groups → ALB
-
-  teardown:
-    name: "Teardown — ${{ inputs.environment }}"
+  # ── TEARDOWN PLAN (read-only) ────────────────────────────────────────────────
+  # No `environment:` here — this job runs immediately to show the reviewer
+  # exactly what the apply job will do. Nothing is modified.
+  teardown-plan:
+    name: "Teardown plan — ${{ inputs.environment }}"
     if: inputs.action == 'teardown'
     needs: preflight
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Resolve resource identifiers
+        id: ids
+        run: |
+          set -euo pipefail
+          ENV="${{ inputs.environment }}"
+          PROJECT="orderflow"
+          echo "cluster=${PROJECT}-${ENV}"          >> $GITHUB_OUTPUT
+          echo "db_instance=${PROJECT}-mysql-${ENV}" >> $GITHUB_OUTPUT
+
+      # ── Read-only inventory of what will be touched ─────────────────────────
+      - name: "Inventory — ECS services + image tags"
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.ids.outputs.cluster }}"
+          echo "=============================================="
+          echo " ECS SERVICES (will be scaled to 0 then deleted)"
+          echo "=============================================="
+          for SERVICE in bff order-service invoice-service; do
+            INFO=$(aws ecs describe-services \
+              --cluster  "$CLUSTER" \
+              --services "$SERVICE" \
+              --query    'services[0].[status,desiredCount,runningCount,taskDefinition]' \
+              --output   text 2>/dev/null || echo "MISSING")
+            echo "  $SERVICE -> $INFO"
+          done
+
+      - name: "Inventory — RDS instance (will be snapshotted then destroyed)"
+        run: |
+          set -euo pipefail
+          DB="${{ steps.ids.outputs.db_instance }}"
+          STATUS=$(aws rds describe-db-instances \
+            --db-instance-identifier "$DB" \
+            --query                  'DBInstances[0].[DBInstanceStatus,DBInstanceClass,AllocatedStorage]' \
+            --output                 text 2>/dev/null || echo "not-found")
+          echo "  $DB -> $STATUS"
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      # Produce a destroy plan for the same -targets the apply job will use,
+      # so the reviewer sees every Terraform-managed resource that will go.
+      - name: "Generate destroy plan"
+        working-directory: infra
+        run: |
+          set -euo pipefail
+          terraform plan -destroy -input=false -no-color \
+            -target=aws_db_instance.main \
+            -target='aws_lb_listener_rule.services["bff"]' \
+            -target=aws_lb_listener.http \
+            -target='aws_lb_target_group.services["bff"]' \
+            -target='aws_ssm_parameter.tg_arn["bff"]' \
+            -target=aws_lb.main \
+            -out=destroy.tfplan
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Destroy plan — human-readable summary"
+        working-directory: infra
+        run: |
+          set -euo pipefail
+          echo "=============================================="
+          echo " TERRAFORM RESOURCES TO BE DESTROYED"
+          echo "=============================================="
+          terraform show -no-color destroy.tfplan \
+            | grep -E "^\s*#|^Plan:" \
+            || true
+          echo ""
+          echo "=============================================="
+          echo " WHAT HAPPENS NEXT"
+          echo "=============================================="
+          echo " 1. The 'Teardown apply' job is waiting for human approval."
+          echo " 2. Open this run in the GitHub UI → 'Review deployments'"
+          echo "    → Approve to proceed, or Reject to abort safely."
+          echo " 3. On approve: image tags are saved, services drained &"
+          echo "    deleted, RDS snapshotted, then the resources above are"
+          echo "    destroyed."
+          echo " 4. On reject: nothing is modified — the plan is discarded."
+          echo "=============================================="
+
+
+  # ── TEARDOWN APPLY (destructive, gated by environment approval) ──────────────
+  # The `environment: infra-approver-list` line is the approval gate.
+  # GitHub will pause this job and require a listed reviewer to approve
+  # before any step here runs.
+  teardown-apply:
+    name: "Teardown apply — ${{ inputs.environment }}"
+    if: inputs.action == 'teardown'
+    needs: [preflight, teardown-plan]
     runs-on: ubuntu-latest
     environment: infra-approver-list
     defaults:
@@ -124,7 +232,6 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      # ── Step 1: Compute resource identifiers ─────────────────────────────────
       - name: Resolve resource identifiers
         id: ids
         run: |
@@ -136,7 +243,7 @@ jobs:
           echo "snapshot_id=${PROJECT}-${ENV}-$(date +%Y%m%d%H%M%S)"  >> $GITHUB_OUTPUT
           echo "env=${ENV}"                                            >> $GITHUB_OUTPUT
 
-      # ── Step 2: Persist image tags before anything is deleted ────────────────
+      # ── Step 1: Persist image tags before anything is deleted ────────────────
       - name: Save current ECS image tags to SSM
         run: |
           set -euo pipefail
@@ -175,7 +282,7 @@ jobs:
             echo "Saved $SERVICE image tag: $IMAGE_TAG"
           done
 
-      # ── Step 3: Drain ECS services ───────────────────────────────────────────
+      # ── Step 2: Drain ECS services ───────────────────────────────────────────
       - name: Scale ECS services to 0
         run: |
           set -euo pipefail
@@ -242,7 +349,7 @@ jobs:
             fi
           done
 
-      # ── Step 4: RDS snapshot ─────────────────────────────────────────────────
+      # ── Step 3: RDS snapshot ─────────────────────────────────────────────────
       - name: Check RDS instance status
         id: rds
         run: |
@@ -292,7 +399,7 @@ jobs:
             --no-cli-pager
           echo "Snapshot ID saved to SSM: $SNAP"
 
-      # ── Step 5: Terraform destroy (sequenced) ────────────────────────────────
+      # ── Step 4: Terraform destroy (sequenced) ────────────────────────────────
       - name: Terraform Init
         working-directory: infra
         run: terraform init -input=false
@@ -317,7 +424,7 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      # ── Step 6: Verify teardown ──────────────────────────────────────────────
+      # ── Step 5: Verify teardown ──────────────────────────────────────────────
       - name: Verify all expensive resources are destroyed
         run: |
           set -euo pipefail
@@ -387,22 +494,132 @@ jobs:
           echo "=============================="
 
 
-  # ── STARTUP ──────────────────────────────────────────────────────────────────
-  # Sequence (strict, fail-fast):
-  #   1. Load snapshot ID + image tags from SSM
-  #   2. terraform plan / apply  (recreates RDS-from-snapshot + ALB)
-  #   3. Deploy each service via render.py + apply.py (using saved image tags)
-  #   4. Wait for all Fargate services to stabilize
-  #   5. Verify all resources are healthy
-  #
-  # Note: there is no "wait for EC2 to register" step (as with the old EC2
-  # launch type) — Fargate has no container instances; AWS provisions task
-  # capacity on demand the moment a service requests a desired count > 0.
-
-  startup:
-    name: "Startup — ${{ inputs.environment }}"
+  # ── STARTUP PLAN (read-only) ─────────────────────────────────────────────────
+  # Read-only preview of the resources that will be recreated and the image
+  # tags the apply job will redeploy. Runs immediately, no approval.
+  startup-plan:
+    name: "Startup plan — ${{ inputs.environment }}"
     if: inputs.action == 'startup'
     needs: preflight
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Resolve resource identifiers
+        id: ids
+        run: |
+          set -euo pipefail
+          ENV="${{ inputs.environment }}"
+          echo "env=${ENV}" >> $GITHUB_OUTPUT
+
+      - name: Load snapshot ID and image tags from SSM
+        id: ssm
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.ids.outputs.env }}"
+
+          SNAPSHOT_ID=$(aws ssm get-parameter \
+            --name    "/orderflow/${ENV}/lifecycle/latest-snapshot" \
+            --query   'Parameter.Value' \
+            --output  text 2>/dev/null || echo "")
+
+          echo "snapshot_id=${SNAPSHOT_ID}" >> $GITHUB_OUTPUT
+
+          echo "=============================================="
+          echo " SAVED STATE FROM PREVIOUS TEARDOWN"
+          echo "=============================================="
+          if [ -n "$SNAPSHOT_ID" ]; then
+            echo "  RDS snapshot to restore : $SNAPSHOT_ID"
+          else
+            echo "  RDS snapshot to restore : (none — fresh empty DB)"
+          fi
+
+          MISSING=0
+          for SERVICE in bff order-service invoice-service; do
+            TAG=$(aws ssm get-parameter \
+              --name   "/orderflow/${ENV}/lifecycle/last-image-tag/${SERVICE}" \
+              --query  'Parameter.Value' \
+              --output text 2>/dev/null || echo "")
+            if [ -n "$TAG" ]; then
+              echo "  $SERVICE image tag       : $TAG"
+            else
+              echo "  $SERVICE image tag       : MISSING"
+              MISSING=$((MISSING+1))
+            fi
+          done
+
+          if [ "$MISSING" -gt "0" ]; then
+            echo ""
+            echo "FAIL: $MISSING image tag(s) missing from SSM. Startup cannot"
+            echo "      proceed without them. Deploy the services manually,"
+            echo "      then run a teardown, then a startup."
+            exit 1
+          fi
+
+      - name: Terraform Init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: "Generate startup plan"
+        working-directory: infra
+        run: |
+          set -euo pipefail
+          SNAPSHOT_ID="${{ steps.ssm.outputs.snapshot_id }}"
+
+          if [ -n "$SNAPSHOT_ID" ]; then
+            terraform plan -input=false -no-color -out=startup.tfplan \
+              -var="db_snapshot_identifier=${SNAPSHOT_ID}"
+          else
+            terraform plan -input=false -no-color -out=startup.tfplan
+          fi
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+      - name: "Startup plan — human-readable summary"
+        working-directory: infra
+        run: |
+          set -euo pipefail
+          echo "=============================================="
+          echo " TERRAFORM RESOURCES TO BE CREATED / CHANGED"
+          echo "=============================================="
+          terraform show -no-color startup.tfplan \
+            | grep -E "^\s*#|^Plan:" \
+            | head -80 \
+            || true
+          echo ""
+          echo "=============================================="
+          echo " WHAT HAPPENS NEXT"
+          echo "=============================================="
+          echo " 1. The 'Startup apply' job is waiting for human approval."
+          echo " 2. Open this run in the GitHub UI → 'Review deployments'"
+          echo "    → Approve to proceed, or Reject to abort safely."
+          echo " 3. On approve: ALB + RDS (from snapshot) are recreated,"
+          echo "    then services are redeployed with the saved image tags."
+          echo " 4. On reject: nothing is created — the plan is discarded."
+          echo "=============================================="
+
+
+  # ── STARTUP APPLY (creates resources, gated by environment approval) ─────────
+  startup-apply:
+    name: "Startup apply — ${{ inputs.environment }}"
+    if: inputs.action == 'startup'
+    needs: [preflight, startup-plan]
     runs-on: ubuntu-latest
     environment: infra-approver-list
     defaults:
@@ -432,18 +649,16 @@ jobs:
       - name: Install Python dependencies
         run: pip install boto3 pyyaml
 
-      # ── Step 1: Compute resource identifiers ─────────────────────────────────
       - name: Resolve resource identifiers
         id: ids
         run: |
           set -euo pipefail
           ENV="${{ inputs.environment }}"
           PROJECT="orderflow"
-          echo "cluster=${PROJECT}-${ENV}" >> $GITHUB_OUTPUT
+          echo "cluster=${PROJECT}-${ENV}"          >> $GITHUB_OUTPUT
           echo "db_instance=${PROJECT}-mysql-${ENV}" >> $GITHUB_OUTPUT
-          echo "env=${ENV}" >> $GITHUB_OUTPUT
+          echo "env=${ENV}"                          >> $GITHUB_OUTPUT
 
-      # ── Step 2: Load saved state from SSM ────────────────────────────────────
       - name: Load snapshot ID and image tags from SSM
         id: ssm
         run: |
@@ -454,12 +669,6 @@ jobs:
             --name    "/orderflow/${ENV}/lifecycle/latest-snapshot" \
             --query   'Parameter.Value' \
             --output  text 2>/dev/null || echo "")
-
-          if [ -n "$SNAPSHOT_ID" ]; then
-            echo "Found snapshot: $SNAPSHOT_ID"
-          else
-            echo "No snapshot found in SSM — a fresh database will be created."
-          fi
           echo "snapshot_id=${SNAPSHOT_ID}" >> $GITHUB_OUTPUT
 
           for SERVICE in bff order-service invoice-service; do
@@ -470,12 +679,6 @@ jobs:
 
             VAR=$(echo "$SERVICE" | tr '-' '_')
             echo "${VAR}_tag=${TAG}" >> $GITHUB_OUTPUT
-
-            if [ -n "$TAG" ]; then
-              echo "Found image tag for $SERVICE: $TAG"
-            else
-              echo "WARN: No saved image tag for $SERVICE in SSM."
-            fi
           done
 
       - name: Verify image tags are available
@@ -503,50 +706,31 @@ jobs:
 
           echo "All image tags verified."
 
-      # ── Step 3: Terraform — recreate ALB + RDS ───────────────────────────────
+      # ── Terraform — recreate ALB + RDS ───────────────────────────────────────
+      # We regenerate the plan here (rather than passing the file from the
+      # startup-plan job) so the apply uses a fresh plan against current state,
+      # avoiding stale-plan rejections when the approval gate has been held
+      # open for a while.
       - name: Terraform Init
         working-directory: infra
         run: terraform init -input=false
 
-      - name: Terraform Plan
+      - name: "Apply — recreate ALB + RDS"
         working-directory: infra
-        id: plan
         run: |
           set -euo pipefail
           SNAPSHOT_ID="${{ steps.ssm.outputs.snapshot_id }}"
-
+          echo "Applying... RDS restore may take 10-15 minutes."
           if [ -n "$SNAPSHOT_ID" ]; then
-            echo "Planning restore from snapshot: $SNAPSHOT_ID"
-            terraform plan -input=false -out=tfplan \
+            terraform apply -auto-approve -input=false \
               -var="db_snapshot_identifier=${SNAPSHOT_ID}"
           else
-            echo "Planning fresh infrastructure (no snapshot)..."
-            terraform plan -input=false -out=tfplan
+            terraform apply -auto-approve -input=false
           fi
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      - name: Show plan summary
-        working-directory: infra
-        run: |
-          terraform show -no-color tfplan \
-            | grep -E "^(Plan:|  [+~-] )" \
-            | head -60 \
-            || true
-
-      - name: Terraform Apply — recreate ALB + RDS
-        working-directory: infra
-        run: |
-          echo "Applying plan... RDS restore may take 10-15 minutes."
-          terraform apply -auto-approve -input=false tfplan
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-
-      # ── Step 4: Deploy all services ──────────────────────────────────────────
-      # Re-run render.py + apply.py for each service. This:
-      #   - recreates ECS services (deleted during teardown)
-      #   - wires them to the NEW target group ARNs (ALB was recreated)
-      #   - uses the exact same image tags that were running before teardown
+      # ── Deploy all services using saved image tags ───────────────────────────
       - name: Deploy services using saved image tags
         run: |
           set -euo pipefail
@@ -583,7 +767,7 @@ jobs:
           deploy_service "invoice-service" "$INVOICE_TAG"
           deploy_service "bff"             "$BFF_TAG"
 
-      # ── Step 5: Wait for services to reach steady state ──────────────────────
+      # ── Wait for services to reach steady state ──────────────────────────────
       - name: Wait for Fargate services to stabilize (max 10 min each)
         run: |
           set -euo pipefail
@@ -610,7 +794,7 @@ jobs:
             --services "${SERVICES[@]}"
           echo "All services stable."
 
-      # ── Step 6: Verify startup ───────────────────────────────────────────────
+      # ── Verify startup ───────────────────────────────────────────────────────
       - name: Verify all resources are healthy
         run: |
           set -euo pipefail
