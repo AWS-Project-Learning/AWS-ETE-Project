@@ -98,7 +98,13 @@ jobs:
           path: |
             ${{ env.TF_WORKING_DIR }}/tfplan
             ${{ env.TF_WORKING_DIR }}/plan-output.txt
+            ${{ env.TF_WORKING_DIR }}/email-receipt-lambda.zip
           retention-days: 7
+          # The Lambda zip is built by the archive_file data source during
+          # `terraform plan`. We must ship it alongside the plan so the apply
+          # job (running on a fresh runner) can find it via the relative
+          # filename = "./email-receipt-lambda.zip" in the saved plan.
+          if-no-files-found: warn
 
       - name: Comment plan on PR
         if: github.event_name == 'pull_request'
