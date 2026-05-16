@@ -1,39 +1,525 @@
-aws logs tail /ecs/orderflow/dev/bff --since 5m --no-cli-pager
-2026-05-16T01:56:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:34826 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:56:19.971000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:13380 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:56:23.212000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
-2026-05-16T01:56:23.213000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12074 - "GET /api/orders HTTP/1.1" 200 OK
-2026-05-16T01:56:24.103000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
-2026-05-16T01:56:24.108000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://invoice-service.orderflow-dev.local:8002/invoices "HTTP/1.1 200 OK"
-2026-05-16T01:56:24.108000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12074 - "GET /api/dashboard HTTP/1.1" 200 OK
-2026-05-16T01:56:30.252000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:12076 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:56:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:58802 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:56:49.999000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:6306 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:00.283000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:28044 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:53902 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:19.999000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:51238 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:30.313000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:37080 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:48.167000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:33626 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:57:50.027000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:62610 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:00.318000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:38252 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:46654 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:20.060000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:30246 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:30.328000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:55766 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:47398 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:58:50.087000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:7576 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:00.330000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:64292 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:18.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:44578 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:20.118000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:59502 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:30.345000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:61862 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:40732 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T01:59:50.147000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:64700 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:00.378000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:35776 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:18.247000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:51910 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:20.155000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:45182 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:28.156000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:httpx:HTTP Request: GET http://order-service.orderflow-dev.local:8001/orders "HTTP/1.1 200 OK"
-2026-05-16T02:00:28.156000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:15174 - "GET /api/orders HTTP/1.1" 200 OK
-2026-05-16T02:00:30.407000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:44886 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:48.166000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     127.0.0.1:41690 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:00:50.172000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.5.111:58392 - "GET /health HTTP/1.1" 200 OK
-2026-05-16T02:01:00.435000+00:00 dev/bff/b795ad1d6963478bb57e6c05b62d064a INFO:     10.0.1.65:56778 - "GET /health HTTP/1.1" 200 OK
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
+Run set -euo pipefail
+aws_vpc.main: Refreshing state... [id=vpc-0a2a518e20b9c4dd8]
+aws_db_parameter_group.main: Refreshing state... [id=orderflow-mysql8-dev]
+aws_subnet.public_b: Refreshing state... [id=subnet-0964dcfe74e47d3e2]
+aws_subnet.private_db_a: Refreshing state... [id=subnet-0fd0543f7801dbf93]
+aws_lb_target_group.services["bff"]: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe]
+aws_security_group.ecs: Refreshing state... [id=sg-0d74705d5fbe7c6e7]
+aws_subnet.private_db_b: Refreshing state... [id=subnet-02198e9dfdac35f55]
+aws_security_group.alb: Refreshing state... [id=sg-003d32a5ea9ffe229]
+aws_subnet.public_a: Refreshing state... [id=subnet-0df8e70155837faf9]
+aws_security_group.rds: Refreshing state... [id=sg-0e8050613038df1c3]
+aws_db_subnet_group.main: Refreshing state... [id=orderflow-db-subnet-group-dev]
+aws_lb.main: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b]
+aws_ssm_parameter.tg_arn["bff"]: Refreshing state... [id=/orderflow/dev/infra/tg-bff-arn]
+aws_lb_listener.http: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134]
+aws_db_instance.main: Refreshing state... [id=db-772QLLYHWPZBT42ILFI3UQOXRQ]
+aws_lb_listener_rule.services["bff"]: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2]
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  - destroy
+Terraform will perform the following actions:
+  # aws_cloudfront_distribution.frontend will be destroyed
+  - resource "aws_cloudfront_distribution" "frontend" {
+      - aliases                        = [] -> null
+      - arn                            = "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE" -> null
+      - caller_reference               = "terraform-20260512030139433900000001" -> null
+      - comment                        = "orderflow frontend — dev" -> null
+      - default_root_object            = "index.html" -> null
+      - domain_name                    = "d7v98dznpwca9.cloudfront.net" -> null
+      - enabled                        = true -> null
+      - etag                           = "ETVPDKIKX0DER" -> null
+      - hosted_zone_id                 = "Z2FDTNDATAQYW2" -> null
+      - http_version                   = "http2" -> null
+      - id                             = "E3HDWKPHQETVYE" -> null
+      - in_progress_validation_batches = 0 -> null
+      - is_ipv6_enabled                = false -> null
+      - last_modified_time             = "2026-05-14 04:34:55.146 +0000 UTC" -> null
+      - price_class                    = "PriceClass_All" -> null
+      - retain_on_delete               = false -> null
+      - staging                        = false -> null
+      - status                         = "Deployed" -> null
+      - tags                           = {} -> null
+      - tags_all                       = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "orderflow"
+        } -> null
+      - trusted_key_groups             = [
+          - {
+              - enabled = false
+              - items   = []
+            },
+        ] -> null
+      - trusted_signers                = [
+          - {
+              - enabled = false
+              - items   = []
+            },
+        ] -> null
+      - wait_for_deployment            = true -> null
+      - custom_error_response {
+          - error_caching_min_ttl = 0 -> null
+          - error_code            = 403 -> null
+          - response_code         = 200 -> null
+          - response_page_path    = "/index.html" -> null
+        }
+      - custom_error_response {
+          - error_caching_min_ttl = 0 -> null
+          - error_code            = 404 -> null
+          - response_code         = 200 -> null
+          - response_page_path    = "/index.html" -> null
+        }
+      - default_cache_behavior {
+          - allowed_methods        = [
+              - "GET",
+              - "HEAD",
+            ] -> null
+          - cached_methods         = [
+              - "GET",
+              - "HEAD",
+            ] -> null
+          - compress               = true -> null
+          - default_ttl            = 3600 -> null
+          - max_ttl                = 86400 -> null
+          - min_ttl                = 0 -> null
+          - smooth_streaming       = false -> null
+          - target_origin_id       = "s3-frontend" -> null
+          - trusted_key_groups     = [] -> null
+          - trusted_signers        = [] -> null
+          - viewer_protocol_policy = "redirect-to-https" -> null
+          - forwarded_values {
+              - headers                 = [] -> null
+              - query_string            = false -> null
+              - query_string_cache_keys = [] -> null
+              - cookies {
+                  - forward           = "none" -> null
+                  - whitelisted_names = [] -> null
+                }
+            }
+          - grpc_config {
+              - enabled = false -> null
+            }
+        }
+      - ordered_cache_behavior {
+          - allowed_methods        = [
+              - "DELETE",
+              - "GET",
+              - "HEAD",
+              - "OPTIONS",
+              - "PATCH",
+              - "POST",
+              - "PUT",
+            ] -> null
+          - cached_methods         = [
+              - "GET",
+              - "HEAD",
+            ] -> null
+          - compress               = true -> null
+          - default_ttl            = 0 -> null
+          - max_ttl                = 0 -> null
+          - min_ttl                = 0 -> null
+          - path_pattern           = "/api/*" -> null
+          - smooth_streaming       = false -> null
+          - target_origin_id       = "alb-bff" -> null
+          - trusted_key_groups     = [] -> null
+          - trusted_signers        = [] -> null
+          - viewer_protocol_policy = "redirect-to-https" -> null
+          - forwarded_values {
+              - headers                 = [
+                  - "Accept",
+                  - "Authorization",
+                  - "Content-Type",
+                  - "Origin",
+                ] -> null
+              - query_string            = true -> null
+              - query_string_cache_keys = [] -> null
+              - cookies {
+                  - forward           = "none" -> null
+                  - whitelisted_names = [] -> null
+                }
+            }
+          - grpc_config {
+              - enabled = false -> null
+            }
+        }
+      - origin {
+          - connection_attempts = 3 -> null
+          - connection_timeout  = 10 -> null
+          - domain_name         = "orderflow-alb-dev-500583749.us-east-1.elb.amazonaws.com" -> null
+          - origin_id           = "alb-bff" -> null
+          - custom_origin_config {
+              - http_port                = 80 -> null
+              - https_port               = 443 -> null
+              - origin_keepalive_timeout = 5 -> null
+              - origin_protocol_policy   = "http-only" -> null
+              - origin_read_timeout      = 30 -> null
+              - origin_ssl_protocols     = [
+                  - "TLSv1.2",
+                ] -> null
+            }
+        }
+      - origin {
+          - connection_attempts      = 3 -> null
+          - connection_timeout       = 10 -> null
+          - domain_name              = "orderflow-frontend-dev-109653023631.s3.us-east-1.amazonaws.com" -> null
+          - origin_access_control_id = "EBNHQUHUJMPT6" -> null
+          - origin_id                = "s3-frontend" -> null
+        }
+      - restrictions {
+          - geo_restriction {
+              - locations        = [] -> null
+              - restriction_type = "none" -> null
+            }
+        }
+      - viewer_certificate {
+          - cloudfront_default_certificate = true -> null
+          - minimum_protocol_version       = "TLSv1" -> null
+        }
+    }
+  # aws_db_instance.main will be destroyed
+  - resource "aws_db_instance" "main" {
+      - address                               = "orderflow-mysql-dev.cg3qsmcoqsba.us-east-1.rds.amazonaws.com" -> null
+      - allocated_storage                     = 20 -> null
+      - apply_immediately                     = false -> null
+      - arn                                   = "arn:aws:rds:us-east-1:109653023631:db:orderflow-mysql-dev" -> null
+      - auto_minor_version_upgrade            = true -> null
+      - availability_zone                     = "us-east-1a" -> null
+      - backup_retention_period               = 1 -> null
+      - backup_target                         = "region" -> null
+      - backup_window                         = "03:00-04:00" -> null
+      - ca_cert_identifier                    = "rds-ca-rsa2048-g1" -> null
+      - copy_tags_to_snapshot                 = false -> null
+      - customer_owned_ip_enabled             = false -> null
+      - database_insights_mode                = "standard" -> null
+      - db_name                               = "orderflow" -> null
+      - db_subnet_group_name                  = "orderflow-db-subnet-group-dev" -> null
+      - dedicated_log_volume                  = false -> null
+      - delete_automated_backups              = true -> null
+      - deletion_protection                   = false -> null
+      - domain_dns_ips                        = [] -> null
+      - enabled_cloudwatch_logs_exports       = [] -> null
+      - endpoint                              = "orderflow-mysql-dev.cg3qsmcoqsba.us-east-1.rds.amazonaws.com:3306" -> null
+      - engine                                = "mysql" -> null
+      - engine_lifecycle_support              = "open-source-rds-extended-support" -> null
+      - engine_version                        = "8.0" -> null
+      - engine_version_actual                 = "8.0.45" -> null
+      - hosted_zone_id                        = "Z2R2ITUGPM61AM" -> null
+      - iam_database_authentication_enabled   = false -> null
+      - id                                    = "db-772QLLYHWPZBT42ILFI3UQOXRQ" -> null
+      - identifier                            = "orderflow-mysql-dev" -> null
+      - instance_class                        = "db.t3.micro" -> null
+      - iops                                  = 0 -> null
+      - kms_key_id                            = "arn:aws:kms:us-east-1:109653023631:key/9c07274e-0b24-48d9-bf99-41b01831b6ab" -> null
+      - latest_restorable_time                = "2026-05-16T02:32:33Z" -> null
+      - license_model                         = "general-public-license" -> null
+      - listener_endpoint                     = [] -> null
+      - maintenance_window                    = "mon:04:00-mon:05:00" -> null
+      - master_user_secret                    = [] -> null
+      - max_allocated_storage                 = 20 -> null
+      - monitoring_interval                   = 0 -> null
+      - multi_az                              = false -> null
+      - network_type                          = "IPV4" -> null
+      - option_group_name                     = "default:mysql-8-0" -> null
+      - parameter_group_name                  = "orderflow-mysql8-dev" -> null
+      - password                              = (sensitive value) -> null
+      - performance_insights_enabled          = false -> null
+      - performance_insights_retention_period = 0 -> null
+      - port                                  = 3306 -> null
+      - publicly_accessible                   = false -> null
+      - replicas                              = [] -> null
+      - resource_id                           = "db-772QLLYHWPZBT42ILFI3UQOXRQ" -> null
+      - skip_final_snapshot                   = true -> null
+      - status                                = "available" -> null
+      - storage_encrypted                     = true -> null
+      - storage_throughput                    = 0 -> null
+      - storage_type                          = "gp2" -> null
+      - tags                                  = {
+          - "Name" = "orderflow-mysql-dev"
+        } -> null
+      - tags_all                              = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "orderflow-mysql-dev"
+          - "Project"     = "orderflow"
+        } -> null
+      - username                              = "admin" -> null
+      - vpc_security_group_ids                = [
+          - "sg-0e8050613038df1c3",
+        ] -> null
+    }
+  # aws_lb.main will be destroyed
+  - resource "aws_lb" "main" {
+      - arn                                         = "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b" -> null
+      - arn_suffix                                  = "app/orderflow-alb-dev/4322cf010ab7396b" -> null
+      - client_keep_alive                           = 3600 -> null
+      - desync_mitigation_mode                      = "defensive" -> null
+      - dns_name                                    = "orderflow-alb-dev-500583749.us-east-1.elb.amazonaws.com" -> null
+      - drop_invalid_header_fields                  = false -> null
+      - enable_cross_zone_load_balancing            = true -> null
+      - enable_deletion_protection                  = false -> null
+      - enable_http2                                = true -> null
+      - enable_tls_version_and_cipher_suite_headers = false -> null
+      - enable_waf_fail_open                        = false -> null
+      - enable_xff_client_port                      = false -> null
+      - enable_zonal_shift                          = false -> null
+      - id                                          = "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b" -> null
+      - idle_timeout                                = 60 -> null
+      - internal                                    = false -> null
+      - ip_address_type                             = "ipv4" -> null
+      - load_balancer_type                          = "application" -> null
+      - name                                        = "orderflow-alb-dev" -> null
+      - preserve_host_header                        = false -> null
+      - security_groups                             = [
+          - "sg-003d32a5ea9ffe229",
+        ] -> null
+      - subnets                                     = [
+          - "subnet-0964dcfe74e47d3e2",
+          - "subnet-0df8e70155837faf9",
+        ] -> null
+      - tags                                        = {
+          - "Name" = "orderflow-alb-dev"
+        } -> null
+      - tags_all                                    = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "orderflow-alb-dev"
+          - "Project"     = "orderflow"
+        } -> null
+      - vpc_id                                      = "vpc-0a2a518e20b9c4dd8" -> null
+      - xff_header_processing_mode                  = "append" -> null
+      - zone_id                                     = "Z35SXDOTRQ7X7K" -> null
+      - access_logs {
+          - enabled = false -> null
+        }
+      - connection_logs {
+          - enabled = false -> null
+        }
+      - subnet_mapping {
+          - subnet_id = "subnet-0964dcfe74e47d3e2" -> null
+        }
+      - subnet_mapping {
+          - subnet_id = "subnet-0df8e70155837faf9" -> null
+        }
+    }
+  # aws_lb_listener.http will be destroyed
+  - resource "aws_lb_listener" "http" {
+      - arn                                  = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134" -> null
+      - id                                   = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134" -> null
+      - load_balancer_arn                    = "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b" -> null
+      - port                                 = 80 -> null
+      - protocol                             = "HTTP" -> null
+      - routing_http_response_server_enabled = true -> null
+      - tags                                 = {} -> null
+      - tags_all                             = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "orderflow"
+        } -> null
+      - default_action {
+          - order            = 1 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe" -> null
+          - type             = "forward" -> null
+        }
+    }
+  # aws_lb_listener_rule.services["bff"] will be destroyed
+  - resource "aws_lb_listener_rule" "services" {
+      - arn          = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2" -> null
+      - id           = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2" -> null
+      - listener_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:listener/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134" -> null
+      - priority     = 10 -> null
+      - tags         = {} -> null
+      - tags_all     = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "orderflow"
+        } -> null
+      - action {
+          - order            = 1 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe" -> null
+          - type             = "forward" -> null
+        }
+      - condition {
+          - path_pattern {
+              - values = [
+                  - "/api/*",
+                ] -> null
+            }
+        }
+    }
+  # aws_lb_target_group.services["bff"] will be destroyed
+  - resource "aws_lb_target_group" "services" {
+      - arn                                = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe" -> null
+      - arn_suffix                         = "targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe" -> null
+      - deregistration_delay               = "300" -> null
+      - id                                 = "arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/bff-20260514071659461100000001/a65a681a5d96bbbe" -> null
+      - ip_address_type                    = "ipv4" -> null
+      - lambda_multi_value_headers_enabled = false -> null
+      - load_balancer_arns                 = [
+          - "arn:aws:elasticloadbalancing:us-east-1:109653023631:loadbalancer/app/orderflow-alb-dev/4322cf010ab7396b",
+        ] -> null
+      - load_balancing_algorithm_type      = "round_robin" -> null
+      - load_balancing_anomaly_mitigation  = "off" -> null
+      - load_balancing_cross_zone_enabled  = "use_load_balancer_configuration" -> null
+      - name                               = "bff-20260514071659461100000001" -> null
+      - name_prefix                        = "bff-" -> null
+      - port                               = 8000 -> null
+      - protocol                           = "HTTP" -> null
+      - protocol_version                   = "HTTP1" -> null
+      - proxy_protocol_v2                  = false -> null
+      - slow_start                         = 0 -> null
+      - tags                               = {
+          - "Name"    = "orderflow-bff-dev"
+          - "Service" = "bff"
+        } -> null
+      - tags_all                           = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "orderflow-bff-dev"
+          - "Project"     = "orderflow"
+          - "Service"     = "bff"
+        } -> null
+      - target_type                        = "ip" -> null
+      - vpc_id                             = "vpc-0a2a518e20b9c4dd8" -> null
+      - health_check {
+          - enabled             = true -> null
+          - healthy_threshold   = 2 -> null
+          - interval            = 30 -> null
+          - matcher             = "200" -> null
+          - path                = "/health" -> null
+          - port                = "traffic-port" -> null
+          - protocol            = "HTTP" -> null
+          - timeout             = 5 -> null
+          - unhealthy_threshold = 3 -> null
+        }
+      - stickiness {
+          - cookie_duration = 86400 -> null
+          - enabled         = false -> null
+          - type            = "lb_cookie" -> null
+        }
+      - target_failover {}
+      - target_group_health {
+          - dns_failover {
+              - minimum_healthy_targets_count      = "1" -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+          - unhealthy_state_routing {
+              - minimum_healthy_targets_count      = 1 -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+        }
+      - target_health_state {}
+    }
+  # aws_s3_bucket_policy.frontend will be destroyed
+  - resource "aws_s3_bucket_policy" "frontend" {
+      - bucket = "orderflow-frontend-dev-109653023631" -> null
+      - id     = "orderflow-frontend-dev-109653023631" -> null
+      - policy = jsonencode(
+            {
+              - Statement = [
+                  - {
+                      - Action    = "s3:GetObject"
+                      - Condition = {
+                          - StringEquals = {
+                              - "AWS:SourceArn" = "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE"
+                            }
+                        }
+                      - Effect    = "Allow"
+                      - Principal = {
+                          - Service = "cloudfront.amazonaws.com"
+                        }
+                      - Resource  = "arn:aws:s3:::orderflow-frontend-dev-109653023631/*"
+                      - Sid       = "AllowCloudFrontRead"
+                    },
+                ]
+              - Version   = "2012-10-17"
+            }
+        ) -> null
+    }
+  # aws_ssm_parameter.cloudfront_id will be destroyed
+  - resource "aws_ssm_parameter" "cloudfront_id" {
+      - arn       = "arn:aws:ssm:us-east-1:109653023631:parameter/orderflow/dev/infra/cloudfront-id" -> null
+      - data_type = "text" -> null
+      - id        = "/orderflow/dev/infra/cloudfront-id" -> null
+      - name      = "/orderflow/dev/infra/cloudfront-id" -> null
+      - tags      = {
+          - "Name" = "infra-cloudfront-id-dev"
+        } -> null
+      - tags_all  = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "infra-cloudfront-id-dev"
+          - "Project"     = "orderflow"
+        } -> null
+      - tier      = "Standard" -> null
+      - type      = "String" -> null
+      - value     = (sensitive value) -> null
+      - version   = 1 -> null
+    }
+  # aws_ssm_parameter.db_url["invoice-service"] will be destroyed
+  - resource "aws_ssm_parameter" "db_url" {
+      - arn       = "arn:aws:ssm:us-east-1:109653023631:parameter/orderflow/dev/invoice-service/db-url" -> null
+      - data_type = "text" -> null
+      - id        = "/orderflow/dev/invoice-service/db-url" -> null
+      - key_id    = "alias/aws/ssm" -> null
+      - name      = "/orderflow/dev/invoice-service/db-url" -> null
+      - tags      = {
+          - "Name"    = "invoice-service-db-url-dev"
+          - "Service" = "invoice-service"
+        } -> null
+      - tags_all  = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "invoice-service-db-url-dev"
+          - "Project"     = "orderflow"
+          - "Service"     = "invoice-service"
+        } -> null
+      - tier      = "Standard" -> null
+      - type      = "SecureString" -> null
+      - value     = (sensitive value) -> null
+      - version   = 1 -> null
+    }
+  # aws_ssm_parameter.db_url["order-service"] will be destroyed
+  - resource "aws_ssm_parameter" "db_url" {
+      - arn       = "arn:aws:ssm:us-east-1:109653023631:parameter/orderflow/dev/order-service/db-url" -> null
+      - data_type = "text" -> null
+      - id        = "/orderflow/dev/order-service/db-url" -> null
+      - key_id    = "alias/aws/ssm" -> null
+      - name      = "/orderflow/dev/order-service/db-url" -> null
+      - tags      = {
+          - "Name"    = "order-service-db-url-dev"
+          - "Service" = "order-service"
+        } -> null
+      - tags_all  = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "order-service-db-url-dev"
+          - "Project"     = "orderflow"
+          - "Service"     = "order-service"
+        } -> null
+      - tier      = "Standard" -> null
+      - type      = "SecureString" -> null
+      - value     = (sensitive value) -> null
+      - version   = 1 -> null
+    }
+  # aws_ssm_parameter.tg_arn["bff"] will be destroyed
+  - resource "aws_ssm_parameter" "tg_arn" {
+      - arn       = "arn:aws:ssm:us-east-1:109653023631:parameter/orderflow/dev/infra/tg-bff-arn" -> null
+      - data_type = "text" -> null
+      - id        = "/orderflow/dev/infra/tg-bff-arn" -> null
+      - name      = "/orderflow/dev/infra/tg-bff-arn" -> null
+      - tags      = {
+          - "Name" = "infra-tg-bff-arn-dev"
+        } -> null
+      - tags_all  = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Name"        = "infra-tg-bff-arn-dev"
+          - "Project"     = "orderflow"
+        } -> null
+      - tier      = "Standard" -> null
+      - type      = "String" -> null
+      - value     = (sensitive value) -> null
+      - version   = 2 -> null
+    }
+Plan: 0 to add, 0 to change, 11 to destroy.
