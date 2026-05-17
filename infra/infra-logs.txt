@@ -1,18 +1,12 @@
-Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
-  + create
   ~ update in-place
  <= read (data resources)
-
 Terraform will perform the following actions:
-
   # data.aws_iam_policy_document.frontend_bucket will be read during apply
   # (depends on a resource or a module with changes pending)
  <= data "aws_iam_policy_document" "frontend_bucket" {
       + id            = (known after apply)
       + json          = (known after apply)
       + minified_json = (known after apply)
-
       + statement {
           + actions   = [
               + "s3:GetObject",
@@ -22,7 +16,6 @@ Terraform will perform the following actions:
               + "arn:aws:s3:::orderflow-frontend-dev-109653023631/*",
             ]
           + sid       = "AllowCloudFrontRead"
-
           + condition {
               + test     = "StringEquals"
               + values   = [
@@ -30,7 +23,6 @@ Terraform will perform the following actions:
                 ]
               + variable = "AWS:SourceArn"
             }
-
           + principals {
               + identifiers = [
                   + "cloudfront.amazonaws.com",
@@ -39,41 +31,14 @@ Terraform will perform the following actions:
             }
         }
     }
-
-  # aws_acm_certificate.frontend[0] will be created
-  + resource "aws_acm_certificate" "frontend" {
-      + arn                       = (known after apply)
-      + domain_name               = "orderflow.gleeze.com"
-      + domain_validation_options = [
-          + {
-              + domain_name           = "orderflow.gleeze.com"
-              + resource_record_name  = (known after apply)
-              + resource_record_type  = (known after apply)
-              + resource_record_value = (known after apply)
-            },
-        ]
-      + id                        = (known after apply)
-      + key_algorithm             = (known after apply)
-      + not_after                 = (known after apply)
-      + not_before                = (known after apply)
-      + pending_renewal           = (known after apply)
-      + renewal_eligibility       = (known after apply)
-      + renewal_summary           = (known after apply)
-      + status                    = (known after apply)
-      + subject_alternative_names = [
-          + "orderflow.gleeze.com",
-        ]
-      + tags                      = {
-          + "Name" = "orderflow-frontend-cert-dev"
+  # aws_acm_certificate_validation.frontend[0] will be created
+  + resource "aws_acm_certificate_validation" "frontend" {
+      + certificate_arn = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8"
+      + id              = (known after apply)
+      + timeouts {
+          + create = "45m"
         }
-      + tags_all                  = {
-          + "Name" = "orderflow-frontend-cert-dev"
-        }
-      + type                      = (known after apply)
-      + validation_emails         = (known after apply)
-      + validation_method         = "DNS"
     }
-
   # aws_cloudfront_distribution.frontend will be updated in-place
   ~ resource "aws_cloudfront_distribution" "frontend" {
       ~ aliases                        = [
@@ -82,17 +47,14 @@ Terraform will perform the following actions:
         id                             = "E3HDWKPHQETVYE"
         tags                           = {}
         # (20 unchanged attributes hidden)
-
       ~ viewer_certificate {
-          + acm_certificate_arn            = (known after apply)
+          + acm_certificate_arn            = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8"
           ~ cloudfront_default_certificate = true -> false
           ~ minimum_protocol_version       = "TLSv1" -> "TLSv1.2_2021"
           + ssl_support_method             = "sni-only"
         }
-
         # (7 unchanged blocks hidden)
     }
-
   # aws_s3_bucket_policy.frontend will be updated in-place
   ~ resource "aws_s3_bucket_policy" "frontend" {
         id     = "orderflow-frontend-dev-109653023631"
@@ -119,15 +81,8 @@ Terraform will perform the following actions:
         ) -> (known after apply)
         # (1 unchanged attribute hidden)
     }
-
 Plan: 1 to add, 2 to change, 0 to destroy.
-
-Changes to Outputs:
-  + acm_validation_cname_name                = (known after apply)
-  + acm_validation_cname_value               = (known after apply)
-  + cloudfront_cname_target                  = "d7v98dznpwca9.cloudfront.net"
-  + custom_domain_url                        = "https://orderflow.gleeze.com"
-
 ─────────────────────────────────────────────────────────────────────────────
-
 Saved the plan to: tfplan
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
