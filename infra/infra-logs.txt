@@ -1,12 +1,14 @@
-  ~ update in-place
  <= read (data resources)
+
 Terraform will perform the following actions:
+
   # data.aws_iam_policy_document.frontend_bucket will be read during apply
   # (depends on a resource or a module with changes pending)
  <= data "aws_iam_policy_document" "frontend_bucket" {
       + id            = (known after apply)
       + json          = (known after apply)
       + minified_json = (known after apply)
+
       + statement {
           + actions   = [
               + "s3:GetObject",
@@ -16,6 +18,7 @@ Terraform will perform the following actions:
               + "arn:aws:s3:::orderflow-frontend-dev-109653023631/*",
             ]
           + sid       = "AllowCloudFrontRead"
+
           + condition {
               + test     = "StringEquals"
               + values   = [
@@ -23,6 +26,7 @@ Terraform will perform the following actions:
                 ]
               + variable = "AWS:SourceArn"
             }
+
           + principals {
               + identifiers = [
                   + "cloudfront.amazonaws.com",
@@ -31,30 +35,75 @@ Terraform will perform the following actions:
             }
         }
     }
-  # aws_acm_certificate_validation.frontend[0] will be created
-  + resource "aws_acm_certificate_validation" "frontend" {
-      + certificate_arn = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8"
-      + id              = (known after apply)
-      + timeouts {
-          + create = "45m"
+
+  # aws_acm_certificate.frontend[0] must be replaced
++/- resource "aws_acm_certificate" "frontend" {
+      ~ arn                       = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8" -> (known after apply)
+      ~ domain_name               = "orderflow.gleeze.com" -> "www.orderflow.gleeze.com" # forces replacement
+      ~ domain_validation_options = [
+          - {
+              - domain_name           = "orderflow.gleeze.com"
+              - resource_record_name  = "_e205352ecffaa5ecd86c0c69a415862b.orderflow.gleeze.com."
+              - resource_record_type  = "CNAME"
+              - resource_record_value = "_6985ee8750bbbec89700408263c1bb2f.jkddzztszm.acm-validations.aws."
+            },
+          + {
+              + domain_name           = "www.orderflow.gleeze.com"
+              + resource_record_name  = (known after apply)
+              + resource_record_type  = (known after apply)
+              + resource_record_value = (known after apply)
+            },
+        ]
+      ~ id                        = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8" -> (known after apply)
+      ~ key_algorithm             = "RSA_2048" -> (known after apply)
+      ~ not_after                 = "2026-11-30T23:59:59Z" -> (known after apply)
+      ~ not_before                = "2026-05-17T00:00:00Z" -> (known after apply)
+      ~ pending_renewal           = false -> (known after apply)
+      ~ renewal_eligibility       = "ELIGIBLE" -> (known after apply)
+      ~ renewal_summary           = [] -> (known after apply)
+      ~ status                    = "ISSUED" -> (known after apply)
+      ~ subject_alternative_names = [ # forces replacement
+          - "orderflow.gleeze.com",
+          + "www.orderflow.gleeze.com",
+        ]
+        tags                      = {
+            "Name" = "orderflow-frontend-cert-dev"
+        }
+      ~ type                      = "AMAZON_ISSUED" -> (known after apply)
+      ~ validation_emails         = [] -> (known after apply)
+        # (2 unchanged attributes hidden)
+
+      - options {
+          - certificate_transparency_logging_preference = "ENABLED" -> null
         }
     }
+
+  # aws_acm_certificate_validation.frontend[0] must be replaced
+-/+ resource "aws_acm_certificate_validation" "frontend" {
+      ~ certificate_arn = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8" # forces replacement -> (known after apply) # forces replacement
+      ~ id              = "2026-05-17 00:30:17.163 +0000 UTC" -> (known after apply)
+
+        # (1 unchanged block hidden)
+    }
+
   # aws_cloudfront_distribution.frontend will be updated in-place
   ~ resource "aws_cloudfront_distribution" "frontend" {
       ~ aliases                        = [
-          + "orderflow.gleeze.com",
+          - "orderflow.gleeze.com",
+          + "www.orderflow.gleeze.com",
         ]
         id                             = "E3HDWKPHQETVYE"
         tags                           = {}
         # (20 unchanged attributes hidden)
+
       ~ viewer_certificate {
-          + acm_certificate_arn            = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8"
-          ~ cloudfront_default_certificate = true -> false
-          ~ minimum_protocol_version       = "TLSv1" -> "TLSv1.2_2021"
-          + ssl_support_method             = "sni-only"
+          ~ acm_certificate_arn            = "arn:aws:acm:us-east-1:109653023631:certificate/b06b36d2-857a-4a87-afe5-a3042343bdc8" -> (known after apply)
+            # (3 unchanged attributes hidden)
         }
+
         # (7 unchanged blocks hidden)
     }
+
   # aws_s3_bucket_policy.frontend will be updated in-place
   ~ resource "aws_s3_bucket_policy" "frontend" {
         id     = "orderflow-frontend-dev-109653023631"
@@ -81,8 +130,3 @@ Terraform will perform the following actions:
         ) -> (known after apply)
         # (1 unchanged attribute hidden)
     }
-Plan: 1 to add, 2 to change, 0 to destroy.
-─────────────────────────────────────────────────────────────────────────────
-Saved the plan to: tfplan
-To perform exactly these actions, run the following command to apply:
-    terraform apply "tfplan"

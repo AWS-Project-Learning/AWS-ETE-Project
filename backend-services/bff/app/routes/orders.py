@@ -51,7 +51,25 @@ async def update_order_status(order_id: str, payload: dict):
 
 @router.patch("/{order_id}/payment")
 async def update_order_payment(order_id: str, payload: dict):
-    return await forward(order_client, "PATCH", f"/orders/{order_id}/payment", json=payload)
+    order = await forward(order_client, "PATCH", f"/orders/{order_id}/payment", json=payload)
+
+    # Sync the matching invoice status so both services stay consistent.
+    # Order payment_status values map 1-to-1 with invoice status values.
+    payment_status = payload.get("payment_status", "")
+    invoice_status_map = {
+        "Paid":     "Paid",
+        "Refunded": "Refunded",
+        "Pending":  "Unpaid",
+    }
+    mapped = invoice_status_map.get(payment_status)
+    if mapped:
+        try:
+            invoice = await forward(invoice_client, "GET", f"/invoices/by-order/{order_id}")
+            await forward(invoice_client, "PATCH", f"/invoices/{invoice['id']}/payment", json={"status": mapped})
+        except Exception as e:
+            logger.warning(f"Invoice sync failed for order {order_id}: {e}")
+
+    return order
 
 
 @router.delete("/{order_id}", status_code=204)

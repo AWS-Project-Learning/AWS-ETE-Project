@@ -126,8 +126,11 @@ resource "aws_iam_role_policy_attachment" "lambda_email_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# SES SendEmail — least-privilege: only allowed to send from the verified
-# identity, not from any address in the account.
+# SES SendEmail — resource is "*" because SES evaluates IAM against BOTH the
+# sender identity AND the recipient identity. Scoping to only the sender ARN
+# causes AccessDenied whenever the recipient hasn't been explicitly granted
+# in the policy. The actual sending restriction (sandbox: verified recipients
+# only) is enforced by SES independently of IAM — this IAM change is safe.
 resource "aws_iam_role_policy" "lambda_email_ses" {
   name = "ses-send-email"
   role = aws_iam_role.lambda_email.id
@@ -137,7 +140,7 @@ resource "aws_iam_role_policy" "lambda_email_ses" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["ses:SendEmail", "ses:SendRawEmail"]
-      Resource = aws_ses_email_identity.sender.arn
+      Resource = "*"
     }]
   })
 }

@@ -16,13 +16,11 @@
 variable "custom_domain" {
   description = <<-EOT
     Custom domain for the frontend.
-    Using www subdomain because Dynu locks the root domain A record type
-    (cannot convert to CNAME). www.orderflow.gleeze.com is added as a new
-    CNAME record in Dynu without touching the existing root A record.
+    Custom domain for the frontend (e.g. orderflow.gleeze.com).
     Set to empty string to disable custom domain (uses CloudFront default URL).
   EOT
   type        = string
-  default     = "www.orderflow.gleeze.com"
+  default     = "orderflow.gleeze.com"
 }
 
 # ACM certs used by CloudFront must live in us-east-1 regardless of the
