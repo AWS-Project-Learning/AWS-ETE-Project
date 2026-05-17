@@ -1,45 +1,133 @@
-aws logs tail /ecs/orderflow/dev/order-service --since 10m --no-cli-pager | grep -E "(published|order\.created|SNS|SNSPublish|TOPIC_ARN)" 
-2026-05-16T06:16:00.317000+00:00 dev/order-service/7bb4e617f8fe46089418a4cb1cf30ded INFO:app.events:published 'order.status_updated' for order=ORD-B05AC3 sns_msg_id=8512f5d1-260f-5982-aca6-97532bef9baa
-2026-05-16T06:17:10.223000+00:00 dev/order-service/7bb4e617f8fe46089418a4cb1cf30ded INFO:app.events:published 'order.created' for order=ORD-358423 sns_msg_id=43f34028-27ab-51c4-99ea-22aa298dea92
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws logs tail /aws/lambda/orderflow-email-receipt-dev --since 10m --no-cli-pager
-2026-05-16T06:16:00.553000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a INIT_START Runtime Version: python:3.12.mainlinev2.v7  Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:e4ab553846c4e081013ff7d1d608a5358d5b956bb5b81c83c66d2a31da8f6244
-2026-05-16T06:16:00.839000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:00.839Z                Found credentials in environment variables.
-2026-05-16T06:16:00.955000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a START RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e Version: $LATEST
-2026-05-16T06:16:00.956000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:00.955Z        2e44879a-1881-4b62-bad2-2909b02c571e    received 1 record(s)
-2026-05-16T06:16:01.273000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [ERROR]     2026-05-16T06:16:01.273Z        2e44879a-1881-4b62-bad2-2909b02c571e    SES SendEmail failed (AccessDenied): User `arn:aws:sts::109653023631:assumed-role/lambda-email-receipt-dev/orderflow-email-receipt-dev' is not authorized to perform `ses:SendEmail' on resource `arn:aws:ses:us-east-1:109653023631:identity/kannan@gmail.com'
-2026-05-16T06:16:01.297000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [ERROR]     2026-05-16T06:16:01.273Z        2e44879a-1881-4b62-bad2-2909b02c571e    failed to process record
-Traceback (most recent call last):
-  File "/var/task/handler.py", line 79, in handler
-    result   = _dispatch(channel, payload)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/var/task/handler.py", line 115, in _dispatch
-    _send_status_change(payload, email)
-  File "/var/task/handler.py", line 158, in _send_status_change
-    _send(email, subject, body_text, body_html, log_kind=f"status:{status}",
-  File "/var/task/handler.py", line 166, in _send
-    resp = _ses.send_email(
-           ^^^^^^^^^^^^^^^^
-  File "/var/lang/lib/python3.12/site-packages/botocore/client.py", line 602, in _api_call
-    return self._make_api_call(operation_name, kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/var/lang/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/var/lang/lib/python3.12/site-packages/botocore/client.py", line 1078, in _make_api_call
-    raise error_class(parsed_response, operation_name)
-botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the SendEmail operation: User `arn:aws:sts::109653023631:assumed-role/lambda-email-receipt-dev/orderflow-email-receipt-dev' is not authorized to perform `ses:SendEmail' on resource `arn:aws:ses:us-east-1:109653023631:identity/kannan@gmail.com'
-2026-05-16T06:16:01.297000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:01.297Z        2e44879a-1881-4b62-bad2-2909b02c571e    done — sent: 0, skipped: 0, failed: 1
-2026-05-16T06:16:01.317000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a END RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e
-2026-05-16T06:16:01.317000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a REPORT RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e      Duration: 362.01 ms     Billed Duration: 761 ms Memory Size: 128 MB     Max Memory Used: 87 MB  Init Duration: 398.21 ms
-2026-05-16T06:17:10.330000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a START RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a Version: $LATEST
-2026-05-16T06:17:10.331000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.331Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    received 1 record(s)
-2026-05-16T06:17:10.664000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.664Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    sent confirmation — order=ORD-3584 to=kannanks.smart@gmail.com ses_msg_id=0100019e2f6e7cbd-4bbf663d-29af-4071-9eeb-5971e33d84c4-000000
-2026-05-16T06:17:10.664000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.664Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    done — sent: 1, skipped: 0, failed: 0
-2026-05-16T06:17:10.676000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a END RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a
-2026-05-16T06:17:10.676000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a REPORT RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a      Duration: 345.92 ms     Billed Duration: 346 ms Memory Size: 128 MB     Max Memory Used: 88 MB
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws ecs describe-task-definition \
-  --task-definition order-service-dev \
-  --query 'taskDefinition.containerDefinitions[0].secrets[?contains(name, `TOPIC_ARN`)].name' \
-  --output text --no-cli-pager
-ORDER_CREATED_TOPIC_ARN    ORDER_STATUS_UPDATED_TOPIC_ARN
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # data.aws_iam_policy_document.frontend_bucket will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_iam_policy_document" "frontend_bucket" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:GetObject",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "arn:aws:s3:::orderflow-frontend-dev-109653023631/*",
+            ]
+          + sid       = "AllowCloudFrontRead"
+
+          + condition {
+              + test     = "StringEquals"
+              + values   = [
+                  + "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE",
+                ]
+              + variable = "AWS:SourceArn"
+            }
+
+          + principals {
+              + identifiers = [
+                  + "cloudfront.amazonaws.com",
+                ]
+              + type        = "Service"
+            }
+        }
+    }
+
+  # aws_acm_certificate.frontend[0] will be created
+  + resource "aws_acm_certificate" "frontend" {
+      + arn                       = (known after apply)
+      + domain_name               = "orderflow.gleeze.com"
+      + domain_validation_options = [
+          + {
+              + domain_name           = "orderflow.gleeze.com"
+              + resource_record_name  = (known after apply)
+              + resource_record_type  = (known after apply)
+              + resource_record_value = (known after apply)
+            },
+        ]
+      + id                        = (known after apply)
+      + key_algorithm             = (known after apply)
+      + not_after                 = (known after apply)
+      + not_before                = (known after apply)
+      + pending_renewal           = (known after apply)
+      + renewal_eligibility       = (known after apply)
+      + renewal_summary           = (known after apply)
+      + status                    = (known after apply)
+      + subject_alternative_names = [
+          + "orderflow.gleeze.com",
+        ]
+      + tags                      = {
+          + "Name" = "orderflow-frontend-cert-dev"
+        }
+      + tags_all                  = {
+          + "Name" = "orderflow-frontend-cert-dev"
+        }
+      + type                      = (known after apply)
+      + validation_emails         = (known after apply)
+      + validation_method         = "DNS"
+    }
+
+  # aws_cloudfront_distribution.frontend will be updated in-place
+  ~ resource "aws_cloudfront_distribution" "frontend" {
+      ~ aliases                        = [
+          + "orderflow.gleeze.com",
+        ]
+        id                             = "E3HDWKPHQETVYE"
+        tags                           = {}
+        # (20 unchanged attributes hidden)
+
+      ~ viewer_certificate {
+          + acm_certificate_arn            = (known after apply)
+          ~ cloudfront_default_certificate = true -> false
+          ~ minimum_protocol_version       = "TLSv1" -> "TLSv1.2_2021"
+          + ssl_support_method             = "sni-only"
+        }
+
+        # (7 unchanged blocks hidden)
+    }
+
+  # aws_s3_bucket_policy.frontend will be updated in-place
+  ~ resource "aws_s3_bucket_policy" "frontend" {
+        id     = "orderflow-frontend-dev-109653023631"
+      ~ policy = jsonencode(
+            {
+              - Statement = [
+                  - {
+                      - Action    = "s3:GetObject"
+                      - Condition = {
+                          - StringEquals = {
+                              - "AWS:SourceArn" = "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE"
+                            }
+                        }
+                      - Effect    = "Allow"
+                      - Principal = {
+                          - Service = "cloudfront.amazonaws.com"
+                        }
+                      - Resource  = "arn:aws:s3:::orderflow-frontend-dev-109653023631/*"
+                      - Sid       = "AllowCloudFrontRead"
+                    },
+                ]
+              - Version   = "2012-10-17"
+            }
+        ) -> (known after apply)
+        # (1 unchanged attribute hidden)
+    }
+
+Plan: 1 to add, 2 to change, 0 to destroy.
+
+Changes to Outputs:
+  + acm_validation_cname_name                = (known after apply)
+  + acm_validation_cname_value               = (known after apply)
+  + cloudfront_cname_target                  = "d7v98dznpwca9.cloudfront.net"
+  + custom_domain_url                        = "https://orderflow.gleeze.com"
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: tfplan

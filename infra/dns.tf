@@ -48,6 +48,22 @@ resource "aws_acm_certificate" "frontend" {
   tags = { Name = "${var.project}-frontend-cert-${var.environment}" }
 }
 
+# ── ACM Certificate Validation ───────────────────────────────────────────────
+# This resource BLOCKS until ACM sees the validation CNAME in DNS and issues
+# the cert. CloudFront references this resource's output (not the cert ARN
+# directly) so Terraform cannot update CloudFront until the cert is ISSUED.
+# The pipeline will wait here — once you add the CNAME to Dynu and ACM
+# validates it (~5 min), the apply continues automatically.
+resource "aws_acm_certificate_validation" "frontend" {
+  count           = var.custom_domain != "" ? 1 : 0
+  provider        = aws.us_east_1
+  certificate_arn = aws_acm_certificate.frontend[0].arn
+
+  timeouts {
+    create = "45m"
+  }
+}
+
 # ── Outputs — paste these into Dynu to validate the cert ─────────────────────
 # After applying, copy the CNAME name+value shown here into Dynu's DNS panel:
 #   Type:     CNAME

@@ -120,7 +120,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   # free default CloudFront certificate.
   viewer_certificate {
     cloudfront_default_certificate = var.custom_domain == ""
-    acm_certificate_arn            = var.custom_domain != "" && length(aws_acm_certificate.frontend) > 0 ? aws_acm_certificate.frontend[0].arn : null
+    acm_certificate_arn            = var.custom_domain != "" && length(aws_acm_certificate_validation.frontend) > 0 ? aws_acm_certificate_validation.frontend[0].certificate_arn : null
     ssl_support_method             = var.custom_domain != "" ? "sni-only" : null
     minimum_protocol_version       = var.custom_domain != "" ? "TLSv1.2_2021" : null
   }
