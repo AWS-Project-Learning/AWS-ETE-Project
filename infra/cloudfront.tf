@@ -111,10 +111,18 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # Free CloudFront SSL certificate — URL will be https://d1abc123.cloudfront.net
-  # Later: swap for ACM certificate + custom domain (e.g. app.orderflow.com)
+  # Custom domain alias — only set when var.custom_domain is non-empty and the
+  # ACM cert has been issued. Leaving this empty falls back to the default
+  # CloudFront URL (d7v98dznpwca9.cloudfront.net) which still works fine.
+  aliases = var.custom_domain != "" ? [var.custom_domain] : []
+
+  # Use the ACM cert when a custom domain is configured, otherwise use the
+  # free default CloudFront certificate.
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.custom_domain == ""
+    acm_certificate_arn            = var.custom_domain != "" && length(aws_acm_certificate.frontend) > 0 ? aws_acm_certificate.frontend[0].arn : null
+    ssl_support_method             = var.custom_domain != "" ? "sni-only" : null
+    minimum_protocol_version       = var.custom_domain != "" ? "TLSv1.2_2021" : null
   }
 }
 

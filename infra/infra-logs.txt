@@ -1,257 +1,45 @@
-aws_ssm_parameter.db_url["order-service"]: Refreshing state... [id=/orderflow/dev/order-service/db-url]
-      + id                  = (known after apply)
-      + principal           = "sns.amazonaws.com"
-      + source_arn          = (known after apply)
-      + statement_id        = "AllowExecutionFromSNSOrderCreated"
-      + statement_id_prefix = (known after apply)
-    }
-  # aws_lambda_permission.allow_sns_status_updated will be created
-  + resource "aws_lambda_permission" "allow_sns_status_updated" {
-      + action              = "lambda:InvokeFunction"
-      + function_name       = "orderflow-email-receipt-dev"
-      + id                  = (known after apply)
-      + principal           = "sns.amazonaws.com"
-      + source_arn          = (known after apply)
-      + statement_id        = "AllowExecutionFromSNSStatusUpdated"
-      + statement_id_prefix = (known after apply)
-    }
-  # aws_ses_email_identity.sender will be created
-  + resource "aws_ses_email_identity" "sender" {
-      + arn   = (known after apply)
-      + email = "kannanks.smart@gmail.com"
-      + id    = (known after apply)
-    }
-  # aws_sns_topic.order_created will be created
-  + resource "aws_sns_topic" "order_created" {
-      + arn                         = (known after apply)
-      + beginning_archive_time      = (known after apply)
-      + content_based_deduplication = false
-      + fifo_throughput_scope       = (known after apply)
-      + fifo_topic                  = false
-      + id                          = (known after apply)
-      + name                        = "orderflow-dev-order-created"
-      + name_prefix                 = (known after apply)
-      + owner                       = (known after apply)
-      + policy                      = (known after apply)
-      + signature_version           = (known after apply)
-      + tags                        = {
-          + "Name" = "orderflow-order-created-dev"
-        }
-      + tags_all                    = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-order-created-dev"
-          + "Project"     = "orderflow"
-        }
-      + tracing_config              = (known after apply)
-    }
-  # aws_sns_topic.order_status_updated will be created
-  + resource "aws_sns_topic" "order_status_updated" {
-      + arn                         = (known after apply)
-      + beginning_archive_time      = (known after apply)
-      + content_based_deduplication = false
-      + fifo_throughput_scope       = (known after apply)
-      + fifo_topic                  = false
-      + id                          = (known after apply)
-      + name                        = "orderflow-dev-order-status-updated"
-      + name_prefix                 = (known after apply)
-      + owner                       = (known after apply)
-      + policy                      = (known after apply)
-      + signature_version           = (known after apply)
-      + tags                        = {
-          + "Name" = "orderflow-order-status-updated-dev"
-        }
-      + tags_all                    = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-order-status-updated-dev"
-          + "Project"     = "orderflow"
-        }
-      + tracing_config              = (known after apply)
-    }
-  # aws_sns_topic_subscription.email_receipt_order_created will be created
-  + resource "aws_sns_topic_subscription" "email_receipt_order_created" {
-      + arn                             = (known after apply)
-      + confirmation_timeout_in_minutes = 1
-      + confirmation_was_authenticated  = (known after apply)
-      + endpoint                        = (known after apply)
-      + endpoint_auto_confirms          = false
-      + filter_policy_scope             = (known after apply)
-      + id                              = (known after apply)
-      + owner_id                        = (known after apply)
-      + pending_confirmation            = (known after apply)
-      + protocol                        = "lambda"
-      + raw_message_delivery            = false
-      + topic_arn                       = (known after apply)
-    }
-  # aws_sns_topic_subscription.email_receipt_status_updated will be created
-  + resource "aws_sns_topic_subscription" "email_receipt_status_updated" {
-      + arn                             = (known after apply)
-      + confirmation_timeout_in_minutes = 1
-      + confirmation_was_authenticated  = (known after apply)
-      + endpoint                        = (known after apply)
-      + endpoint_auto_confirms          = false
-      + filter_policy_scope             = (known after apply)
-      + id                              = (known after apply)
-      + owner_id                        = (known after apply)
-      + pending_confirmation            = (known after apply)
-      + protocol                        = "lambda"
-      + raw_message_delivery            = false
-      + topic_arn                       = (known after apply)
-    }
-Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
-  + create
-Terraform will perform the following actions:
-  # aws_iam_role.lambda_email will be created
-  + resource "aws_iam_role" "lambda_email" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "lambda.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + create_date           = (known after apply)
-      + force_detach_policies = false
-      + id                    = (known after apply)
-      + managed_policy_arns   = (known after apply)
-      + max_session_duration  = 3600
-      + name                  = "lambda-email-receipt-dev"
-      + name_prefix           = (known after apply)
-      + path                  = "/"
-      + tags                  = {
-          + "Name" = "lambda-email-receipt-dev"
-        }
-      + tags_all              = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "lambda-email-receipt-dev"
-          + "Project"     = "orderflow"
-        }
-      + unique_id             = (known after apply)
-    }
-  # aws_iam_role_policy.lambda_email_ses will be created
-  + resource "aws_iam_role_policy" "lambda_email_ses" {
-      + id          = (known after apply)
-      + name        = "ses-send-email"
-      + name_prefix = (known after apply)
-      + policy      = (known after apply)
-      + role        = (known after apply)
-    }
-  # aws_iam_role_policy_attachment.lambda_email_logs will be created
-  + resource "aws_iam_role_policy_attachment" "lambda_email_logs" {
-      + id         = (known after apply)
-      + policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      + role       = "lambda-email-receipt-dev"
-    }
-  # aws_lambda_function.email_receipt will be created
-  + resource "aws_lambda_function" "email_receipt" {
-      + architectures                  = (known after apply)
-      + arn                            = (known after apply)
-      + code_sha256                    = (known after apply)
-      + filename                       = "./email-receipt-lambda.zip"
-      + function_name                  = "orderflow-email-receipt-dev"
-      + handler                        = "handler.handler"
-      + id                             = (known after apply)
-      + invoke_arn                     = (known after apply)
-      + last_modified                  = (known after apply)
-      + memory_size                    = 128
-      + package_type                   = "Zip"
-      + publish                        = false
-      + qualified_arn                  = (known after apply)
-      + qualified_invoke_arn           = (known after apply)
-      + reserved_concurrent_executions = -1
-      + role                           = (known after apply)
-      + runtime                        = "python3.12"
-      + signing_job_arn                = (known after apply)
-      + signing_profile_version_arn    = (known after apply)
-      + skip_destroy                   = false
-      + source_code_hash               = "JG6ha9bR/qE7tLAxxwr9DOSfIDIlGQ3NaDdyQsf/ptA="
-      + source_code_size               = (known after apply)
-      + tags                           = {
-          + "Name" = "orderflow-email-receipt-dev"
-        }
-      + tags_all                       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-email-receipt-dev"
-          + "Project"     = "orderflow"
-        }
-      + timeout                        = 10
-      + version                        = (known after apply)
-      + environment {
-          + variables = {
-              + "LOG_LEVEL"    = "INFO"
-              + "SENDER_EMAIL" = "kannanks.smart@gmail.com"
-            }
-        }
-    }
-  # aws_lambda_permission.allow_sns_order_created will be created
-  + resource "aws_lambda_permission" "allow_sns_order_created" {
-      + action              = "lambda:InvokeFunction"
-      + function_name       = "orderflow-email-receipt-dev"
-  # aws_ssm_parameter.order_created_topic_arn will be created
-  + resource "aws_ssm_parameter" "order_created_topic_arn" {
-      + arn            = (known after apply)
-      + data_type      = (known after apply)
-      + has_value_wo   = (known after apply)
-      + id             = (known after apply)
-      + insecure_value = (known after apply)
-      + key_id         = (known after apply)
-      + name           = "/orderflow/dev/infra/order-created-topic-arn"
-      + tags           = {
-          + "Name" = "infra-order-created-topic-arn-dev"
-        }
-      + tags_all       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "infra-order-created-topic-arn-dev"
-          + "Project"     = "orderflow"
-        }
-      + tier           = (known after apply)
-      + type           = "String"
-      + value          = (sensitive value)
-      + version        = (known after apply)
-    }
-  # aws_ssm_parameter.order_status_updated_topic_arn will be created
-  + resource "aws_ssm_parameter" "order_status_updated_topic_arn" {
-      + arn            = (known after apply)
-      + data_type      = (known after apply)
-      + has_value_wo   = (known after apply)
-      + id             = (known after apply)
-      + insecure_value = (known after apply)
-      + key_id         = (known after apply)
-      + name           = "/orderflow/dev/infra/order-status-updated-topic-arn"
-      + tags           = {
-          + "Name" = "infra-order-status-updated-topic-arn-dev"
-        }
-      + tags_all       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "infra-order-status-updated-topic-arn-dev"
-          + "Project"     = "orderflow"
-        }
-      + tier           = (known after apply)
-      + type           = "String"
-      + value          = (sensitive value)
-      + version        = (known after apply)
-    }
-Plan: 13 to add, 0 to change, 0 to destroy.
-Changes to Outputs:
-  + email_lambda_log_group                   = "/aws/lambda/orderflow-email-receipt-dev"
-  + email_lambda_name                        = "orderflow-email-receipt-dev"
-  + email_sns_topic_order_created_arn        = (known after apply)
-  + email_sns_topic_order_status_updated_arn = (known after apply)
-─────────────────────────────────────────────────────────────────────────────
-Saved the plan to: tfplan
-To perform exactly these actions, run the following command to apply:
-    terraform apply "tfplan"
+aws logs tail /ecs/orderflow/dev/order-service --since 10m --no-cli-pager | grep -E "(published|order\.created|SNS|SNSPublish|TOPIC_ARN)" 
+2026-05-16T06:16:00.317000+00:00 dev/order-service/7bb4e617f8fe46089418a4cb1cf30ded INFO:app.events:published 'order.status_updated' for order=ORD-B05AC3 sns_msg_id=8512f5d1-260f-5982-aca6-97532bef9baa
+2026-05-16T06:17:10.223000+00:00 dev/order-service/7bb4e617f8fe46089418a4cb1cf30ded INFO:app.events:published 'order.created' for order=ORD-358423 sns_msg_id=43f34028-27ab-51c4-99ea-22aa298dea92
+➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws logs tail /aws/lambda/orderflow-email-receipt-dev --since 10m --no-cli-pager
+2026-05-16T06:16:00.553000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a INIT_START Runtime Version: python:3.12.mainlinev2.v7  Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:e4ab553846c4e081013ff7d1d608a5358d5b956bb5b81c83c66d2a31da8f6244
+2026-05-16T06:16:00.839000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:00.839Z                Found credentials in environment variables.
+2026-05-16T06:16:00.955000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a START RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e Version: $LATEST
+2026-05-16T06:16:00.956000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:00.955Z        2e44879a-1881-4b62-bad2-2909b02c571e    received 1 record(s)
+2026-05-16T06:16:01.273000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [ERROR]     2026-05-16T06:16:01.273Z        2e44879a-1881-4b62-bad2-2909b02c571e    SES SendEmail failed (AccessDenied): User `arn:aws:sts::109653023631:assumed-role/lambda-email-receipt-dev/orderflow-email-receipt-dev' is not authorized to perform `ses:SendEmail' on resource `arn:aws:ses:us-east-1:109653023631:identity/kannan@gmail.com'
+2026-05-16T06:16:01.297000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [ERROR]     2026-05-16T06:16:01.273Z        2e44879a-1881-4b62-bad2-2909b02c571e    failed to process record
+Traceback (most recent call last):
+  File "/var/task/handler.py", line 79, in handler
+    result   = _dispatch(channel, payload)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/task/handler.py", line 115, in _dispatch
+    _send_status_change(payload, email)
+  File "/var/task/handler.py", line 158, in _send_status_change
+    _send(email, subject, body_text, body_html, log_kind=f"status:{status}",
+  File "/var/task/handler.py", line 166, in _send
+    resp = _ses.send_email(
+           ^^^^^^^^^^^^^^^^
+  File "/var/lang/lib/python3.12/site-packages/botocore/client.py", line 602, in _api_call
+    return self._make_api_call(operation_name, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lang/lib/python3.12/site-packages/botocore/context.py", line 123, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/var/lang/lib/python3.12/site-packages/botocore/client.py", line 1078, in _make_api_call
+    raise error_class(parsed_response, operation_name)
+botocore.exceptions.ClientError: An error occurred (AccessDenied) when calling the SendEmail operation: User `arn:aws:sts::109653023631:assumed-role/lambda-email-receipt-dev/orderflow-email-receipt-dev' is not authorized to perform `ses:SendEmail' on resource `arn:aws:ses:us-east-1:109653023631:identity/kannan@gmail.com'
+2026-05-16T06:16:01.297000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:16:01.297Z        2e44879a-1881-4b62-bad2-2909b02c571e    done — sent: 0, skipped: 0, failed: 1
+2026-05-16T06:16:01.317000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a END RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e
+2026-05-16T06:16:01.317000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a REPORT RequestId: 2e44879a-1881-4b62-bad2-2909b02c571e      Duration: 362.01 ms     Billed Duration: 761 ms Memory Size: 128 MB     Max Memory Used: 87 MB  Init Duration: 398.21 ms
+2026-05-16T06:17:10.330000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a START RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a Version: $LATEST
+2026-05-16T06:17:10.331000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.331Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    received 1 record(s)
+2026-05-16T06:17:10.664000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.664Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    sent confirmation — order=ORD-3584 to=kannanks.smart@gmail.com ses_msg_id=0100019e2f6e7cbd-4bbf663d-29af-4071-9eeb-5971e33d84c4-000000
+2026-05-16T06:17:10.664000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a [INFO]      2026-05-16T06:17:10.664Z        972e7519-d7b5-49af-baf4-9cbbcaa5fa0a    done — sent: 1, skipped: 0, failed: 0
+2026-05-16T06:17:10.676000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a END RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a
+2026-05-16T06:17:10.676000+00:00 2026/05/16/[$LATEST]24489b7d1a8a4a66a5db1d65bdd3e79a REPORT RequestId: 972e7519-d7b5-49af-baf4-9cbbcaa5fa0a      Duration: 345.92 ms     Billed Duration: 346 ms Memory Size: 128 MB     Max Memory Used: 88 MB
+➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws ecs describe-task-definition \
+  --task-definition order-service-dev \
+  --query 'taskDefinition.containerDefinitions[0].secrets[?contains(name, `TOPIC_ARN`)].name' \
+  --output text --no-cli-pager
+ORDER_CREATED_TOPIC_ARN    ORDER_STATUS_UPDATED_TOPIC_ARN
+➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
