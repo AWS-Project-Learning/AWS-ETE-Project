@@ -47,6 +47,30 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
+  # Security agent behaviour — /security/* routed to ALB → Lambda (not BFF)
+  # Evaluated first (ordered_cache_behavior is checked top-to-bottom).
+  # The ALB listener rule (priority 5) forwards these to the Lambda target group.
+  ordered_cache_behavior {
+    path_pattern           = "/security/*"
+    target_origin_id       = "alb-bff" # same ALB, different listener rule
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Content-Type", "Accept", "Origin"]
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0 # never cache security API responses
+    max_ttl     = 0
+  }
+
   # API cache behaviour — /api/* routed to ALB, never cached
   ordered_cache_behavior {
     path_pattern           = "/api/*"

@@ -32,3 +32,10 @@ export const deleteOrder = (id) => request("DELETE", `/api/orders/${id}`)
 // ── Invoices ───────────────────────────────────────────────────────────────
 export const listInvoices = (status) => request("GET", status ? `/api/invoices?status=${status}` : "/api/invoices")
 export const getInvoice   = (id)     => request("GET", `/api/invoices/${id}`)
+
+// ── Security — calls /security/* which routes via ALB directly to Lambda ───
+// These calls NEVER touch the BFF. CloudFront → ALB → Lambda target group.
+export const triggerScan       = (config = {})  => request("POST", "/security/scan",   config)
+export const triggerReason     = (scan_id)       => request("POST", "/security/reason", scan_id ? { scan_id } : {})
+export const getSecurityStatus  = ()             => request("GET",  "/security/status")
+export const getSecurityResults = ()             => request("GET",  "/security/results")

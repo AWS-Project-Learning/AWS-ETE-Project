@@ -207,6 +207,11 @@ resource "aws_lambda_function" "vulnerability_agent" {
       DYNAMODB_TABLE        = aws_dynamodb_table.vuln_scans.name
       SSM_GITHUB_TOKEN_PATH = data.aws_ssm_parameter.github_pat.name
       LOG_LEVEL             = "INFO"
+      # Default scan target — overridable per-request via event payload.
+      # Change these to point the agent at a different repo without touching code.
+      DEFAULT_REPO_OWNER  = "AWS-Project-Learning"
+      DEFAULT_REPO_NAME   = "AWS-ETE-Project"
+      DEFAULT_REPO_BRANCH = "main"
       # NOTE: Do NOT set AWS_REGION here — Lambda reserves that env var.
       # The runtime already exposes AWS_REGION automatically.
     }
@@ -227,6 +232,99 @@ resource "aws_cloudwatch_log_group" "agent_lambda" {
   retention_in_days = 14
 
   tags = { Name = "agent-lambda-logs-${var.environment}" }
+}
+
+
+# ── Lambda Function URL — kept for GitHub Actions + direct invocation ─────────
+# Used by: vulnerability-agent.yml (scan, reason, status actions)
+# The ALB path /security/* is the production path used by the OrderFlow frontend.
+resource "aws_lambda_function_url" "vulnerability_agent" {
+  function_name      = aws_lambda_function.vulnerability_agent.function_name
+  authorization_type = "NONE"
+
+  cors {
+    allow_credentials = false
+    allow_origins     = ["*"]
+    allow_methods     = ["GET", "POST", "OPTIONS"]
+    allow_headers     = ["Content-Type", "X-Amz-Date", "Authorization"]
+    max_age           = 300
+  }
+}
+
+resource "aws_ssm_parameter" "agent_function_url" {
+  name  = "/orderflow/${var.environment}/agents/function-url"
+  type  = "String"
+  value = aws_lambda_function_url.vulnerability_agent.function_url
+
+  tags = { Name = "agents-function-url-${var.environment}" }
+}
+
+
+# ── ALB Integration — /security/* → Lambda directly (no BFF involved) ─────────
+#
+# Architecture:
+#   orderflow.gleeze.com/security/* → CloudFront → ALB → Lambda (this target group)
+#   orderflow.gleeze.com/api/*      → CloudFront → ALB → BFF ECS (unchanged)
+#
+# The Lambda handles ALB events (httpMethod + path) in addition to direct
+# invocations (action field). handler.py detects which format it received.
+#
+# target_type = "lambda" — ALB invokes the function directly via IAM, no port/VPC needed.
+
+resource "aws_lb_target_group" "vulnerability_agent" {
+  name        = "${var.project}-vuln-agent-${var.environment}"
+  target_type = "lambda"
+
+  # Lambda target groups have no port/protocol/vpc_id
+  # Health checks are done via Lambda invocations — ALB calls the function
+  # and expects a 200 response. We use a lightweight path for this.
+  health_check {
+    enabled             = true
+    path                = "/security/health"
+    matcher             = "200"
+    interval            = 35
+    timeout             = 30
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = { Name = "${var.project}-vuln-agent-${var.environment}" }
+}
+
+resource "aws_lb_target_group_attachment" "vulnerability_agent" {
+  target_group_arn = aws_lb_target_group.vulnerability_agent.arn
+  target_id        = aws_lambda_function.vulnerability_agent.arn
+
+  # Ensure the Lambda is fully created before attaching
+  depends_on = [aws_lambda_permission.alb_invoke]
+}
+
+# Allow ALB to invoke the Lambda function
+resource "aws_lambda_permission" "alb_invoke" {
+  statement_id  = "AllowALBInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.vulnerability_agent.function_name
+  principal     = "elasticloadbalancing.amazonaws.com"
+  source_arn    = aws_lb_target_group.vulnerability_agent.arn
+}
+
+# Listener rule: /security/* → Lambda target group
+# Priority 5 — evaluated BEFORE the BFF rule (priority 10) so /security/* never
+# reaches the BFF by accident.
+resource "aws_lb_listener_rule" "vulnerability_agent" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 5
+
+  condition {
+    path_pattern {
+      values = ["/security/*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.vulnerability_agent.arn
+  }
 }
 
 
@@ -279,4 +377,14 @@ output "vuln_scans_table_name" {
 output "github_pat_ssm_path" {
   description = "SSM path for the GitHub PAT (set manually, never committed)"
   value       = data.aws_ssm_parameter.github_pat.name
+}
+
+output "agent_function_url" {
+  description = "Lambda Function URL — the standalone HTTPS endpoint for the security portal"
+  value       = aws_lambda_function_url.vulnerability_agent.function_url
+}
+
+output "agent_function_url_ssm_path" {
+  description = "SSM path where the Function URL is stored (read by security-portal CI/CD)"
+  value       = aws_ssm_parameter.agent_function_url.name
 }

@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ShoppingCart, FileText, Package, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, FileText, Package, ChevronRight, ShieldAlert } from 'lucide-react'
 
 const nav = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { to: '/orders',   label: 'Orders',    icon: ShoppingCart },
   { to: '/invoices', label: 'Invoices',  icon: FileText },
+  { to: '/security', label: 'Security',  icon: ShieldAlert },
 ]
 
 export default function Sidebar() {
