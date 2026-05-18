@@ -29,26 +29,15 @@
 
 
 # ── GitHub PAT — SSM SecureString ────────────────────────────────────────────
-# Store the real value once via AWS Console or CLI:
-#   aws ssm put-parameter \
-#     --name  /orderflow/dev/agents/github-pat \
-#     --type  SecureString \
-#     --value "ghp_YOUR_TOKEN_HERE" \
-#     --overwrite --profile personal --region us-east-1
+# You created this manually in the AWS Console — Terraform reads it as a
+# data source instead of managing it. This avoids the ParameterAlreadyExists
+# error and never risks overwriting your real token.
 #
-# Terraform creates the placeholder; lifecycle.ignore_changes prevents it from
-# overwriting the real token on subsequent applies.
-resource "aws_ssm_parameter" "github_pat" {
-  name        = "/orderflow/${var.environment}/agents/github-pat"
-  type        = "SecureString"
-  value       = "PLACEHOLDER_SET_MANUALLY"
-  description = "GitHub PAT (repo+workflow scopes) for the vulnerability agent"
-
-  lifecycle {
-    ignore_changes = [value]
-  }
-
-  tags = { Name = "agents-github-pat-${var.environment}" }
+# If the parameter doesn't exist yet, create it first:
+#   AWS Console → Systems Manager → Parameter Store → Create parameter
+#   Name: /orderflow/dev/agents/github-pat  |  Type: SecureString
+data "aws_ssm_parameter" "github_pat" {
+  name = "/orderflow/${var.environment}/agents/github-pat"
 }
 
 
@@ -174,7 +163,7 @@ resource "aws_iam_role_policy" "lambda_agent_permissions" {
         Sid      = "SSMReadGitHubPAT"
         Effect   = "Allow"
         Action   = ["ssm:GetParameter"]
-        Resource = aws_ssm_parameter.github_pat.arn
+        Resource = data.aws_ssm_parameter.github_pat.arn
       },
       {
         # Phase 2: Bedrock model inference for AI reasoning (Claude 3.5 Haiku)
@@ -216,7 +205,7 @@ resource "aws_lambda_function" "vulnerability_agent" {
   environment {
     variables = {
       DYNAMODB_TABLE        = aws_dynamodb_table.vuln_scans.name
-      SSM_GITHUB_TOKEN_PATH = aws_ssm_parameter.github_pat.name
+      SSM_GITHUB_TOKEN_PATH = data.aws_ssm_parameter.github_pat.name
       LOG_LEVEL             = "INFO"
       # NOTE: Do NOT set AWS_REGION here — Lambda reserves that env var.
       # The runtime already exposes AWS_REGION automatically.
@@ -289,5 +278,5 @@ output "vuln_scans_table_name" {
 
 output "github_pat_ssm_path" {
   description = "SSM path for the GitHub PAT (set manually, never committed)"
-  value       = aws_ssm_parameter.github_pat.name
+  value       = data.aws_ssm_parameter.github_pat.name
 }

@@ -1,285 +1,31 @@
-aws_s3_bucket_policy.frontend: Refreshing state... [id=orderflow-frontend-dev-109653023631]
-
-Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
-  + create
-
-Terraform will perform the following actions:
-
-  # aws_cloudwatch_event_rule.daily_scan will be created
-  + resource "aws_cloudwatch_event_rule" "daily_scan" {
-      + arn                 = (known after apply)
-      + description         = "Daily vulnerability scan trigger for the AI security agent"
-      + event_bus_name      = "default"
-      + force_destroy       = false
-      + id                  = (known after apply)
-      + name                = "orderflow-daily-vuln-scan-dev"
-      + name_prefix         = (known after apply)
-      + schedule_expression = "cron(0 2 * * ? *)"
-      + tags                = {
-          + "Name" = "orderflow-daily-vuln-scan-dev"
-        }
-      + tags_all            = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-daily-vuln-scan-dev"
-          + "Project"     = "orderflow"
-        }
-    }
-
-  # aws_cloudwatch_event_target.daily_scan_target will be created
-  + resource "aws_cloudwatch_event_target" "daily_scan_target" {
-      + arn            = (known after apply)
-      + event_bus_name = "default"
-      + force_destroy  = false
-      + id             = (known after apply)
-      + input          = jsonencode(
-            {
-              + action = "scan"
-            }
-        )
-      + rule           = "orderflow-daily-vuln-scan-dev"
-      + target_id      = "vulnerability-agent"
-    }
-
-  # aws_cloudwatch_log_group.agent_lambda will be created
-  + resource "aws_cloudwatch_log_group" "agent_lambda" {
-      + arn               = (known after apply)
-      + id                = (known after apply)
-      + log_group_class   = (known after apply)
-      + name              = "/aws/lambda/orderflow-vulnerability-agent-dev"
-      + name_prefix       = (known after apply)
-      + retention_in_days = 14
-      + skip_destroy      = false
-      + tags              = {
-          + "Name" = "agent-lambda-logs-dev"
-        }
-      + tags_all          = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "agent-lambda-logs-dev"
-          + "Project"     = "orderflow"
-        }
-    }
-
-  # aws_dynamodb_table.vuln_scans will be created
-  + resource "aws_dynamodb_table" "vuln_scans" {
-      + arn              = (known after apply)
-      + billing_mode     = "PAY_PER_REQUEST"
-      + hash_key         = "scan_id"
-      + id               = (known after apply)
-      + name             = "orderflow-vulnerability-scans-dev"
-      + range_key        = "record_id"
-      + read_capacity    = (known after apply)
-      + stream_arn       = (known after apply)
-      + stream_label     = (known after apply)
-      + stream_view_type = (known after apply)
-      + tags             = {
-          + "Name" = "orderflow-vuln-scans-dev"
-        }
-      + tags_all         = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-vuln-scans-dev"
-          + "Project"     = "orderflow"
-        }
-      + write_capacity   = (known after apply)
-
-      + attribute {
-          + name = "detected_at"
-          + type = "S"
-        }
-      + attribute {
-          + name = "record_id"
-          + type = "S"
-        }
-      + attribute {
-          + name = "scan_id"
-          + type = "S"
-        }
-      + attribute {
-          + name = "status"
-          + type = "S"
-        }
-
-      + global_secondary_index {
-          + hash_key           = "status"
-          + name               = "status-detected-index"
-          + non_key_attributes = []
-          + projection_type    = "ALL"
-          + range_key          = "detected_at"
-          + read_capacity      = (known after apply)
-          + write_capacity     = (known after apply)
-        }
-
-      + ttl {
-          + attribute_name = "expires_at"
-          + enabled        = true
-        }
-    }
-
-  # aws_iam_role.lambda_agent will be created
-  + resource "aws_iam_role" "lambda_agent" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "lambda.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + create_date           = (known after apply)
-      + force_detach_policies = false
-      + id                    = (known after apply)
-      + managed_policy_arns   = (known after apply)
-      + max_session_duration  = 3600
-      + name                  = "lambda-vulnerability-agent-dev"
-      + name_prefix           = (known after apply)
-      + path                  = "/"
-      + tags                  = {
-          + "Name" = "lambda-vulnerability-agent-dev"
-        }
-      + tags_all              = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "lambda-vulnerability-agent-dev"
-          + "Project"     = "orderflow"
-        }
-      + unique_id             = (known after apply)
-    }
-
-  # aws_iam_role_policy.lambda_agent_permissions will be created
-  + resource "aws_iam_role_policy" "lambda_agent_permissions" {
-      + id          = (known after apply)
-      + name        = "vulnerability-agent-permissions"
-      + name_prefix = (known after apply)
-      + policy      = (known after apply)
-      + role        = (known after apply)
-    }
-
-  # aws_iam_role_policy_attachment.lambda_agent_logs will be created
-  + resource "aws_iam_role_policy_attachment" "lambda_agent_logs" {
-      + id         = (known after apply)
-      + policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-      + role       = "lambda-vulnerability-agent-dev"
-    }
-
-  # aws_lambda_function.vulnerability_agent will be created
-  + resource "aws_lambda_function" "vulnerability_agent" {
-      + architectures                  = (known after apply)
-      + arn                            = (known after apply)
-      + code_sha256                    = (known after apply)
-      + filename                       = "./agent-placeholder.zip"
-      + function_name                  = "orderflow-vulnerability-agent-dev"
-      + handler                        = "handler.handler"
-      + id                             = (known after apply)
-      + invoke_arn                     = (known after apply)
-      + last_modified                  = (known after apply)
-      + memory_size                    = 256
-      + package_type                   = "Zip"
-      + publish                        = false
-      + qualified_arn                  = (known after apply)
-      + qualified_invoke_arn           = (known after apply)
-      + reserved_concurrent_executions = -1
-      + role                           = (known after apply)
-      + runtime                        = "python3.12"
-      + signing_job_arn                = (known after apply)
-      + signing_profile_version_arn    = (known after apply)
-      + skip_destroy                   = false
-      + source_code_hash               = "lUaDtS7eCTAvaIRwBPHJfS7dh/GYZOHMSeLim+3rdZY="
-      + source_code_size               = (known after apply)
-      + tags                           = {
-          + "Name" = "orderflow-vulnerability-agent-dev"
-        }
-      + tags_all                       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "orderflow-vulnerability-agent-dev"
-          + "Project"     = "orderflow"
-        }
-      + timeout                        = 300
-      + version                        = (known after apply)
-
-      + environment {
-          + variables = {
-              + "DYNAMODB_TABLE"        = "orderflow-vulnerability-scans-dev"
-              + "LOG_LEVEL"             = "INFO"
-              + "SSM_GITHUB_TOKEN_PATH" = "/orderflow/dev/agents/github-pat"
-            }
-        }
-    }
-
-  # aws_lambda_permission.eventbridge_invoke will be created
-  + resource "aws_lambda_permission" "eventbridge_invoke" {
-      + action              = "lambda:InvokeFunction"
-      + function_name       = "orderflow-vulnerability-agent-dev"
-      + id                  = (known after apply)
-      + principal           = "events.amazonaws.com"
-      + source_arn          = (known after apply)
-      + statement_id        = "AllowEventBridgeInvoke"
-      + statement_id_prefix = (known after apply)
-    }
-
-  # aws_ssm_parameter.agent_function_name will be created
-  + resource "aws_ssm_parameter" "agent_function_name" {
-      + arn            = (known after apply)
-      + data_type      = (known after apply)
-      + has_value_wo   = (known after apply)
-      + id             = (known after apply)
-      + insecure_value = (known after apply)
-      + key_id         = (known after apply)
-      + name           = "/orderflow/dev/agents/lambda-function-name"
-      + tags           = {
-          + "Name" = "agents-lambda-function-name-dev"
-        }
-      + tags_all       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "agents-lambda-function-name-dev"
-          + "Project"     = "orderflow"
-        }
-      + tier           = (known after apply)
-      + type           = "String"
-      + value          = (sensitive value)
-      + version        = (known after apply)
-    }
-
-  # aws_ssm_parameter.github_pat will be created
-  + resource "aws_ssm_parameter" "github_pat" {
-      + arn            = (known after apply)
-      + data_type      = (known after apply)
-      + description    = "GitHub PAT (repo+workflow scopes) for the vulnerability agent"
-      + has_value_wo   = (known after apply)
-      + id             = (known after apply)
-      + insecure_value = (known after apply)
-      + key_id         = (known after apply)
-      + name           = "/orderflow/dev/agents/github-pat"
-      + tags           = {
-          + "Name" = "agents-github-pat-dev"
-        }
-      + tags_all       = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Name"        = "agents-github-pat-dev"
-          + "Project"     = "orderflow"
-        }
-      + tier           = (known after apply)
-      + type           = "SecureString"
-      + value          = (sensitive value)
-      + version        = (known after apply)
-    }
-
-Plan: 11 to add, 0 to change, 0 to destroy.
-
-Changes to Outputs:
-  + agent_lambda_log_group                   = "/aws/lambda/orderflow-vulnerability-agent-dev"
-  + agent_lambda_name                        = "orderflow-vulnerability-agent-dev"
-  + github_pat_ssm_path                      = "/orderflow/dev/agents/github-pat"
-  + vuln_scans_table_name                    = "orderflow-vulnerability-scans-dev"
+Run terraform apply -auto-approve tfplan
+aws_ssm_parameter.agent_function_name: Creating...
+aws_cloudwatch_event_rule.daily_scan: Creating...
+aws_ssm_parameter.github_pat: Creating...
+aws_iam_role.lambda_agent: Creating...
+aws_dynamodb_table.vuln_scans: Creating...
+aws_iam_role.lambda_agent: Creation complete after 1s [id=lambda-vulnerability-agent-dev]
+aws_iam_role_policy_attachment.lambda_agent_logs: Creating...
+aws_ssm_parameter.agent_function_name: Creation complete after 1s [id=/orderflow/dev/agents/lambda-function-name]
+aws_iam_role_policy_attachment.lambda_agent_logs: Creation complete after 0s [id=lambda-vulnerability-agent-dev-20260518012856584500000001]
+aws_dynamodb_table.vuln_scans: Still creating... [10s elapsed]
+aws_dynamodb_table.vuln_scans: Still creating... [20s elapsed]
+aws_dynamodb_table.vuln_scans: Creation complete after 23s [id=orderflow-vulnerability-scans-dev]
+╷
+│ Error: creating SSM Parameter (/orderflow/dev/agents/github-pat): operation error SSM: PutParameter, https response error StatusCode: 400, RequestID: b884e7c6-8bf8-4a18-8b17-92a4ad4aea50, ParameterAlreadyExists: The parameter already exists. To overwrite this value, set the overwrite option in the request to true.
+│ 
+│   with aws_ssm_parameter.github_pat,
+│   on agents.tf line 41, in resource "aws_ssm_parameter" "github_pat":
+│   41: resource "aws_ssm_parameter" "github_pat" {
+│ 
+╵
+╷
+│ Error: creating EventBridge Rule (orderflow-daily-vuln-scan-dev): operation error EventBridge: PutRule, https response error StatusCode: 400, RequestID: 3f0a36a9-0839-48e5-9936-d2f0fc87b43c, api error AccessDeniedException: User: arn:aws:sts::109653023631:assumed-role/github-actions-terraform/GitHubActions is not authorized to perform: events:TagResource on resource: arn:aws:events:us-east-1:109653023631:rule/orderflow-daily-vuln-scan-dev because no identity-based policy allows the events:TagResource action
+│ 
+│   with aws_cloudwatch_event_rule.daily_scan,
+│   on agents.tf line 249, in resource "aws_cloudwatch_event_rule" "daily_scan":
+│  249: resource "aws_cloudwatch_event_rule" "daily_scan" {
+│ 
+╵
+Error: Terraform exited with code 1.
+Error: Process completed with exit code 1.
