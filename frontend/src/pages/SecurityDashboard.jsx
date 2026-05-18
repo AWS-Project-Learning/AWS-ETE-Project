@@ -383,10 +383,12 @@ export default function SecurityDashboard() {
 
       {/* ── Severity filter pills ───────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(s => {
+        {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN'].map(s => {
           const count = s === 'ALL' ? vulns.length : vulns.filter(v => v.severity === s).length
-          const c = SEV_COLOR[s] ?? { dark: '#94a3b8' }
+          const c = SEV_COLOR[s] ?? SEV_COLOR.UNKNOWN
           const active = sevFilter === s
+          // Hide severity pills that have 0 results (except ALL)
+          if (s !== 'ALL' && count === 0) return null
           return (
             <button key={s} onClick={() => setSevFilter(s)} style={{
               background: active ? `${c.dark}22` : 'rgba(255,255,255,0.04)',
@@ -394,7 +396,7 @@ export default function SecurityDashboard() {
               color: active ? c.dark : '#64748b',
               fontSize: 11, fontWeight: 600, padding: '5px 12px',
               borderRadius: 99, cursor: 'pointer', transition: 'all 0.2s',
-            }}>{s} {count > 0 && s !== 'ALL' ? `(${count})` : ''}</button>
+            }}>{s} {s !== 'ALL' ? `(${count})` : `(${count})`}</button>
           )
         })}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -1,73 +1,76 @@
-Run python deploy/lambda_deploy.py \
-  
-============================================================
-  DRY RUN — Lambda Deploy: vulnerability-agent → dev
-============================================================
-  Function  : orderflow-vulnerability-agent-dev
-  Source    : agents/vulnerability-agent
-  Handler   : handler.handler
-  Runtime   : python3.12
-  Timeout   : 300s
-  Memory    : 256 MB
-  Env vars  :
-    LOG_LEVEL = INFO
-    DYNAMODB_TABLE = orderflow-vulnerability-scans-dev
-    SSM_GITHUB_TOKEN_PATH = /orderflow/dev/agents/github-pat
-  [dry-run] No changes made. Remove --dry-run to apply.
-8s
-Run python deploy/lambda_deploy.py \
-  
-============================================================
-  Lambda Deploy: vulnerability-agent → dev
-============================================================
-  Function  : orderflow-vulnerability-agent-dev
-  Source    : agents/vulnerability-agent
-  Handler   : handler.handler
-  Runtime   : python3.12
-  Timeout   : 300s
-  Memory    : 256 MB
-  Env vars  :
-    LOG_LEVEL = INFO
-    DYNAMODB_TABLE = orderflow-vulnerability-scans-dev
-    SSM_GITHUB_TOKEN_PATH = /orderflow/dev/agents/github-pat
-[1/4] Building zip from agents/vulnerability-agent/
-  [zip] added: handler.py  (11,005 bytes)
-  [zip] added: reasoner.py  (8,895 bytes)
-  [zip] added: reporter.py  (9,306 bytes)
-  [zip] added: scanner.py  (12,430 bytes)
-  [zip] total size: 13,781 bytes (13 KB)
-[2/4] Checking Lambda state...
-  [lambda] State=Active — ready to update.
-[3/4] Updating function code...
-  [lambda] Waiting for code update to complete...
-  [lambda] Code updated.
-[4/4] Updating function configuration...
-  [lambda] Waiting for config update to complete...
-  [lambda] Configuration updated.
-============================================================
-  Done — orderflow-vulnerability-agent-dev deployed successfully.
-  Trigger a scan: Actions → AI Vulnerability Agent → Run workflow → scan
-============================================================
-4s
-Run echo "Verifying Lambda function state after deploy..."
-Verifying Lambda function state after deploy...
------------------------------------------
-|       GetFunctionConfiguration        |
-+-------------------+-------------------+
-|  Handler          |  handler.handler  |
-|  LastUpdateStatus |  Successful       |
-|  MemorySize       |  256              |
-|  Runtime          |  python3.12       |
-|  State            |  Active           |
-|  Timeout          |  300              |
-+-------------------+-------------------+
-1s
-Run FUNCTION_URL=$(aws ssm get-parameter \
-  
-============================================================
-  VULNERABILITY AGENT — FUNCTION URL
-============================================================
-  https://2jdrlktkvm26odmbupacby6lpi0kdfro.lambda-url.us-east-1.on.aws/
-  Add to security-portal/.env.local:
-  VITE_AGENT_URL=https://2jdrlktkvm26odmbupacby6lpi0kdfro.lambda-url.us-east-1.on.aws/
-============================================================
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_iam_role_policy.lambda_agent_permissions will be updated in-place
+  ~ resource "aws_iam_role_policy" "lambda_agent_permissions" {
+        id     = "lambda-vulnerability-agent-dev:vulnerability-agent-permissions"
+        name   = "vulnerability-agent-permissions"
+      ~ policy = jsonencode(
+          ~ {
+              ~ Statement = [
+                    # (1 unchanged element hidden)
+                    {
+                        Action   = [
+                            "ssm:GetParameter",
+                        ]
+                        Effect   = "Allow"
+                        Resource = "arn:aws:ssm:us-east-1:109653023631:parameter/orderflow/dev/agents/github-pat"
+                        Sid      = "SSMReadGitHubPAT"
+                    },
+                  ~ {
+                      ~ Resource = "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0" -> [
+                          + "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0",
+                          + "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
+                          + "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+                        ]
+                        # (3 unchanged attributes hidden)
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_lambda_function.vulnerability_agent will be updated in-place
+  ~ resource "aws_lambda_function" "vulnerability_agent" {
+        id                             = "orderflow-vulnerability-agent-dev"
+        tags                           = {
+            "Name" = "orderflow-vulnerability-agent-dev"
+        }
+        # (23 unchanged attributes hidden)
+
+      ~ environment {
+          ~ variables = {
+              + "DEFAULT_REPO_BRANCH"   = "main"
+              + "DEFAULT_REPO_NAME"     = "AWS-ETE-Project"
+              + "DEFAULT_REPO_OWNER"    = "AWS-Project-Learning"
+                # (3 unchanged elements hidden)
+            }
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # aws_lambda_function_url.vulnerability_agent will be updated in-place
+  ~ resource "aws_lambda_function_url" "vulnerability_agent" {
+        id                 = "orderflow-vulnerability-agent-dev"
+        # (6 unchanged attributes hidden)
+
+      ~ cors {
+          ~ allow_headers     = [
+              - "authorization",
+              - "content-type",
+              - "x-amz-date",
+              + "Authorization",
+              + "Content-Type",
+              + "X-Amz-Date",
+            ]
+            # (5 unchanged attributes hidden)
+        }
+    }
+
+Plan: 0 to add, 3 to change, 0 to destroy.
