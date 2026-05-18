@@ -245,7 +245,7 @@ resource "aws_lambda_function_url" "vulnerability_agent" {
   cors {
     allow_credentials = false
     allow_origins     = ["*"]
-    allow_methods     = ["GET", "POST", "OPTIONS"]
+    allow_methods     = ["*"] # "*" avoids the ≤6-char per-method constraint
     allow_headers     = ["Content-Type", "X-Amz-Date", "Authorization"]
     max_age           = 300
   }
@@ -275,9 +275,10 @@ resource "aws_lb_target_group" "vulnerability_agent" {
   name        = "${var.project}-vuln-agent-${var.environment}"
   target_type = "lambda"
 
-  # Lambda target groups have no port/protocol/vpc_id
-  # Health checks are done via Lambda invocations — ALB calls the function
-  # and expects a 200 response. We use a lightweight path for this.
+  # Lambda target groups: protocol/port/vpc_id are not valid attributes.
+  # The health check invokes the Lambda and expects a 200 from /security/health.
+  # Do NOT set protocol here — it is invalid for target_type = "lambda" and
+  # will become a hard error in a future Terraform AWS provider release.
   health_check {
     enabled             = true
     path                = "/security/health"

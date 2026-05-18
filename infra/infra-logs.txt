@@ -1,109 +1,42 @@
-Run FUNCTION_NAME="orderflow-vulnerability-agent-dev"
-Invoking orderflow-vulnerability-agent-dev with action=scan ...
-{"action":"scan"}{
-    "StatusCode": 200,
-    "LogResult": "U1RBUlQgUmVxdWVzdElkOiBiYThkYzNhYS1lOTc1LTQ5NTUtYTM4ZS1jNjM3ODcwNWM0YzYgVmVyc2lvbjogJExBVEVTVApbSU5GT10JMjAyNi0wNS0xOFQwMjowMzozMy43ODZaCWJhOGRjM2FhLWU5NzUtNDk1NS1hMzhlLWM2Mzc4NzA1YzRjNglMYW1iZGEgaW52b2tlZCB3aXRoIGFjdGlvbj1zY2FuCltJTkZPXQkyMDI2LTA1LTE4VDAyOjAzOjMzLjc4NloJYmE4ZGMzYWEtZTk3NS00OTU1LWEzOGUtYzYzNzg3MDVjNGM2CVN0YXJ0aW5nIHZ1bG5lcmFiaWxpdHkgc2NhbiAoUGhhc2UgMSkKW0lORk9dCTIwMjYtMDUtMThUMDI6MDM6MzQuMDcyWgliYThkYzNhYS1lOTc1LTQ5NTUtYTM4ZS1jNjM3ODcwNWM0YzYJb3JkZXItc2VydmljZTogOSBwaW5uZWQgcGFja2FnZXMgZm91bmQKW0lORk9dCTIwMjYtMDUtMThUMDI6MDM6MzQuMTU2WgliYThkYzNhYS1lOTc1LTQ5NTUtYTM4ZS1jNjM3ODcwNWM0YzYJaW52b2ljZS1zZXJ2aWNlOiA5IHBpbm5lZCBwYWNrYWdlcyBmb3VuZApbSU5GT10JMjAyNi0wNS0xOFQwMjowMzozNC4yNjRaCWJhOGRjM2FhLWU5NzUtNDk1NS1hMzhlLWM2Mzc4NzA1YzRjNgliZmY6IDYgcGlubmVkIHBhY2thZ2VzIGZvdW5kCltJTkZPXQkyMDI2LTA1LTE4VDAyOjAzOjM0LjI2NFoJYmE4ZGMzYWEtZTk3NS00OTU1LWEzOGUtYzYzNzg3MDVjNGM2CVRvdGFsIHBhY2thZ2VzIHRvIHNjYW4gYWNyb3NzIGFsbCBzZXJ2aWNlczogMjQKW0lORk9dCTIwMjYtMDUtMThUMDI6MDM6MzQuNTE3WgliYThkYzNhYS1lOTc1LTQ5NTUtYTM4ZS1jNjM3ODcwNWM0YzYJT1NWIHNjYW46IDI0IHBhY2thZ2VzIOKGkiA5IHZ1bG5lcmFiaWxpdGllcwpbSU5GT10JMjAyNi0wNS0xOFQwMjowMzozNi4wODJaCWJhOGRjM2FhLWU5NzUtNDk1NS1hMzhlLWM2Mzc4NzA1YzRjNglTY2FuIGNvbXBsZXRlIOKAlCA5IENWRSByZWNvcmRzIGZvdW5kCltJTkZPXQkyMDI2LTA1LTE4VDAyOjAzOjM2LjIyMVoJYmE4ZGMzYWEtZTk3NS00OTU1LWEzOGUtYzYzNzg3MDVjNGM2CVNhdmVkIDkgcmVjb3JkcyB1bmRlciBzY2FuX2lkPVNDQU4jMjAyNi0wNS0xOCM3YjE2NjUzZgpbSU5GT10JMjAyNi0wNS0xOFQwMjowMzozNi4yMjFaCWJhOGRjM2FhLWU5NzUtNDk1NS1hMzhlLWM2Mzc4NzA1YzRjNglTY2FuIGNvbXBsZXRlOiA5IHZ1bG5lcmFiaWxpdGllcyBmb3VuZApFTkQgUmVxdWVzdElkOiBiYThkYzNhYS1lOTc1LTQ5NTUtYTM4ZS1jNjM3ODcwNWM0YzYKUkVQT1JUIFJlcXVlc3RJZDogYmE4ZGMzYWEtZTk3NS00OTU1LWEzOGUtYzYzNzg3MDVjNGM2CUR1cmF0aW9uOiAyNDM3LjU0IG1zCUJpbGxlZCBEdXJhdGlvbjogMjQzOCBtcwlNZW1vcnkgU2l6ZTogMjU2IE1CCU1heCBNZW1vcnkgVXNlZDogMTA4IE1CCQo=",
-    "ExecutedVersion": "$LATEST"
-}
-
---- Raw Lambda response ---
-{
-    "status": "ok",
-    "action": "scan",
-    "result": {
-        "scan_id": "SCAN#2026-05-18#7b16653f",
-        "total_found": 9,
-        "by_severity": {
-            "UNKNOWN": 9
-        },
-        "by_service": {
-            "order-service": 4,
-            "invoice-service": 4,
-            "bff": 1
-        },
-        "sample_vulns": [
-            {
-                "cve_id": "GHSA-79v4-65xg-pq4g",
-                "service": "order-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-m959-cc7f-wv43",
-                "service": "order-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-r6ph-v2qm-q3c2",
-                "service": "order-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-mf9w-mj56-hr94",
-                "service": "order-service",
-                "package": "python-dotenv",
-                "current_version": "1.0.1",
-                "safe_version": "1.2.2",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-79v4-65xg-pq4g",
-                "service": "invoice-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            }
-        ]
-    }
-}
-0s
-Run python3 - <<'PYEOF'
-
-============================================================
-  VULNERABILITY SCAN COMPLETE
-============================================================
-  Scan ID     : SCAN#2026-05-18#7b16653f
-  Total found : 9
-
-  UNKNOWN   : 9
-
-  order-service         : 4 CVE(s)
-  invoice-service       : 4 CVE(s)
-  bff                   : 1 CVE(s)
-
-  Sample findings (first 5):
-    [UNKNOWN] GHSA-79v4-65xg-pq4g
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-m959-cc7f-wv43
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-r6ph-v2qm-q3c2
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-mf9w-mj56-hr94
-      order-service/python-dotenv  1.0.1 → upgrade to 1.2.2
-      No description available
-    [UNKNOWN] GHSA-79v4-65xg-pq4g
-      invoice-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-============================================================
-
-0s
-1s
-0s
-1s
+  
+aws_lb_target_group.vulnerability_agent: Creating...
+aws_lambda_function.vulnerability_agent: Modifying... [id=orderflow-vulnerability-agent-dev]
+aws_cloudfront_distribution.frontend: Modifying... [id=E3HDWKPHQETVYE]
+aws_lb_target_group.vulnerability_agent: Creation complete after 1s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-vuln-agent-dev/0f41dfbdd7615b76]
+aws_lb_listener_rule.vulnerability_agent: Creating...
+aws_lb_listener_rule.vulnerability_agent: Creation complete after 0s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/8ebf5c5eecf836ba]
+aws_lambda_function.vulnerability_agent: Modifications complete after 6s [id=orderflow-vulnerability-agent-dev]
+aws_lambda_permission.alb_invoke: Creating...
+aws_lambda_function_url.vulnerability_agent: Creating...
+aws_lambda_permission.alb_invoke: Creation complete after 0s [id=AllowALBInvoke]
+aws_lb_target_group_attachment.vulnerability_agent: Creating...
+aws_lb_target_group_attachment.vulnerability_agent: Creation complete after 0s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-vuln-agent-dev/0f41dfbdd7615b76-20260518032128303300000002]
+aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 10s elapsed]
+aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 20s elapsed]
+aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 30s elapsed]
+aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 40s elapsed]
+aws_cloudfront_distribution.frontend: Modifications complete after 47s [id=E3HDWKPHQETVYE]
+data.aws_iam_policy_document.frontend_bucket: Reading...
+data.aws_iam_policy_document.frontend_bucket: Read complete after 0s [id=164751590]
+╷
+│ Warning: Invalid Attribute Combination
+╷
+│ 
+│ Error: creating Lambda Function URL (orderflow-vulnerability-agent-dev): operation error Lambda: CreateFunctionUrlConfig, https response error StatusCode: 400, RequestID: 5ce0363d-5ef1-4859-a80d-3396377debc1, api error ValidationException: 1 validation error detected: Value '[POST, GET, OPTIONS]' at 'cors.allowMethods' failed to satisfy constraint: Member must satisfy constraint: [Member must have length less than or equal to 6, Member must have length greater than or equal to 0, Member must satisfy regular expression pattern: .*, Member must not be null]
+│   with aws_lb_target_group.vulnerability_agent,
+│   on agents.tf line 281, in resource "aws_lb_target_group" "vulnerability_agent":
+│  281:   health_check {
+│ 
+│   with aws_lambda_function_url.vulnerability_agent,
+│   on agents.tf line 241, in resource "aws_lambda_function_url" "vulnerability_agent":
+│  241: resource "aws_lambda_function_url" "vulnerability_agent" {
+│ 
+╵
+│ 
+│ Attribute "health_check.protocol" cannot be specified when "target_type" is
+│ "lambda".
+│ 
+│ This will be an error in a future release.
+╵
+Error: Terraform exited with code 1.
+Error: Process completed with exit code 1.
