@@ -166,14 +166,18 @@ resource "aws_iam_role_policy" "lambda_agent_permissions" {
         Resource = data.aws_ssm_parameter.github_pat.arn
       },
       {
-        # Phase 2: Bedrock model inference for AI reasoning (Claude 3.5 Haiku)
+        # Phase 2: Bedrock model inference — allow Nova Micro (default) and Claude (fallback)
         Sid    = "BedrockInference"
         Effect = "Allow"
         Action = [
           "bedrock:InvokeModel",
           "bedrock:InvokeModelWithResponseStream",
         ]
-        Resource = "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+        Resource = [
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.nova-micro-v1:0",
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/amazon.nova-lite-v1:0",
+          "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+        ]
       },
     ]
   })

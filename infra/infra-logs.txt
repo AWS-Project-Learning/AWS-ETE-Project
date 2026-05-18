@@ -1,42 +1,73 @@
+Run python deploy/lambda_deploy.py \
   
-aws_lb_target_group.vulnerability_agent: Creating...
-aws_lambda_function.vulnerability_agent: Modifying... [id=orderflow-vulnerability-agent-dev]
-aws_cloudfront_distribution.frontend: Modifying... [id=E3HDWKPHQETVYE]
-aws_lb_target_group.vulnerability_agent: Creation complete after 1s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-vuln-agent-dev/0f41dfbdd7615b76]
-aws_lb_listener_rule.vulnerability_agent: Creating...
-aws_lb_listener_rule.vulnerability_agent: Creation complete after 0s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:listener-rule/app/orderflow-alb-dev/4322cf010ab7396b/f035b1bdbad96134/8ebf5c5eecf836ba]
-aws_lambda_function.vulnerability_agent: Modifications complete after 6s [id=orderflow-vulnerability-agent-dev]
-aws_lambda_permission.alb_invoke: Creating...
-aws_lambda_function_url.vulnerability_agent: Creating...
-aws_lambda_permission.alb_invoke: Creation complete after 0s [id=AllowALBInvoke]
-aws_lb_target_group_attachment.vulnerability_agent: Creating...
-aws_lb_target_group_attachment.vulnerability_agent: Creation complete after 0s [id=arn:aws:elasticloadbalancing:us-east-1:109653023631:targetgroup/orderflow-vuln-agent-dev/0f41dfbdd7615b76-20260518032128303300000002]
-aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 10s elapsed]
-aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 20s elapsed]
-aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 30s elapsed]
-aws_cloudfront_distribution.frontend: Still modifying... [id=E3HDWKPHQETVYE, 40s elapsed]
-aws_cloudfront_distribution.frontend: Modifications complete after 47s [id=E3HDWKPHQETVYE]
-data.aws_iam_policy_document.frontend_bucket: Reading...
-data.aws_iam_policy_document.frontend_bucket: Read complete after 0s [id=164751590]
-╷
-│ Warning: Invalid Attribute Combination
-╷
-│ 
-│ Error: creating Lambda Function URL (orderflow-vulnerability-agent-dev): operation error Lambda: CreateFunctionUrlConfig, https response error StatusCode: 400, RequestID: 5ce0363d-5ef1-4859-a80d-3396377debc1, api error ValidationException: 1 validation error detected: Value '[POST, GET, OPTIONS]' at 'cors.allowMethods' failed to satisfy constraint: Member must satisfy constraint: [Member must have length less than or equal to 6, Member must have length greater than or equal to 0, Member must satisfy regular expression pattern: .*, Member must not be null]
-│   with aws_lb_target_group.vulnerability_agent,
-│   on agents.tf line 281, in resource "aws_lb_target_group" "vulnerability_agent":
-│  281:   health_check {
-│ 
-│   with aws_lambda_function_url.vulnerability_agent,
-│   on agents.tf line 241, in resource "aws_lambda_function_url" "vulnerability_agent":
-│  241: resource "aws_lambda_function_url" "vulnerability_agent" {
-│ 
-╵
-│ 
-│ Attribute "health_check.protocol" cannot be specified when "target_type" is
-│ "lambda".
-│ 
-│ This will be an error in a future release.
-╵
-Error: Terraform exited with code 1.
-Error: Process completed with exit code 1.
+============================================================
+  DRY RUN — Lambda Deploy: vulnerability-agent → dev
+============================================================
+  Function  : orderflow-vulnerability-agent-dev
+  Source    : agents/vulnerability-agent
+  Handler   : handler.handler
+  Runtime   : python3.12
+  Timeout   : 300s
+  Memory    : 256 MB
+  Env vars  :
+    LOG_LEVEL = INFO
+    DYNAMODB_TABLE = orderflow-vulnerability-scans-dev
+    SSM_GITHUB_TOKEN_PATH = /orderflow/dev/agents/github-pat
+  [dry-run] No changes made. Remove --dry-run to apply.
+8s
+Run python deploy/lambda_deploy.py \
+  
+============================================================
+  Lambda Deploy: vulnerability-agent → dev
+============================================================
+  Function  : orderflow-vulnerability-agent-dev
+  Source    : agents/vulnerability-agent
+  Handler   : handler.handler
+  Runtime   : python3.12
+  Timeout   : 300s
+  Memory    : 256 MB
+  Env vars  :
+    LOG_LEVEL = INFO
+    DYNAMODB_TABLE = orderflow-vulnerability-scans-dev
+    SSM_GITHUB_TOKEN_PATH = /orderflow/dev/agents/github-pat
+[1/4] Building zip from agents/vulnerability-agent/
+  [zip] added: handler.py  (11,005 bytes)
+  [zip] added: reasoner.py  (8,895 bytes)
+  [zip] added: reporter.py  (9,306 bytes)
+  [zip] added: scanner.py  (12,430 bytes)
+  [zip] total size: 13,781 bytes (13 KB)
+[2/4] Checking Lambda state...
+  [lambda] State=Active — ready to update.
+[3/4] Updating function code...
+  [lambda] Waiting for code update to complete...
+  [lambda] Code updated.
+[4/4] Updating function configuration...
+  [lambda] Waiting for config update to complete...
+  [lambda] Configuration updated.
+============================================================
+  Done — orderflow-vulnerability-agent-dev deployed successfully.
+  Trigger a scan: Actions → AI Vulnerability Agent → Run workflow → scan
+============================================================
+4s
+Run echo "Verifying Lambda function state after deploy..."
+Verifying Lambda function state after deploy...
+-----------------------------------------
+|       GetFunctionConfiguration        |
++-------------------+-------------------+
+|  Handler          |  handler.handler  |
+|  LastUpdateStatus |  Successful       |
+|  MemorySize       |  256              |
+|  Runtime          |  python3.12       |
+|  State            |  Active           |
+|  Timeout          |  300              |
++-------------------+-------------------+
+1s
+Run FUNCTION_URL=$(aws ssm get-parameter \
+  
+============================================================
+  VULNERABILITY AGENT — FUNCTION URL
+============================================================
+  https://2jdrlktkvm26odmbupacby6lpi0kdfro.lambda-url.us-east-1.on.aws/
+  Add to security-portal/.env.local:
+  VITE_AGENT_URL=https://2jdrlktkvm26odmbupacby6lpi0kdfro.lambda-url.us-east-1.on.aws/
+============================================================

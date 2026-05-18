@@ -185,11 +185,12 @@ export default function SecurityDashboard() {
   const [data,     setData]     = useState(null)
   const [loading,  setLoading]  = useState(true)
   const [error,    setError]    = useState(null)
-  const [expanded, setExpanded] = useState(null)
-  const [search,   setSearch]   = useState('')
-  const [sevFilter,setSevFilter]= useState('ALL')
-  const [decFilter,setDecFilter]= useState('ALL')
-  const [sort,     setSort]     = useState({ col: 'severity', dir: 'desc' })
+  const [expanded,  setExpanded]  = useState(null)
+  const [search,    setSearch]    = useState('')
+  const [sevFilter, setSevFilter] = useState('ALL')
+  const [decFilter, setDecFilter] = useState('ALL')
+  const [sort,      setSort]      = useState({ col: 'severity', dir: 'desc' })
+  const [groupBy,   setGroupBy]   = useState(true)   // group by package+CVE by default
 
   useEffect(() => { fetchData() }, [])
 
@@ -279,20 +280,34 @@ export default function SecurityDashboard() {
   }))
   if (chartData.length === 0) chartData.push({ name: 'Now', scans: vulns.length })
 
-  // Table filtering + sorting
-  const filtered = vulns
-    .filter(v =>
-      (sevFilter === 'ALL' || v.severity === sevFilter) &&
-      (decFilter === 'ALL' || (v.decision ?? 'PENDING') === decFilter) &&
-      (!search || [v.package, v.cve_id, v.service].some(f => f?.toLowerCase().includes(search.toLowerCase())))
-    )
-    .sort((a, b) => {
-      const dir = sort.dir === 'asc' ? 1 : -1
-      if (sort.col === 'severity') return ((SEV_ORDER[b.severity] ?? 0) - (SEV_ORDER[a.severity] ?? 0)) * dir
-      return ((a[sort.col] ?? '') < (b[sort.col] ?? '') ? -1 : 1) * dir
-    })
-
   const toggleSort = col => setSort(p => ({ col, dir: p.col === col && p.dir === 'desc' ? 'asc' : 'desc' }))
+
+  // Base filter
+  const baseFiltered = vulns.filter(v =>
+    (sevFilter === 'ALL' || v.severity === sevFilter) &&
+    (decFilter === 'ALL' || (v.decision ?? 'PENDING') === decFilter) &&
+    (!search || [v.package, v.cve_id, v.service].some(f => f?.toLowerCase().includes(search.toLowerCase())))
+  )
+
+  // Group by package+CVE — merge services into one row
+  const grouped = (() => {
+    if (!groupBy) return baseFiltered.map(v => ({ ...v, _services: [v.service], _key: `${v.cve_id}#${v.package}#${v.service}` }))
+    const map = new Map()
+    for (const v of baseFiltered) {
+      const key = `${v.cve_id}#${v.package}`
+      if (!map.has(key)) map.set(key, { ...v, _services: [], _key: key })
+      if (!map.get(key)._services.includes(v.service)) map.get(key)._services.push(v.service)
+    }
+    return Array.from(map.values())
+  })()
+
+  const filtered = grouped.sort((a, b) => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    if (sort.col === 'severity') return ((SEV_ORDER[b.severity] ?? 0) - (SEV_ORDER[a.severity] ?? 0)) * dir
+    return ((a[sort.col] ?? '') < (b[sort.col] ?? '') ? -1 : 1) * dir
+  })
+
+  const allPending = vulns.length > 0 && vulns.every(v => !v.decision || v.decision === 'PENDING' || v.decision === 'ESCALATE')
 
   return (
     <div style={{
@@ -346,6 +361,26 @@ export default function SecurityDashboard() {
           sub="mean time to remediate" icon="⏱" color="#3b82f6" />
       </div>
 
+      {/* ── Phase 2 banner ──────────────────────────────────────── */}
+      {allPending && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 14,
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+          borderRadius: 12, padding: '12px 18px', marginBottom: 16,
+        }}>
+          <span style={{ fontSize: 20 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24', margin: '0 0 2px' }}>
+              AI Reasoning not yet run (Phase 2)
+            </p>
+            <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>
+              All findings show ESCALATE because the reasoner hasn't analysed them yet.
+              Trigger Phase 2 from GitHub Actions → <code style={{ color: '#fbbf24' }}>vulnerability-agent</code> → Run workflow → action: <code style={{ color: '#fbbf24' }}>reason</code>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Severity filter pills ───────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(s => {
@@ -362,13 +397,25 @@ export default function SecurityDashboard() {
             }}>{s} {count > 0 && s !== 'ALL' ? `(${count})` : ''}</button>
           )
         })}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {/* Group toggle */}
+          <button onClick={() => setGroupBy(g => !g)} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: groupBy ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
+            border: `1px solid ${groupBy ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.1)'}`,
+            color: groupBy ? '#818cf8' : '#64748b',
+            fontSize: 11, fontWeight: 600, padding: '6px 12px',
+            borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
+          }}>
+            {groupBy ? '⊟' : '⊞'} {groupBy ? 'Grouped' : 'Flat'}
+          </button>
+
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search package, CVE, service…"
             style={{
               background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#e2e8f0',
-              outline: 'none', width: 220,
+              outline: 'none', width: 200,
             }} />
           <select value={decFilter} onChange={e => setDecFilter(e.target.value)}
             style={{
@@ -394,7 +441,12 @@ export default function SecurityDashboard() {
           padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
           <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>Active Vulnerabilities</p>
-          <span style={{ fontSize: 12, color: '#475569' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+          <span style={{ fontSize: 12, color: '#475569' }}>
+            {filtered.length} unique finding{filtered.length !== 1 ? 's' : ''}
+            {groupBy && vulns.length !== filtered.length
+              ? <span style={{ color: '#334155', marginLeft: 6 }}>({vulns.length} total across services)</span>
+              : ''}
+          </span>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -447,7 +499,23 @@ export default function SecurityDashboard() {
                       cursor: 'pointer', fontSize: 14, padding: 2,
                     }}>{isOpen ? '∨' : '›'}</button>
                   </td>
-                  <td style={{ padding: '12px 14px', fontSize: 12, color: '#94a3b8', fontFamily: 'monospace' }}>{v.service}</td>
+                  <td style={{ padding: '12px 14px' }}>
+                    {v._services && v._services.length > 1
+                      ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {v._services.map(s => (
+                            <span key={s} style={{
+                              fontSize: 10, fontFamily: 'monospace', fontWeight: 600,
+                              background: 'rgba(99,102,241,0.12)', color: '#818cf8',
+                              border: '1px solid rgba(99,102,241,0.25)',
+                              padding: '2px 7px', borderRadius: 99,
+                            }}>{s}</span>
+                          ))}
+                        </div>
+                      : <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'monospace' }}>
+                          {v._services?.[0] ?? v.service}
+                        </span>
+                    }
+                  </td>
                   <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{v.package}</td>
                   <td style={{ padding: '12px 14px', fontSize: 12, color: '#ef4444', fontFamily: 'monospace' }}>{v.current_version}</td>
                   <td style={{ padding: '12px 14px' }}>
