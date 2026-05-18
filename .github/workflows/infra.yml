@@ -4,9 +4,13 @@ on:
   # Auto-plan on every push/PR that touches infra/ — shows what will change.
   # Apply is intentionally NOT triggered automatically; run it manually below.
   #
-  # The email-receipt Lambda is also covered: its source code is zipped by
-  # the `archive_file` data source in infra/email.tf, so a code-only change
-  # produces a Terraform plan (new source_code_hash → Lambda redeploy).
+  # Lambda source changes are also covered: archive_file in email.tf zips
+  # the email Lambda source at plan time, so a code-only change to
+  # email-receipt-lambda/ still produces a Terraform plan.
+  #
+  # agents/vulnerability-agent/** is intentionally NOT here — that code is
+  # deployed by vulnerability-agent.yml (lambda_deploy.py), not Terraform.
+  # infra/agents.tf changes ARE covered by the infra/** path below.
   push:
     branches:
       - main
@@ -99,11 +103,11 @@ jobs:
             ${{ env.TF_WORKING_DIR }}/tfplan
             ${{ env.TF_WORKING_DIR }}/plan-output.txt
             ${{ env.TF_WORKING_DIR }}/email-receipt-lambda.zip
+            ${{ env.TF_WORKING_DIR }}/agent-lambda.zip
           retention-days: 7
-          # The Lambda zip is built by the archive_file data source during
-          # `terraform plan`. We must ship it alongside the plan so the apply
-          # job (running on a fresh runner) can find it via the relative
-          # filename = "./email-receipt-lambda.zip" in the saved plan.
+          # Lambda zips are built by archive_file data sources during
+          # `terraform plan`. Both must be uploaded so the apply job
+          # (fresh runner, no local files) can execute the saved plan.
           if-no-files-found: warn
 
       - name: Comment plan on PR
