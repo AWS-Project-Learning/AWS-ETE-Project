@@ -1,14 +1,24 @@
-import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ShoppingCart, FileText, Package, ChevronRight, ShieldAlert } from 'lucide-react'
+import { NavLink, useLocation } from 'react-router-dom'
+import {
+  LayoutDashboard, ShoppingCart, FileText, Package,
+  ChevronRight, ShieldAlert, ScanSearch, BarChart3,
+} from 'lucide-react'
 
 const nav = [
   { to: '/',         label: 'Dashboard', icon: LayoutDashboard },
   { to: '/orders',   label: 'Orders',    icon: ShoppingCart },
   { to: '/invoices', label: 'Invoices',  icon: FileText },
-  { to: '/security', label: 'Security',  icon: ShieldAlert },
+]
+
+const securitySubNav = [
+  { to: '/security',           label: 'Run Scan',    icon: ScanSearch  },
+  { to: '/security/dashboard', label: 'Scan Results', icon: BarChart3   },
 ]
 
 export default function Sidebar() {
+  const { pathname } = useLocation()
+  const securityActive = pathname.startsWith('/security')
+
   return (
     <aside className="w-64 min-h-screen bg-gray-900 flex flex-col">
       {/* Logo */}
@@ -25,6 +35,8 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider px-3 mb-2">Menu</p>
+
+        {/* Regular nav items */}
         {nav.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -46,6 +58,42 @@ export default function Sidebar() {
             )}
           </NavLink>
         ))}
+
+        {/* Security — parent item with always-visible sub-links */}
+        <div>
+          {/* Parent row (not a link itself, just a label) */}
+          <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium
+            ${securityActive ? 'text-white' : 'text-gray-400'}`}>
+            <ShieldAlert size={18} />
+            <span className="flex-1">Security</span>
+            <ChevronRight size={14} className={`transition-transform ${securityActive ? 'rotate-90 opacity-100' : 'opacity-30'}`} />
+          </div>
+
+          {/* Sub-links — indented, always visible */}
+          <div className="ml-4 pl-3 border-l border-gray-700 space-y-0.5 mt-0.5">
+            {securitySubNav.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end
+                className={({ isActive }) =>
+                  `flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all
+                  ${isActive
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-500 hover:bg-gray-800 hover:text-gray-200'}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon size={14} />
+                    <span className="flex-1">{label}</span>
+                    {isActive && <ChevronRight size={12} />}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
       </nav>
 
       {/* Footer */}
