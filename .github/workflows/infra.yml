@@ -103,10 +103,10 @@ jobs:
             ${{ env.TF_WORKING_DIR }}/tfplan
             ${{ env.TF_WORKING_DIR }}/plan-output.txt
             ${{ env.TF_WORKING_DIR }}/email-receipt-lambda.zip
-            ${{ env.TF_WORKING_DIR }}/agent-lambda.zip
+            ${{ env.TF_WORKING_DIR }}/agent-placeholder.zip
           retention-days: 7
-          # Lambda zips are built by archive_file data sources during
-          # `terraform plan`. Both must be uploaded so the apply job
+          # Both Lambda zips are built by archive_file data sources during
+          # `terraform plan` and must be uploaded here so the apply job
           # (fresh runner, no local files) can execute the saved plan.
           if-no-files-found: warn
 

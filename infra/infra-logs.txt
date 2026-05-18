@@ -1,30 +1,22 @@
-Run terraform apply -auto-approve tfplan
-aws_ssm_parameter.agent_function_name: Creating...
+
+aws_iam_role_policy.lambda_agent_permissions: Creating...
 aws_cloudwatch_event_rule.daily_scan: Creating...
-aws_ssm_parameter.github_pat: Creating...
-aws_iam_role.lambda_agent: Creating...
-aws_dynamodb_table.vuln_scans: Creating...
-aws_iam_role.lambda_agent: Creation complete after 1s [id=lambda-vulnerability-agent-dev]
-aws_iam_role_policy_attachment.lambda_agent_logs: Creating...
-aws_ssm_parameter.agent_function_name: Creation complete after 1s [id=/orderflow/dev/agents/lambda-function-name]
-aws_iam_role_policy_attachment.lambda_agent_logs: Creation complete after 0s [id=lambda-vulnerability-agent-dev-20260518012856584500000001]
-aws_dynamodb_table.vuln_scans: Still creating... [10s elapsed]
-aws_dynamodb_table.vuln_scans: Still creating... [20s elapsed]
-aws_dynamodb_table.vuln_scans: Creation complete after 23s [id=orderflow-vulnerability-scans-dev]
+aws_lambda_function.vulnerability_agent: Creating...
+aws_iam_role_policy.lambda_agent_permissions: Creation complete after 0s [id=lambda-vulnerability-agent-dev:vulnerability-agent-permissions]
 ╷
-│ Error: creating SSM Parameter (/orderflow/dev/agents/github-pat): operation error SSM: PutParameter, https response error StatusCode: 400, RequestID: b884e7c6-8bf8-4a18-8b17-92a4ad4aea50, ParameterAlreadyExists: The parameter already exists. To overwrite this value, set the overwrite option in the request to true.
+│ Error: reading ZIP file (./agent-placeholder.zip): open ./agent-placeholder.zip: no such file or directory
 │ 
-│   with aws_ssm_parameter.github_pat,
-│   on agents.tf line 41, in resource "aws_ssm_parameter" "github_pat":
-│   41: resource "aws_ssm_parameter" "github_pat" {
+│   with aws_lambda_function.vulnerability_agent,
+│   on agents.tf line 192, in resource "aws_lambda_function" "vulnerability_agent":
+│  192: resource "aws_lambda_function" "vulnerability_agent" {
 │ 
 ╵
 ╷
-│ Error: creating EventBridge Rule (orderflow-daily-vuln-scan-dev): operation error EventBridge: PutRule, https response error StatusCode: 400, RequestID: 3f0a36a9-0839-48e5-9936-d2f0fc87b43c, api error AccessDeniedException: User: arn:aws:sts::109653023631:assumed-role/github-actions-terraform/GitHubActions is not authorized to perform: events:TagResource on resource: arn:aws:events:us-east-1:109653023631:rule/orderflow-daily-vuln-scan-dev because no identity-based policy allows the events:TagResource action
+│ Error: listing tags for EventBridge Rule (arn:aws:events:us-east-1:109653023631:rule/orderflow-daily-vuln-scan-dev): operation error EventBridge: ListTagsForResource, https response error StatusCode: 400, RequestID: 28180688-2da8-43e0-acfb-a8e2bc354462, api error AccessDeniedException: User: arn:aws:sts::109653023631:assumed-role/github-actions-terraform/GitHubActions is not authorized to perform: events:ListTagsForResource on resource: arn:aws:events:us-east-1:109653023631:rule/orderflow-daily-vuln-scan-dev because no identity-based policy allows the events:ListTagsForResource action
 │ 
 │   with aws_cloudwatch_event_rule.daily_scan,
-│   on agents.tf line 249, in resource "aws_cloudwatch_event_rule" "daily_scan":
-│  249: resource "aws_cloudwatch_event_rule" "daily_scan" {
+│   on agents.tf line 238, in resource "aws_cloudwatch_event_rule" "daily_scan":
+│  238: resource "aws_cloudwatch_event_rule" "daily_scan" {
 │ 
 ╵
 Error: Terraform exited with code 1.
