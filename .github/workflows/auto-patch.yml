@@ -303,9 +303,10 @@ jobs:
           EOF
           )
 
-          printf '{"action":"patch_status","status":"%s","service":"%s","scan_id":"%s","record_ids":%s,"evidence":%s}' \
+          printf '{"action":"patch_status","status":"%s","service":"%s","branch":"%s","scan_id":"%s","record_ids":%s,"evidence":%s}' \
             "$STATUS" \
             "${{ inputs.service }}" \
+            "${{ inputs.branch }}" \
             "${{ inputs.scan_id }}" \
             '${{ inputs.record_ids }}' \
             "$EVIDENCE" > /tmp/callback.json

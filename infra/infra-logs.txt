@@ -1,101 +1,59 @@
-AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws lambda invoke \
-  --function-name orderflow-vulnerability-agent-dev \
-  --payload '{"action":"reason"}' \
-  --cli-binary-format raw-in-base64-out \
-  --region us-east-1 \
-  --profile personal \
-  --no-cli-pager \
-  /tmp/reason.json
-
-echo "=== Lambda Response ==="
-cat /tmp/reason.json | python3 -m json.tool 2>/dev/null || cat /tmp/reason.json
+2s
+Run RUNNING=$(aws ecs describe-services \
+ECS: running=1 desired=1
+1m 6s
+Run # Look up target group by tag (service name)
+  
+ALB target state (attempt 1): draining
+ALB target state (attempt 2): draining
+ALB target state (attempt 3): draining
+ALB target state (attempt 4): draining
+ALB target state (attempt 5): draining
+ALB target state (attempt 6): draining
+Warning: ALB target not healthy: draining
+7s
+Run SERVICE="bff"
+  
+=== CloudWatch log excerpt ===
+INFO:     Started server process [1]	INFO:     Waiting for application startup.	INFO:app.main:Starting BFF...	INFO:app.main:ORDER_SERVICE_URL  = http://order-service.orderflow-dev.local:8001	INFO:app.main:INVOICE_SERVICE_URL = http://invoice-service.orderflow-dev.local:8002	INFO:app.main:CORS_ORIGINS        = https://d7v98dznpwca9.cloudfront.net,http://localhost:5173	INFO:     Application startup complete.	INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)	INFO:     10.0.1.65:2692 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:44796 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:57120 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:28710 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:22374 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:42334 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:51860 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:22212 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:53742 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:5
+Notice: Startup log signature found ✅
+0s
+Run ECS_OK="true"
+Health summary: ECS=true  ALB=false  STARTUP_LOG=true  ERROR_CHECK=true
+Error: One or more health checks failed — DEV_FAILED
+2s
+Run STATUS="DEV_FAILED"
+Sending callback to Lambda: DEV_FAILED
+{
+    "action": "patch_status",
+    "status": "DEV_FAILED",
+    "service": "bff",
+    "scan_id": "SCAN#2026-05-19#40981768",
+    "record_ids": [
+        "CVE-2026-28684#bff#python-dotenv"
+    ],
+    "evidence": {
+        "ecs_running": 1,
+        "ecs_desired": 1,
+        "alb_state": "draining",
+        "startup_log_ok": true,
+        "error_log_ok": true,
+        "task_arn": "arn:aws:ecs:us-east-1:109653023631:task/orderflow-dev/6ee2f613ef9448b5b157301d8d81c8b0",
+        "image": "109653023631.dkr.ecr.us-east-1.amazonaws.com/orderflow/bff:autopatch-6170702",
+        "verified_at": "2026-05-19T06:50:43Z",
+        "workflow_run": "https://github.com/AWS-Project-Learning/AWS-ETE-Project/actions/runs/26081064967"
+    }
+}
 {
     "StatusCode": 200,
     "ExecutedVersion": "$LATEST"
 }
-=== Lambda Response ===
+Lambda callback response:
 {
     "status": "ok",
-    "action": "reason",
-    "result": {
-        "total": 9,
-        "auto_patch": 3,
-        "escalate": 6,
-        "ignore": 0,
-        "decisions": [
-            {
-                "package": "cryptography",
-                "service": "invoice-service",
-                "severity": "LOW",
-                "decision": "ESCALATE",
-                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
-                "confidence": 90
-            },
-            {
-                "package": "cryptography",
-                "service": "order-service",
-                "severity": "LOW",
-                "decision": "ESCALATE",
-                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
-                "confidence": 90
-            },
-            {
-                "package": "cryptography",
-                "service": "invoice-service",
-                "severity": "HIGH",
-                "decision": "ESCALATE",
-                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
-                "confidence": 90
-            },
-            {
-                "package": "cryptography",
-                "service": "order-service",
-                "severity": "HIGH",
-                "decision": "ESCALATE",
-                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
-                "confidence": 90
-            },
-            {
-                "package": "python-dotenv",
-                "service": "bff",
-                "severity": "MEDIUM",
-                "decision": "AUTO_PATCH",
-                "reasoning": "The version bump from 1.0.1 to 1.2.2 is a minor update that addresses a medium severity vulnerability without introducing breaking changes.",
-                "confidence": 85
-            },
-            {
-                "package": "python-dotenv",
-                "service": "invoice-service",
-                "severity": "MEDIUM",
-                "decision": "AUTO_PATCH",
-                "reasoning": "The vulnerability is medium severity and affects a dev dependency with no network exposure, suggesting a low risk of exploitation in this context.",
-                "confidence": 85
-            },
-            {
-                "package": "python-dotenv",
-                "service": "order-service",
-                "severity": "MEDIUM",
-                "decision": "AUTO_PATCH",
-                "reasoning": "The vulnerability is medium severity and affects a dev dependency, with a minor version bump to a safe version, indicating low risk of breaking changes.",
-                "confidence": 85
-            },
-            {
-                "package": "cryptography",
-                "service": "invoice-service",
-                "severity": "CRITICAL",
-                "decision": "ESCALATE",
-                "reasoning": "CRITICAL severity requires human review",
-                "confidence": 95
-            },
-            {
-                "package": "cryptography",
-                "service": "order-service",
-                "severity": "CRITICAL",
-                "decision": "ESCALATE",
-                "reasoning": "CRITICAL severity requires human review",
-                "confidence": 95
-            }
-        ]
-    }
+    "action": "patch_status",
+    "result": "DEV_FAILED",
+    "message": "Health check failed"
 }
-➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 
+0s
+Post job cleanup.
