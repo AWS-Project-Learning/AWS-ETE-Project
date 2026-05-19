@@ -1,0 +1,317 @@
+name: Auto-Patch — Dev Deploy & Health Verify
+
+# ── Responsibility ─────────────────────────────────────────────────────────────
+# Triggered by the AI Vulnerability Agent (Phase 3) via workflow_dispatch.
+#
+# Flow:
+#   1. Check out the auto-patch feature branch (already has bumped requirements.txt)
+#   2. Build Docker image and push to ECR
+#   3. Deploy to dev only (no approval gate)
+#   4. Run 3-layer health verification:
+#        a. ECS runningCount == desiredCount
+#        b. ALB target health == "healthy"
+#        c. CloudWatch startup log contains "Application startup complete", no errors
+#   5. Collect evidence (task ARN, log excerpt, timestamps, check results)
+#   6. Call back to Lambda with DEV_HEALTHY or DEV_FAILED + evidence JSON
+#
+# After DEV_HEALTHY callback:
+#   Lambda creates PR to main with AI reasoning + evidence embedded in PR body.
+#   Human reviews the PR and approves for prod.
+#
+# After DEV_FAILED callback:
+#   Lambda deletes the feature branch and marks the vulnerability DEV_FAILED.
+#   UI shows red alert. No PR is raised.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to patch (bff | order-service | invoice-service)"
+        required: true
+        type: string
+      branch:
+        description: "Feature branch to build from (fix/auto-patch-{service}-{date})"
+        required: true
+        type: string
+      scan_id:
+        description: "Scan ID from DynamoDB (for callback)"
+        required: true
+        type: string
+      record_ids:
+        description: "JSON array of record IDs to update (e.g. [\"CVE-xxx#bff#pkg\"])"
+        required: true
+        type: string
+      patches_json:
+        description: "JSON map of package → safe version (e.g. {\"python-dotenv\":\"1.2.2\"})"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION:   us-east-1
+  ENV:          dev
+  CLUSTER:      orderflow-dev
+  LAMBDA_NAME:  orderflow-vulnerability-agent-dev
+
+jobs:
+
+  build-deploy-verify:
+    name: Build → Deploy dev → Health check → Callback
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # ── 1. Checkout feature branch ───────────────────────────────────────────
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      # ── 2. Configure AWS ─────────────────────────────────────────────────────
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      # ── 3. Build & push Docker image ─────────────────────────────────────────
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push Docker image
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          SERVICE:      ${{ inputs.service }}
+        run: |
+          IMAGE_TAG=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE="$ECR_REGISTRY/orderflow/$SERVICE:autopatch-$IMAGE_TAG"
+          docker build -t "$IMAGE" "backend-services/$SERVICE/"
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "image_tag=autopatch-$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Built and pushed: $IMAGE"
+
+      # ── 4. Deploy to dev ─────────────────────────────────────────────────────
+      - name: Set up Python (for deploy scripts)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deploy dependencies
+        run: pip install boto3 pyyaml
+
+      - name: Render manifests
+        run: |
+          python deploy/render.py \
+            --service   ${{ inputs.service }} \
+            --env       ${{ env.ENV }} \
+            --image-tag ${{ steps.build.outputs.image_tag }}
+
+      - name: Apply to AWS (dev — no approval gate)
+        run: |
+          python deploy/apply.py \
+            --service ${{ inputs.service }} \
+            --env     ${{ env.ENV }}
+
+      # ── 5. Wait for ECS stability ─────────────────────────────────────────────
+      - name: Wait for ECS service to stabilise
+        run: |
+          echo "Waiting for ${{ inputs.service }} to stabilise in ${{ env.ENV }}..."
+          aws ecs wait services-stable \
+            --cluster  ${{ env.CLUSTER }} \
+            --services ${{ inputs.service }} \
+            --region   ${{ env.AWS_REGION }}
+          echo "ECS service stabilised."
+
+      # ── 6. Health check layer 1: ECS task count ───────────────────────────────
+      - name: Health check — ECS running count
+        id: ecs-check
+        run: |
+          RUNNING=$(aws ecs describe-services \
+            --cluster  ${{ env.CLUSTER }} \
+            --services ${{ inputs.service }} \
+            --region   ${{ env.AWS_REGION }} \
+            --query    'services[0].runningCount' --output text)
+          DESIRED=$(aws ecs describe-services \
+            --cluster  ${{ env.CLUSTER }} \
+            --services ${{ inputs.service }} \
+            --region   ${{ env.AWS_REGION }} \
+            --query    'services[0].desiredCount' --output text)
+
+          echo "ecs_running=$RUNNING" >> $GITHUB_OUTPUT
+          echo "ecs_desired=$DESIRED" >> $GITHUB_OUTPUT
+
+          echo "ECS: running=$RUNNING desired=$DESIRED"
+          if [ "$RUNNING" == "$DESIRED" ] && [ "$DESIRED" != "0" ]; then
+            echo "ecs_ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "ecs_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::ECS task count mismatch (running=$RUNNING, desired=$DESIRED)"
+          fi
+
+      # ── 7. Health check layer 2: ALB target health ────────────────────────────
+      - name: Health check — ALB target health
+        id: alb-check
+        run: |
+          # Look up target group by tag (service name)
+          TG_ARN=$(aws elbv2 describe-target-groups \
+            --region ${{ env.AWS_REGION }} \
+            --query "TargetGroups[?contains(TargetGroupName, '${{ inputs.service }}')].TargetGroupArn | [0]" \
+            --output text 2>/dev/null || echo "None")
+
+          if [ "$TG_ARN" = "None" ] || [ -z "$TG_ARN" ]; then
+            echo "alb_state=skipped" >> $GITHUB_OUTPUT
+            echo "alb_ok=true"       >> $GITHUB_OUTPUT
+            echo "::notice::ALB target group not found for ${{ inputs.service }} — skipping ALB check"
+          else
+            ALB_STATE="unknown"
+            for i in {1..6}; do
+              ALB_STATE=$(aws elbv2 describe-target-health \
+                --target-group-arn "$TG_ARN" \
+                --region           ${{ env.AWS_REGION }} \
+                --query            'TargetHealthDescriptions[0].TargetHealth.State' \
+                --output text 2>/dev/null || echo "unknown")
+              echo "ALB target state (attempt $i): $ALB_STATE"
+              [ "$ALB_STATE" = "healthy" ] && break
+              sleep 10
+            done
+            echo "alb_state=$ALB_STATE" >> $GITHUB_OUTPUT
+            if [ "$ALB_STATE" = "healthy" ]; then
+              echo "alb_ok=true" >> $GITHUB_OUTPUT
+            else
+              echo "alb_ok=false" >> $GITHUB_OUTPUT
+              echo "::warning::ALB target not healthy: $ALB_STATE"
+            fi
+          fi
+
+      # ── 8. Health check layer 3: CloudWatch startup logs ─────────────────────
+      - name: Health check — CloudWatch startup logs
+        id: log-check
+        run: |
+          SERVICE="${{ inputs.service }}"
+          LOG_GROUP="/ecs/${SERVICE}-${{ env.ENV }}"
+
+          # Get the newest running task
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster  ${{ env.CLUSTER }} \
+            --service-name "$SERVICE" \
+            --region   ${{ env.AWS_REGION }} \
+            --query    'taskArns[0]' --output text 2>/dev/null || echo "None")
+
+          echo "task_arn=$TASK_ARN" >> $GITHUB_OUTPUT
+
+          if [ "$TASK_ARN" = "None" ] || [ -z "$TASK_ARN" ]; then
+            echo "startup_log_ok=false" >> $GITHUB_OUTPUT
+            echo "error_log_ok=false"   >> $GITHUB_OUTPUT
+            echo "log_excerpt=No running task found" >> $GITHUB_OUTPUT
+            echo "::error::No running task found for $SERVICE"
+            exit 1
+          fi
+
+          TASK_ID=$(basename "$TASK_ARN")
+          LOG_STREAM="ecs/${SERVICE}/${TASK_ID}"
+
+          # Wait briefly for logs to appear
+          sleep 5
+
+          LOGS=$(aws logs get-log-events \
+            --log-group-name  "$LOG_GROUP" \
+            --log-stream-name "$LOG_STREAM" \
+            --limit           80 \
+            --region          ${{ env.AWS_REGION }} \
+            --query           'events[*].message' \
+            --output          text 2>/dev/null || echo "")
+
+          echo "=== CloudWatch log excerpt ==="
+          echo "$LOGS" | head -40
+
+          # Check for startup signature
+          if echo "$LOGS" | grep -q "Application startup complete"; then
+            echo "startup_log_ok=true" >> $GITHUB_OUTPUT
+            echo "::notice::Startup log signature found ✅"
+          else
+            echo "startup_log_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::Startup log signature NOT found"
+          fi
+
+          # Check for error indicators
+          if echo "$LOGS" | grep -qiE "^(ERROR|CRITICAL):|ImportError|ModuleNotFoundError|traceback"; then
+            echo "error_log_ok=false" >> $GITHUB_OUTPUT
+            echo "::warning::Error lines detected in startup logs"
+          else
+            echo "error_log_ok=true" >> $GITHUB_OUTPUT
+          fi
+
+          # Save excerpt for evidence (escape newlines for JSON)
+          EXCERPT=$(echo "$LOGS" | head -20 | tr '\n' '|')
+          echo "log_excerpt=$EXCERPT" >> $GITHUB_OUTPUT
+
+      # ── 9. Determine overall health status ───────────────────────────────────
+      - name: Evaluate overall health
+        id: health
+        run: |
+          ECS_OK="${{ steps.ecs-check.outputs.ecs_ok }}"
+          ALB_OK="${{ steps.alb-check.outputs.alb_ok }}"
+          LOG_OK="${{ steps.log-check.outputs.startup_log_ok }}"
+          ERR_OK="${{ steps.log-check.outputs.error_log_ok }}"
+
+          echo "Health summary: ECS=$ECS_OK  ALB=$ALB_OK  STARTUP_LOG=$LOG_OK  ERROR_CHECK=$ERR_OK"
+
+          if [ "$ECS_OK" = "true" ] && [ "$ALB_OK" = "true" ] && [ "$LOG_OK" = "true" ] && [ "$ERR_OK" = "true" ]; then
+            echo "status=DEV_HEALTHY" >> $GITHUB_OUTPUT
+            echo "All health checks passed ✅"
+          else
+            echo "status=DEV_FAILED"  >> $GITHUB_OUTPUT
+            echo "::error::One or more health checks failed — DEV_FAILED"
+          fi
+
+      # ── 10. Callback to Lambda with evidence ──────────────────────────────────
+      - name: Callback — notify vulnerability agent
+        if: always()
+        run: |
+          STATUS="${{ steps.health.outputs.status }}"
+          VERIFIED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Escape log excerpt for JSON
+          LOG_EXCERPT=$(echo "${{ steps.log-check.outputs.log_excerpt }}" | sed 's/|/\\n/g' | sed 's/"/\\"/g')
+
+          EVIDENCE=$(cat <<EOF
+          {
+            "ecs_running":     ${{ steps.ecs-check.outputs.ecs_running || 0 }},
+            "ecs_desired":     ${{ steps.ecs-check.outputs.ecs_desired || 0 }},
+            "alb_state":       "${{ steps.alb-check.outputs.alb_state || 'unknown' }}",
+            "startup_log_ok":  ${{ steps.log-check.outputs.startup_log_ok || 'false' }},
+            "error_log_ok":    ${{ steps.log-check.outputs.error_log_ok || 'false' }},
+            "task_arn":        "${{ steps.log-check.outputs.task_arn || '' }}",
+            "image":           "${{ steps.build.outputs.image || '' }}",
+            "verified_at":     "$VERIFIED_AT",
+            "workflow_run":    "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          EOF
+          )
+
+          printf '{"action":"patch_status","status":"%s","service":"%s","scan_id":"%s","record_ids":%s,"evidence":%s}' \
+            "$STATUS" \
+            "${{ inputs.service }}" \
+            "${{ inputs.scan_id }}" \
+            '${{ inputs.record_ids }}' \
+            "$EVIDENCE" > /tmp/callback.json
+
+          echo "Sending callback to Lambda: $STATUS"
+          cat /tmp/callback.json | python3 -m json.tool
+
+          aws lambda invoke \
+            --function-name "${{ env.LAMBDA_NAME }}" \
+            --payload        file:///tmp/callback.json \
+            --cli-binary-format raw-in-base64-out \
+            --region         ${{ env.AWS_REGION }} \
+            /tmp/lambda-response.json
+
+          echo "Lambda callback response:"
+          cat /tmp/lambda-response.json | python3 -m json.tool 2>/dev/null || cat /tmp/lambda-response.json

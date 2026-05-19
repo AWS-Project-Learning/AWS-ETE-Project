@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import { getSecurityResults } from '../api/client'
+import { getSecurityResults, approveProdPatch } from '../api/client'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const SEV_COLOR = {
@@ -64,8 +64,21 @@ function SeverityBadge({ severity }) {
   )
 }
 
-function StatusPipeline({ decision }) {
-  if (decision === 'ESCALATE') return (
+// Status → which pipeline stage is active
+const STATUS_STAGE = {
+  DETECTED:               0,
+  REASONED:               0,
+  DEV_DEPLOYING:          1,
+  DEV_HEALTHY:            2,
+  DEV_FAILED:             1,  // failed at deploy stage
+  PR_CREATED:             2,
+  AWAITING_PROD_APPROVAL: 3,
+  PROD_DEPLOYED:          4,
+  ESCALATED:              -1,
+}
+
+function StatusPipeline({ decision, status }) {
+  if (decision === 'ESCALATE' || status === 'ESCALATED') return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#fbbf24' }}>
       ⚠ Escalated — Human Review
     </span>
@@ -73,45 +86,96 @@ function StatusPipeline({ decision }) {
   if (decision === 'IGNORE') return (
     <span style={{ fontSize: 12, color: '#64748b' }}>Ignored</span>
   )
-  if (decision === 'AUTO_PATCH') {
-    const steps = ['Detected', 'PR Created', 'Dev Deployed']
+  if (decision === 'AUTO_PATCH' || status === 'DEV_DEPLOYING' || status === 'PR_CREATED' || status === 'DEV_HEALTHY') {
+    const STAGES = [
+      { label: 'Detected',    key: 0 },
+      { label: 'Dev Deploy',  key: 1 },
+      { label: 'Dev Healthy', key: 2 },
+      { label: 'Prod Approve',key: 3 },
+      { label: 'Done',        key: 4 },
+    ]
+    const active = STATUS_STAGE[status] ?? 0
+    const failed = status === 'DEV_FAILED'
+
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        {steps.map((s, i) => (
-          <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: '50%',
-              background: '#22c55e', boxShadow: '0 0 6px rgba(34,197,94,0.6)',
-            }} />
-            <span style={{ fontSize: 10, color: '#94a3b8', whiteSpace: 'nowrap' }}>{s}</span>
-            {i < steps.length - 1 && (
-              <div style={{ width: 14, height: 1, background: '#22c55e55' }} />
-            )}
-          </div>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+        {STAGES.map((s, i) => {
+          const done    = i <= active && !failed
+          const isFail  = failed && i === 1
+          const color   = isFail ? '#ef4444' : done ? '#22c55e' : '#334155'
+          const glow    = isFail ? '0 0 6px rgba(239,68,68,0.6)' : done ? '0 0 6px rgba(34,197,94,0.5)' : 'none'
+          return (
+            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 3 }} title={s.label}>
+              <div style={{
+                width: 7, height: 7, borderRadius: '50%',
+                background: color, boxShadow: glow,
+                border: `1px solid ${color}88`,
+              }} />
+              {i < STAGES.length - 1 && (
+                <div style={{ width: 10, height: 1, background: done && !failed ? '#22c55e44' : '#1e293b' }} />
+              )}
+            </div>
+          )
+        })}
+        <span style={{ fontSize: 10, color: failed ? '#ef4444' : '#475569', marginLeft: 4, whiteSpace: 'nowrap' }}>
+          {failed ? 'Deploy failed' : status === 'PR_CREATED' ? 'PR ready' : status === 'AWAITING_PROD_APPROVAL' ? 'Awaiting prod' : status === 'PROD_DEPLOYED' ? 'Prod live' : status === 'DEV_DEPLOYING' ? 'Deploying…' : status === 'DEV_HEALTHY' ? 'Dev healthy' : 'Detected'}
+        </span>
       </div>
     )
   }
   return <span style={{ fontSize: 12, color: '#3b82f6' }}>Pending</span>
 }
 
-function ActionButton({ decision, onClick }) {
-  if (decision === 'AUTO_PATCH') return (
-    <button onClick={onClick} style={{
-      background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)',
-      color: '#60a5fa', fontSize: 11, fontWeight: 600,
-      padding: '5px 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
-    }}>Approve for Prod</button>
+function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
+  if (status === 'DEV_FAILED') return (
+    <button onClick={onExpand} style={{
+      background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+      color: '#f87171', fontSize: 11, fontWeight: 600,
+      padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
+    }}>⚠ Failed</button>
+  )
+  if (status === 'PR_CREATED' || status === 'DEV_HEALTHY') return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      {prUrl && (
+        <a href={prUrl} target="_blank" rel="noopener noreferrer" style={{
+          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)',
+          color: '#818cf8', fontSize: 11, fontWeight: 600,
+          padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
+          textDecoration: 'none', whiteSpace: 'nowrap',
+        }}>View PR ↗</a>
+      )}
+      <button onClick={onApprove} style={{
+        background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.35)',
+        color: '#22c55e', fontSize: 11, fontWeight: 600,
+        padding: '5px 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
+      }}>Approve for Prod</button>
+    </div>
+  )
+  if (status === 'AWAITING_PROD_APPROVAL') return (
+    <span style={{ fontSize: 11, color: '#f59e0b' }}>⏳ Awaiting prod</span>
+  )
+  if (status === 'PROD_DEPLOYED') return (
+    <span style={{ fontSize: 11, color: '#22c55e' }}>✓ Live in prod</span>
+  )
+  if (status === 'DEV_DEPLOYING') return (
+    <span style={{ fontSize: 11, color: '#3b82f6', animation: 'pulse 1.5s ease-in-out infinite' }}>↻ Deploying…</span>
   )
   if (decision === 'ESCALATE') return (
-    <button onClick={onClick} style={{
+    <button onClick={onExpand} style={{
       background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
       color: '#f87171', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
     }}>Review</button>
   )
+  if (decision === 'AUTO_PATCH') return (
+    <button onClick={onExpand} style={{
+      background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)',
+      color: '#60a5fa', fontSize: 11, fontWeight: 600,
+      padding: '5px 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
+    }}>Details</button>
+  )
   return (
-    <button onClick={onClick} style={{
+    <button onClick={onExpand} style={{
       background: 'rgba(148,163,184,0.1)', border: '1px solid rgba(148,163,184,0.2)',
       color: '#94a3b8', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
@@ -119,27 +183,249 @@ function ActionButton({ decision, onClick }) {
   )
 }
 
-function ReasoningTrace({ vuln }) {
-  const steps = vuln.reasoning
-    ? vuln.reasoning.split(/\.\s+/).filter(Boolean).map((s, i) => `Step ${i + 1}: ${s.trim()}`)
-    : [`Step 1: Detected ${vuln.package}==${vuln.current_version} in ${vuln.service}/requirements.txt`,
-       `Step 2: Queried OSV.dev — ${vuln.cve_id} confirmed, severity ${vuln.severity}`,
-       `Step 3: Safe version identified: ${vuln.package}==${vuln.safe_version || 'unknown'}`,
-       `Step 4: Decision — ${vuln.decision ?? 'PENDING'} (confidence: ${vuln.confidence ?? '—'}%)`]
+function ExpandedPanel({ vuln, onApprove }) {
+  const [tab, setTab] = useState('ai')   // 'ai' | 'evidence'
+  const ev  = vuln.evidence || {}
+  const hasEvidence = vuln.status === 'DEV_HEALTHY' || vuln.status === 'PR_CREATED' ||
+                      vuln.status === 'AWAITING_PROD_APPROVAL' || vuln.status === 'PROD_DEPLOYED' ||
+                      vuln.status === 'DEV_FAILED'
+
+  const CHECK = ok => ok
+    ? <span style={{ color: '#22c55e' }}>✅</span>
+    : <span style={{ color: '#ef4444' }}>❌</span>
+
+  const advisoryId  = vuln.advisory_id  || vuln.cve_id  || vuln.ghsa_id || '—'
+  const advisoryUrl = vuln.advisory_url || (vuln.cve_id?.startsWith('CVE-') ? `https://nvd.nist.gov/vuln/detail/${vuln.cve_id}` : null)
+  const nvdUrl      = vuln.nvd_url      || (vuln.cve_id?.startsWith('CVE-') ? `https://nvd.nist.gov/vuln/detail/${vuln.cve_id}` : null)
+  const ghsaId      = vuln.ghsa_id
+  const ghsaUrl     = ghsaId ? `https://github.com/advisories/${ghsaId}` : null
+
+  // Build AI narrative — use stored one or synthesise
+  const narrative = vuln.finding_narrative || (
+    `I scanned \`${vuln.scanned_file || `backend-services/${vuln.service}/requirements.txt`}\` and found ` +
+    `\`${vuln.package}==${vuln.current_version}\`. I cross-referenced this against the ` +
+    `GitHub Advisory Database (GHSA) and the National Vulnerability Database (NVD) and identified a known security vulnerability.`
+  )
+
+  const decColor = DEC_COLOR[vuln.decision] ?? DEC_COLOR.PENDING
 
   return (
     <div style={{
-      background: '#0a0f1e', border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: 10, padding: '14px 18px', margin: '0 0 2px',
+      background: '#070d1a', border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: 10, margin: '0 0 2px', overflow: 'hidden',
     }}>
-      <p style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', margin: '0 0 10px', fontFamily: 'monospace' }}>
-        AI Reasoning Trace — {vuln.package} {vuln.cve_id}
-      </p>
-      {steps.map((s, i) => (
-        <p key={i} style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', margin: '0 0 4px' }}>
-          {s}
-        </p>
-      ))}
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        {[
+          { key: 'ai',       label: '🤖 AI Findings & Reasoning' },
+          { key: 'evidence', label: '🔬 Deploy Evidence', disabled: !hasEvidence },
+        ].map(t => (
+          <button key={t.key}
+            onClick={() => !t.disabled && setTab(t.key)}
+            style={{
+              padding: '10px 18px', fontSize: 12, fontWeight: 600,
+              background: tab === t.key ? 'rgba(99,102,241,0.12)' : 'transparent',
+              border: 'none',
+              borderBottom: tab === t.key ? '2px solid #6366f1' : '2px solid transparent',
+              color: t.disabled ? '#334155' : tab === t.key ? '#818cf8' : '#475569',
+              cursor: t.disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
+            }}>
+            {t.label}
+            {t.key === 'evidence' && !hasEvidence && (
+              <span style={{ fontSize: 10, color: '#334155', marginLeft: 6 }}>— runs after patch</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Tab 1: AI Findings & Reasoning ── */}
+      {tab === 'ai' && (
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Section 1: What I found */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+              🔍 What I found
+            </p>
+            <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: '0 0 12px', fontStyle: 'italic' }}>
+              {narrative}
+            </p>
+
+            {/* Advisory reference table */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 20px', fontSize: 12 }}>
+              <span style={{ color: '#475569', fontWeight: 600 }}>Advisory</span>
+              <span>
+                {advisoryUrl
+                  ? <a href={advisoryUrl} target="_blank" rel="noopener noreferrer"
+                      style={{ color: '#60a5fa', textDecoration: 'none', fontFamily: 'monospace' }}>
+                      {advisoryId} ↗
+                    </a>
+                  : <span style={{ color: '#60a5fa', fontFamily: 'monospace' }}>{advisoryId}</span>
+                }
+                {ghsaUrl && advisoryId !== ghsaId && (
+                  <a href={ghsaUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#64748b', textDecoration: 'none', fontFamily: 'monospace', marginLeft: 10, fontSize: 11 }}>
+                    {ghsaId} ↗
+                  </a>
+                )}
+                {nvdUrl && !advisoryId.startsWith('CVE-') && (
+                  <a href={nvdUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#64748b', textDecoration: 'none', marginLeft: 10, fontSize: 11 }}>
+                    NVD ↗
+                  </a>
+                )}
+              </span>
+
+              <span style={{ color: '#475569', fontWeight: 600 }}>Scanned file</span>
+              <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>
+                {vuln.scanned_file || `backend-services/${vuln.service}/requirements.txt`}
+              </span>
+
+              <span style={{ color: '#475569', fontWeight: 600 }}>Summary</span>
+              <span style={{ color: '#94a3b8' }}>{vuln.cve_summary || '—'}</span>
+
+              <span style={{ color: '#475569', fontWeight: 600 }}>Safe fix</span>
+              <span style={{ color: '#22c55e', fontFamily: 'monospace' }}>
+                {vuln.package}=={vuln.safe_version || 'unknown'}
+              </span>
+            </div>
+          </div>
+
+          {/* Section 2: My decision */}
+          <div style={{
+            borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+              🤖 My decision
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <span style={{
+                fontSize: 12, fontWeight: 700, padding: '3px 12px', borderRadius: 99,
+                background: decColor.bg, color: decColor.text,
+              }}>{vuln.decision ?? 'PENDING'}</span>
+              {vuln.confidence != null && (
+                <span style={{ fontSize: 11, color: '#64748b' }}>confidence: {vuln.confidence}%</span>
+              )}
+              {vuln.risk_score != null && (
+                <span style={{ fontSize: 11, color: '#64748b' }}>risk score: {vuln.risk_score}/10</span>
+              )}
+            </div>
+            <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+              "{vuln.reasoning || 'AI reasoning will appear here after Phase 2 is run.'}"
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Tab 2: Deploy Evidence ── */}
+      {tab === 'evidence' && (
+        <div style={{ padding: '16px 20px' }}>
+          {vuln.status === 'DEV_FAILED' ? (
+            <div style={{
+              background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: 10, padding: '14px 18px',
+            }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#f87171', margin: '0 0 6px' }}>
+                ❌ Dev deployment failed — no PR raised
+              </p>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 8px' }}>
+                {ev.failure_reason || 'One or more health checks did not pass.'}
+              </p>
+              {ev.workflow_run && (
+                <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
+                  style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>
+                  View GitHub Actions run ↗
+                </a>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Evidence header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', margin: 0 }}>
+                  ✅ Dev Deployment Verified
+                </p>
+                <span style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>
+                  {ev.verified_at || '—'}
+                </span>
+              </div>
+
+              {/* Evidence table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14 }}>
+                <tbody>
+                  {[
+                    { label: 'ECS Tasks Running',    value: `${ev.ecs_running ?? '?'}/${ev.ecs_desired ?? '?'}`, ok: ev.ecs_running === ev.ecs_desired && ev.ecs_running > 0 },
+                    { label: 'ALB Target Health',    value: ev.alb_state ?? 'unknown', ok: ev.alb_state === 'healthy' },
+                    { label: 'Startup Log Signature',value: ev.startup_log_ok ? '"Application startup complete"' : 'Not found', ok: ev.startup_log_ok },
+                    { label: 'Error Check',          value: ev.error_log_ok ? 'No errors detected' : 'Errors found', ok: ev.error_log_ok },
+                  ].map(row => (
+                    <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b', width: 180 }}>{row.label}</td>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#e2e8f0', fontFamily: 'monospace' }}>{row.value}</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{CHECK(row.ok)}</td>
+                    </tr>
+                  ))}
+                  {ev.task_arn && (
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b' }}>ECS Task ARN</td>
+                      <td colSpan={2} style={{ padding: '8px 12px', fontSize: 11, color: '#60a5fa', fontFamily: 'monospace' }}>
+                        <a href={ev.workflow_run ? ev.workflow_run.replace('/runs/', '/logs/') : '#'}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ color: '#60a5fa', textDecoration: 'none' }}>
+                          {ev.task_arn.slice(-40)} ↗
+                        </a>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* Docker image */}
+              {ev.image && (
+                <p style={{ fontSize: 11, color: '#334155', fontFamily: 'monospace', margin: '0 0 14px' }}>
+                  Image: {ev.image}
+                </p>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                {vuln.pr_url && (
+                  <a href={vuln.pr_url} target="_blank" rel="noopener noreferrer" style={{
+                    background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)',
+                    color: '#818cf8', fontSize: 12, fontWeight: 600,
+                    padding: '7px 14px', borderRadius: 8, cursor: 'pointer',
+                    textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6,
+                  }}>
+                    View GitHub PR ↗
+                  </a>
+                )}
+                {(vuln.status === 'PR_CREATED' || vuln.status === 'DEV_HEALTHY') && (
+                  <button onClick={onApprove} style={{
+                    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                    border: 'none', color: '#fff', fontSize: 12, fontWeight: 700,
+                    padding: '7px 18px', borderRadius: 8, cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+                  }}>
+                    ✓ Approve for Production
+                  </button>
+                )}
+                {vuln.status === 'AWAITING_PROD_APPROVAL' && (
+                  <span style={{ fontSize: 12, color: '#f59e0b' }}>⏳ Awaiting production deployment…</span>
+                )}
+                {vuln.status === 'PROD_DEPLOYED' && (
+                  <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 700 }}>✓ Deployed to production</span>
+                )}
+                {ev.workflow_run && (
+                  <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: 11, color: '#475569', textDecoration: 'none', marginLeft: 'auto' }}>
+                    CI run ↗
+                  </a>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -182,15 +468,16 @@ export default function SecurityDashboard() {
   const location   = useLocation()
   const routeState = location.state
 
-  const [data,     setData]     = useState(null)
-  const [loading,  setLoading]  = useState(true)
-  const [error,    setError]    = useState(null)
-  const [expanded,  setExpanded]  = useState(null)
-  const [search,    setSearch]    = useState('')
-  const [sevFilter, setSevFilter] = useState('ALL')
-  const [decFilter, setDecFilter] = useState('ALL')
-  const [sort,      setSort]      = useState({ col: 'severity', dir: 'desc' })
-  const [groupBy,   setGroupBy]   = useState(true)   // group by package+CVE by default
+  const [data,      setData]     = useState(null)
+  const [loading,   setLoading]  = useState(true)
+  const [error,     setError]    = useState(null)
+  const [expanded,  setExpanded] = useState(null)
+  const [search,    setSearch]   = useState('')
+  const [sevFilter, setSevFilter]= useState('ALL')
+  const [decFilter, setDecFilter]= useState('ALL')
+  const [sort,      setSort]     = useState({ col: 'severity', dir: 'desc' })
+  const [groupBy,   setGroupBy]  = useState(true)
+  const [approving, setApproving]= useState(null)   // record_id being approved
 
   useEffect(() => { fetchData() }, [])
 
@@ -199,6 +486,22 @@ export default function SecurityDashboard() {
     try { setData(await getSecurityResults()) }
     catch (err) { setError(err.message) }
     finally { setLoading(false) }
+  }
+
+  async function handleApprove(vuln) {
+    setApproving(vuln.record_id)
+    try {
+      await approveProdPatch({
+        scan_id:    vuln.scan_id,
+        record_ids: [vuln.record_id],
+        pr_url:     vuln.pr_url || '',
+      })
+      await fetchData()
+    } catch (err) {
+      alert(`Approval failed: ${err.message}`)
+    } finally {
+      setApproving(null)
+    }
   }
 
   // ── States ─────────────────────────────────────────────────────────────────
@@ -455,15 +758,14 @@ export default function SecurityDashboard() {
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
               {[
-                { col: null,       label: ''          },
-                { col: 'service',  label: 'Service'   },
-                { col: 'package',  label: 'Package'   },
-                { col: null,       label: 'Version'   },
-                { col: 'cve_id',   label: 'CVE'       },
-                { col: 'severity', label: 'Severity'  },
-                { col: null,       label: 'Status'    },
-                { col: 'decision', label: 'Decision'  },
-                { col: null,       label: 'Action'    },
+                { col: null,       label: ''                },
+                { col: 'service',  label: 'Service'         },
+                { col: 'package',  label: 'Package'         },
+                { col: null,       label: 'Version'         },
+                { col: 'severity', label: 'Severity ↕'     },
+                { col: null,       label: 'Status'          },
+                { col: 'decision', label: 'Decision'        },
+                { col: null,       label: 'Action'          },
               ].map(({ col, label }) => (
                 <th key={label} onClick={col ? () => toggleSort(col) : undefined}
                   style={{
@@ -480,28 +782,34 @@ export default function SecurityDashboard() {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={9} style={{ padding: '32px', textAlign: 'center', color: '#334155', fontSize: 13 }}>
+              <tr><td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#334155', fontSize: 13 }}>
                 No vulnerabilities match the current filters.
               </td></tr>
             )}
             {filtered.map((v, i) => {
               const isOpen = expanded === i
-              const dec = v.decision ?? 'PENDING'
+              const dec    = v.decision ?? 'PENDING'
+              const status = v.status   ?? 'DETECTED'
+              const toggleExpand = () => setExpanded(isOpen ? null : i)
+
               return [
                 <tr key={`row-${i}`}
+                  onClick={toggleExpand}
                   style={{
                     borderBottom: isOpen ? 'none' : '1px solid rgba(255,255,255,0.04)',
                     background: isOpen ? 'rgba(255,255,255,0.04)' : 'transparent',
-                    transition: 'background 0.2s',
+                    transition: 'background 0.2s', cursor: 'pointer',
                   }}>
                   {/* Expand toggle */}
-                  <td style={{ padding: '12px 8px 12px 16px', width: 24 }}>
-                    <button onClick={() => setExpanded(isOpen ? null : i)} style={{
+                  <td style={{ padding: '12px 8px 12px 16px', width: 24 }} onClick={e => e.stopPropagation()}>
+                    <button onClick={toggleExpand} style={{
                       background: 'none', border: 'none', color: '#475569',
                       cursor: 'pointer', fontSize: 14, padding: 2,
                     }}>{isOpen ? '∨' : '›'}</button>
                   </td>
-                  <td style={{ padding: '12px 14px' }}>
+
+                  {/* Service badges */}
+                  <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
                     {v._services && v._services.length > 1
                       ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                           {v._services.map(s => (
@@ -518,32 +826,59 @@ export default function SecurityDashboard() {
                         </span>
                     }
                   </td>
-                  <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{v.package}</td>
-                  <td style={{ padding: '12px 14px', fontSize: 12, color: '#ef4444', fontFamily: 'monospace' }}>{v.current_version}</td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span style={{ fontSize: 12, color: '#60a5fa', fontFamily: 'monospace', cursor: 'pointer' }}
-                      onClick={() => setExpanded(isOpen ? null : i)}>
-                      {v.cve_id}
-                    </span>
+
+                  {/* Package */}
+                  <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                    <div>{v.package}</div>
+                    <div style={{ fontSize: 10, color: '#475569', fontFamily: 'monospace', marginTop: 2 }}>
+                      {(v.advisory_id || v.cve_id || v.ghsa_id || '').slice(0, 24)}
+                      {(v.advisory_id || v.cve_id || '').length > 24 ? '…' : ''}
+                    </div>
                   </td>
+
+                  {/* Version */}
+                  <td style={{ padding: '12px 14px', fontSize: 12, color: '#ef4444', fontFamily: 'monospace' }}>
+                    {v.current_version}
+                    {v.safe_version && v.safe_version !== 'unknown' && (
+                      <div style={{ fontSize: 10, color: '#22c55e', marginTop: 2 }}>→ {v.safe_version}</div>
+                    )}
+                  </td>
+
+                  {/* Severity */}
                   <td style={{ padding: '12px 14px' }}><SeverityBadge severity={v.severity} /></td>
-                  <td style={{ padding: '12px 14px' }}><StatusPipeline decision={dec} /></td>
+
+                  {/* Status pipeline */}
+                  <td style={{ padding: '12px 14px' }}><StatusPipeline decision={dec} status={status} /></td>
+
+                  {/* Decision badge */}
                   <td style={{ padding: '12px 14px' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99,
-                      ...( DEC_COLOR[dec] ?? DEC_COLOR.PENDING),
+                      ...(DEC_COLOR[dec] ?? DEC_COLOR.PENDING),
                     }}>{dec}</span>
                   </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <ActionButton decision={dec} onClick={() => setExpanded(isOpen ? null : i)} />
+
+                  {/* Action button */}
+                  <td style={{ padding: '12px 14px' }} onClick={e => e.stopPropagation()}>
+                    <ActionButton
+                      decision={dec}
+                      status={status}
+                      prUrl={v.pr_url}
+                      vuln={v}
+                      onApprove={() => handleApprove(v)}
+                      onExpand={toggleExpand}
+                    />
                   </td>
                 </tr>,
 
-                // Expanded reasoning trace
+                // Expanded two-tab panel
                 isOpen && (
-                  <tr key={`trace-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td colSpan={9} style={{ padding: '0 16px 12px' }}>
-                      <ReasoningTrace vuln={v} />
+                  <tr key={`panel-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td colSpan={8} style={{ padding: '0 16px 12px' }}>
+                      <ExpandedPanel
+                        vuln={v}
+                        onApprove={() => handleApprove(v)}
+                      />
                     </td>
                   </tr>
                 ),
