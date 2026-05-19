@@ -171,14 +171,21 @@ jobs:
             echo "::notice::ALB target group not found for ${{ inputs.service }} — skipping ALB check"
           else
             ALB_STATE="unknown"
-            for i in {1..6}; do
+            # During ECS rolling deploy, targets often pass through "initial" or
+            # "draining" before becoming healthy. Give ALB up to ~3 minutes.
+            for i in {1..18}; do
               ALB_STATE=$(aws elbv2 describe-target-health \
                 --target-group-arn "$TG_ARN" \
                 --region           ${{ env.AWS_REGION }} \
                 --query            'TargetHealthDescriptions[0].TargetHealth.State' \
                 --output text 2>/dev/null || echo "unknown")
               echo "ALB target state (attempt $i): $ALB_STATE"
-              [ "$ALB_STATE" = "healthy" ] && break
+              if [ "$ALB_STATE" = "healthy" ]; then
+                break
+              fi
+              if [ "$ALB_STATE" = "draining" ] || [ "$ALB_STATE" = "initial" ]; then
+                echo "::notice::ALB in transitional state ($ALB_STATE) — waiting for healthy"
+              fi
               sleep 10
             done
             echo "alb_state=$ALB_STATE" >> $GITHUB_OUTPUT

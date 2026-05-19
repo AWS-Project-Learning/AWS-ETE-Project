@@ -4,7 +4,7 @@ import {
   Play, X, Bot, Search, Database, ShieldCheck,
   CheckCircle2, Loader2, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
-import { triggerScan, triggerReason } from '../api/client'
+import { triggerScan } from '../api/client'
 
 // ── 4-agent pipeline matching the mockup ──────────────────────────────────────
 const AGENTS = [
@@ -85,7 +85,7 @@ export default function SecurityScan() {
   const [stepPcts,   setStepPcts]   = useState(freshPct)
   const [logs,       setLogs]       = useState([])
   const [error,      setError]      = useState(null)
-  const [scanDone,   setScanDone]   = useState(null)   // { sid, total, auto_patch, escalate }
+  const [scanDone,   setScanDone]   = useState(null)   // { sid, total }
 
   const progress = useFakeProgress(stepPcts, setStepPcts, null, running)
 
@@ -134,15 +134,11 @@ export default function SecurityScan() {
         addLog(ts(), 'CVE Detective', `fetched ${svc} — ${cnt} finding(s)`)
       )
 
-      setAgent('scanner', 'active', `${total} packages checked — running AI reasoning…`)
-      addLog(ts(), 'CVE Detective', `found ${total} vulnerabilities — sending to Bedrock`, total > 0 ? 'warn' : 'info')
-
-      const reasonRes = await triggerReason(sid)
-      const { auto_patch = 0, escalate = 0, ignore = 0 } = reasonRes.result ?? {}
-      if (auto_patch > 0) addLog(ts(), 'CVE Detective', `⚠ HIGH severity findings — auto-patch: ${auto_patch}`, 'warn')
+      setAgent('scanner', 'active', `${total} packages checked — AI reasoning auto-queued…`)
+      addLog(ts(), 'CVE Detective', `found ${total} vulnerabilities — backend will auto-run reasoning + patch`, total > 0 ? 'warn' : 'info')
 
       progress.finish('scanner')
-      setAgent('scanner', 'complete', `${total} vulnerabilities · ${auto_patch} auto-patch · ${escalate} escalate`)
+      setAgent('scanner', 'complete', `${total} vulnerabilities found · reasoning queued`)
 
       // 3 — Data Keeper
       setAgent('keeper', 'active', 'Writing findings to DynamoDB…')
@@ -163,8 +159,8 @@ export default function SecurityScan() {
       if (total === 0) {
         addLog(ts(), 'Report', 'scan complete — no vulnerabilities found ✓', 'success')
       } else {
-        addLog(ts(), 'Report', `${total} vulnerabilities found — ${auto_patch} auto-patch · ${escalate} escalate`, 'success')
-        setScanDone({ sid, total, auto_patch, escalate, ignore })
+        addLog(ts(), 'Report', `${total} vulnerabilities found — watch Scan Results for reasoning/patch status`, 'success')
+        setScanDone({ sid, total })
       }
 
     } catch (err) {
@@ -394,9 +390,7 @@ export default function SecurityScan() {
               Scan complete —{' '}
               <strong style={{ color: '#f87171' }}>{scanDone.total} vulnerabilities</strong>
               {' '}found &nbsp;·&nbsp;{' '}
-              <span style={{ color: '#fbbf24' }}>{scanDone.auto_patch} auto-patch</span>
-              {' · '}
-              <span style={{ color: '#f87171' }}>{scanDone.escalate} escalate</span>
+              <span style={{ color: '#22c55e' }}>AI reasoning + auto-patch started</span>
             </span>
           </div>
           <button
