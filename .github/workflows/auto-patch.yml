@@ -97,6 +97,82 @@ jobs:
           echo "image_tag=autopatch-$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "Built and pushed: $IMAGE"
 
+      - name: Verify patch in image + collect artifact evidence
+        id: artifact-evidence
+        env:
+          SERVICE:      ${{ inputs.service }}
+          IMAGE:        ${{ steps.build.outputs.image }}
+          IMAGE_TAG:    ${{ steps.build.outputs.image_tag }}
+          PATCHES_JSON: ${{ inputs.patches_json }}
+        run: |
+          VERIFY_JSON=$(python3 - <<'PY'
+          import json, os, subprocess
+
+          patches = json.loads(os.environ.get("PATCHES_JSON", "{}") or "{}")
+          image   = os.environ["IMAGE"]
+
+          results = []
+          all_ok  = True
+
+          for pkg, expected in patches.items():
+              proc = subprocess.run(
+                  [
+                      "docker", "run", "--rm", image,
+                      "python", "-c",
+                      f"import importlib.metadata as m; print(m.version('{pkg}'))"
+                  ],
+                  capture_output=True, text=True
+              )
+              found = proc.stdout.strip() if proc.returncode == 0 else ""
+              ok    = (proc.returncode == 0 and found == expected)
+              if not ok:
+                  all_ok = False
+              results.append({
+                  "package": pkg,
+                  "expected": expected,
+                  "found": found or "not_found",
+                  "ok": ok,
+              })
+
+          print(json.dumps({"all_ok": all_ok, "results": results}, separators=(",", ":")))
+          PY
+          )
+
+          VERIFY_B64=$(printf "%s" "$VERIFY_JSON" | python3 - <<'PY'
+          import base64, sys
+          print(base64.b64encode(sys.stdin.read().encode()).decode())
+          PY
+          )
+
+          REPO_NAME="orderflow/$SERVICE"
+          ECR_DIGEST=""
+          for i in {1..8}; do
+            ECR_DIGEST=$(aws ecr describe-images \
+              --repository-name "$REPO_NAME" \
+              --image-ids imageTag="$IMAGE_TAG" \
+              --region "${{ env.AWS_REGION }}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text 2>/dev/null || echo "")
+            [ -n "$ECR_DIGEST" ] && [ "$ECR_DIGEST" != "None" ] && break
+            sleep 5
+          done
+
+          VERIFY_OK=$(printf "%s" "$VERIFY_JSON" | python3 - <<'PY'
+          import json, sys
+          try:
+              print(str(bool(json.loads(sys.stdin.read()).get("all_ok", False))).lower())
+          except Exception:
+              print("false")
+          PY
+          )
+
+          echo "patch_verify_ok=$VERIFY_OK"             >> $GITHUB_OUTPUT
+          echo "patch_verify_b64=$VERIFY_B64"           >> $GITHUB_OUTPUT
+          echo "ecr_image_digest=$ECR_DIGEST"           >> $GITHUB_OUTPUT
+          echo "source_branch=${{ inputs.branch }}"     >> $GITHUB_OUTPUT
+          echo "source_commit=${{ github.sha }}"        >> $GITHUB_OUTPUT
+          echo "source_commit_short=${GITHUB_SHA::7}"   >> $GITHUB_OUTPUT
+
       # ── 4. Deploy to dev ─────────────────────────────────────────────────────
       - name: Set up Python (for deploy scripts)
         uses: actions/setup-python@v5
@@ -200,6 +276,8 @@ jobs:
       # ── 8. Health check layer 3: CloudWatch startup logs ─────────────────────
       - name: Health check — CloudWatch startup logs
         id: log-check
+        env:
+          PATCHES_JSON: ${{ inputs.patches_json }}
         run: |
           SERVICE="${{ inputs.service }}"
           LOG_GROUP="/ecs/orderflow/${{ env.ENV }}/${SERVICE}"
@@ -224,6 +302,14 @@ jobs:
           TASK_ID=$(basename "$TASK_ARN")
           LOG_STREAM="${{ env.ENV }}/${SERVICE}/${TASK_ID}"
 
+          RUNNING_DIGEST=$(aws ecs describe-tasks \
+            --cluster "${{ env.CLUSTER }}" \
+            --tasks "$TASK_ARN" \
+            --region "${{ env.AWS_REGION }}" \
+            --query 'tasks[0].containers[0].imageDigest' \
+            --output text 2>/dev/null || echo "")
+          echo "running_image_digest=$RUNNING_DIGEST" >> $GITHUB_OUTPUT
+
           # Wait briefly for logs to appear
           sleep 5
 
@@ -237,6 +323,39 @@ jobs:
 
           echo "=== CloudWatch log excerpt ==="
           echo "$LOGS" | head -40
+          export LOGS
+
+          # Runtime patch verification from LIVE container logs
+          # Services log lines like:
+          #   RUNTIME_DEP_VERSION python-dotenv=1.2.2
+          RUNTIME_VERIFY_JSON=$(python3 - <<'PY'
+          import json, os, re
+          logs = os.environ.get("LOGS", "")
+          patches = json.loads(os.environ.get("PATCHES_JSON", "{}") or "{}")
+          found = {}
+          for m in re.finditer(r"RUNTIME_DEP_VERSION\s+([A-Za-z0-9_.\-]+)=([^\s]+)", logs):
+              found[m.group(1).lower().replace("_", "-")] = m.group(2)
+          results = []
+          all_ok = True
+          for pkg, expected in patches.items():
+              key = pkg.lower().replace("_", "-")
+              got = found.get(key, "not_found_in_runtime_logs")
+              ok = (got == expected)
+              if not ok:
+                  all_ok = False
+              results.append({
+                  "package": pkg,
+                  "expected": expected,
+                  "found": got,
+                  "ok": ok
+              })
+          print(json.dumps({"all_ok": all_ok, "results": results}, separators=(",", ":")))
+          PY
+          )
+          RUNTIME_VERIFY_B64=$(printf "%s" "$RUNTIME_VERIFY_JSON" | python3 -c 'import base64,sys;print(base64.b64encode(sys.stdin.read().encode()).decode())')
+          RUNTIME_VERIFY_OK=$(printf "%s" "$RUNTIME_VERIFY_JSON" | python3 -c 'import json,sys;print(str(bool(json.loads(sys.stdin.read()).get("all_ok", False))).lower())')
+          echo "runtime_verify_ok=$RUNTIME_VERIFY_OK" >> $GITHUB_OUTPUT
+          echo "runtime_verify_b64=$RUNTIME_VERIFY_B64" >> $GITHUB_OUTPUT
 
           # Check for startup signature
           if echo "$LOGS" | grep -q "Application startup complete"; then
@@ -267,6 +386,14 @@ jobs:
           ALB_OK="${{ steps.alb-check.outputs.alb_ok }}"
           LOG_OK="${{ steps.log-check.outputs.startup_log_ok }}"
           ERR_OK="${{ steps.log-check.outputs.error_log_ok }}"
+          ECR_DIGEST="${{ steps.artifact-evidence.outputs.ecr_image_digest }}"
+          ECS_DIGEST="${{ steps.log-check.outputs.running_image_digest }}"
+
+          DIGEST_MATCH="false"
+          if [ -n "$ECR_DIGEST" ] && [ "$ECR_DIGEST" != "None" ] && [ -n "$ECS_DIGEST" ] && [ "$ECS_DIGEST" != "None" ] && [ "$ECR_DIGEST" = "$ECS_DIGEST" ]; then
+            DIGEST_MATCH="true"
+          fi
+          echo "digest_match=$DIGEST_MATCH" >> $GITHUB_OUTPUT
 
           echo "Health summary: ECS=$ECS_OK  ALB=$ALB_OK  STARTUP_LOG=$LOG_OK  ERROR_CHECK=$ERR_OK"
 
@@ -304,6 +431,17 @@ jobs:
             "error_log_ok":    ${{ steps.log-check.outputs.error_log_ok || 'false' }},
             "task_arn":        "${{ steps.log-check.outputs.task_arn || '' }}",
             "image":           "${{ steps.build.outputs.image || '' }}",
+            "image_tag":       "${{ steps.build.outputs.image_tag || '' }}",
+            "source_branch":   "${{ steps.artifact-evidence.outputs.source_branch || '' }}",
+            "source_commit":   "${{ steps.artifact-evidence.outputs.source_commit || '' }}",
+            "source_commit_short": "${{ steps.artifact-evidence.outputs.source_commit_short || '' }}",
+            "ecr_image_digest": "${{ steps.artifact-evidence.outputs.ecr_image_digest || '' }}",
+            "ecs_image_digest": "${{ steps.log-check.outputs.running_image_digest || '' }}",
+            "digest_match":    ${{ steps.health.outputs.digest_match || 'false' }},
+            "patch_verify_ok": ${{ steps.artifact-evidence.outputs.patch_verify_ok || 'false' }},
+            "patch_verify_b64":"${{ steps.artifact-evidence.outputs.patch_verify_b64 || '' }}",
+            "runtime_verify_ok": ${{ steps.log-check.outputs.runtime_verify_ok || 'false' }},
+            "runtime_verify_b64":"${{ steps.log-check.outputs.runtime_verify_b64 || '' }}",
             "verified_at":     "$VERIFIED_AT",
             "workflow_run":    "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }

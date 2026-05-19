@@ -47,28 +47,39 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # Security agent behaviour — /security/* routed to ALB → Lambda (not BFF)
-  # Evaluated first (ordered_cache_behavior is checked top-to-bottom).
-  # The ALB listener rule (priority 5) forwards these to the Lambda target group.
-  ordered_cache_behavior {
-    path_pattern           = "/security/*"
-    target_origin_id       = "alb-bff" # same ALB, different listener rule
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
+  # Security API behaviours — only explicit API endpoints go to ALB → Lambda.
+  # This avoids hijacking frontend SPA routes like /security and /security/dashboard.
+  dynamic "ordered_cache_behavior" {
+    for_each = toset([
+      "/security/scan",
+      "/security/reason",
+      "/security/patch",
+      "/security/patch-status",
+      "/security/approve",
+      "/security/status",
+      "/security/results",
+      "/security/health",
+    ])
+    content {
+      path_pattern           = ordered_cache_behavior.value
+      target_origin_id       = "alb-bff" # same ALB, listener rule routes to Lambda
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods         = ["GET", "HEAD"]
+      compress               = true
 
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization", "Content-Type", "Accept", "Origin"]
-      cookies {
-        forward = "none"
+      forwarded_values {
+        query_string = true
+        headers      = ["Authorization", "Content-Type", "Accept", "Origin"]
+        cookies {
+          forward = "none"
+        }
       }
-    }
 
-    min_ttl     = 0
-    default_ttl = 0 # never cache security API responses
-    max_ttl     = 0
+      min_ttl     = 0
+      default_ttl = 0 # never cache security API responses
+      max_ttl     = 0
+    }
   }
 
   # API cache behaviour — /api/* routed to ALB, never cached

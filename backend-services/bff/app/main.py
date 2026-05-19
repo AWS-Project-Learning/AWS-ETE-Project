@@ -1,4 +1,5 @@
 import logging
+import importlib.metadata as importlib_metadata
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -11,10 +12,18 @@ from .config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _pkg_ver(name: str) -> str:
+    try:
+        return importlib_metadata.version(name)
+    except Exception:
+        return "not_installed"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting BFF...")
+    logger.info(f"RUNTIME_DEP_VERSION python-dotenv={_pkg_ver('python-dotenv')}")
+    logger.info(f"RUNTIME_DEP_VERSION cryptography={_pkg_ver('cryptography')}")
     logger.info(f"ORDER_SERVICE_URL  = {settings.ORDER_SERVICE_URL}")
     logger.info(f"INVOICE_SERVICE_URL = {settings.INVOICE_SERVICE_URL}")
     logger.info(f"CORS_ORIGINS        = {settings.CORS_ORIGINS}")

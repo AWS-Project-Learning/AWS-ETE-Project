@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, LabelList } from 'recharts'
 import { getSecurityResults, approveProdPatch } from '../api/client'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -28,6 +28,62 @@ function timeAgo(iso) {
   const h = Math.floor(m / 60)
   if (h < 24) return `${h} hour${h > 1 ? 's' : ''} ago`
   return `${Math.floor(h / 24)} day(s) ago`
+}
+
+function minsBetween(startIso, endIso) {
+  if (!startIso || !endIso) return null
+  const start = new Date(startIso).getTime()
+  const end   = new Date(endIso).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  return Math.round((end - start) / 60000)
+}
+
+function inLastDays(iso, days) {
+  if (!iso) return false
+  const ts = new Date(iso).getTime()
+  if (!Number.isFinite(ts)) return false
+  return ts >= (Date.now() - days * 24 * 60 * 60 * 1000)
+}
+
+function sameCalendarDay(iso, offsetDays = 0) {
+  if (!iso) return false
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return false
+  const t = new Date()
+  t.setHours(0, 0, 0, 0)
+  t.setDate(t.getDate() - offsetDays)
+  const next = new Date(t)
+  next.setDate(next.getDate() + 1)
+  return d >= t && d < next
+}
+
+function RiskSnapshotTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  if (!row) return null
+  const items = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']
+  return (
+    <div style={{
+      background: '#0f172a',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8,
+      padding: '8px 10px',
+      fontSize: 11,
+      minWidth: 150,
+    }}>
+      <p style={{ margin: '0 0 6px', color: '#cbd5e1', fontWeight: 700 }}>{label}</p>
+      {items.map(k => (
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+          <span>{k}</span>
+          <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row[k] ?? 0}</span>
+        </div>
+      ))}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 6, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: '#94a3b8' }}>Total</span>
+        <span style={{ color: '#f8fafc', fontWeight: 700, fontFamily: 'monospace' }}>{row.TOTAL ?? 0}</span>
+      </div>
+    </div>
+  )
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -86,7 +142,10 @@ function StatusPipeline({ decision, status }) {
   if (decision === 'IGNORE') return (
     <span style={{ fontSize: 12, color: '#64748b' }}>Ignored</span>
   )
-  if (decision === 'AUTO_PATCH' || status === 'DEV_DEPLOYING' || status === 'PR_CREATED' || status === 'DEV_HEALTHY') {
+  if (decision === 'AUTO_PATCH' || [
+    'DETECTED', 'REASONED', 'DEV_DEPLOYING', 'DEV_HEALTHY',
+    'DEV_FAILED', 'PR_CREATED', 'AWAITING_PROD_APPROVAL', 'PROD_DEPLOYED',
+  ].includes(status)) {
     const STAGES = [
       { label: 'Detected',    key: 0 },
       { label: 'Dev Deploy',  key: 1 },
@@ -97,8 +156,22 @@ function StatusPipeline({ decision, status }) {
     const active = STATUS_STAGE[status] ?? 0
     const failed = status === 'DEV_FAILED'
 
+    const activeLabel =
+      failed ? 'Dev deploy failed' :
+      status === 'DEV_DEPLOYING' ? 'Deploying to dev' :
+      status === 'DEV_HEALTHY' || status === 'PR_CREATED' ? 'Dev verified, PR ready' :
+      status === 'AWAITING_PROD_APPROVAL' ? 'Awaiting production approval' :
+      status === 'PROD_DEPLOYED' ? 'Deployed to production' :
+      'Detected'
+
+    const crossed = STAGES
+      .filter((s, i) => i <= active && !failed)
+      .map(s => s.label)
+      .join(' → ')
+
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 200 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
         {STAGES.map((s, i) => {
           const done    = i <= active && !failed
           const isFail  = failed && i === 1
@@ -117,8 +190,12 @@ function StatusPipeline({ decision, status }) {
             </div>
           )
         })}
-        <span style={{ fontSize: 10, color: failed ? '#ef4444' : '#475569', marginLeft: 4, whiteSpace: 'nowrap' }}>
-          {failed ? 'Deploy failed' : status === 'PR_CREATED' ? 'PR ready' : status === 'AWAITING_PROD_APPROVAL' ? 'Awaiting prod' : status === 'PROD_DEPLOYED' ? 'Prod live' : status === 'DEV_DEPLOYING' ? 'Deploying…' : status === 'DEV_HEALTHY' ? 'Dev healthy' : 'Detected'}
+        </div>
+        <span style={{ fontSize: 11, color: failed ? '#ef4444' : '#cbd5e1', whiteSpace: 'nowrap' }}>
+          {activeLabel}
+        </span>
+        <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {failed ? 'Crossed: Detected' : `Crossed: ${crossed}`}
         </span>
       </div>
     )
@@ -204,6 +281,25 @@ function ExpandedPanel({ vuln, onApprove }) {
   )
 
   const decColor = DEC_COLOR[vuln.decision] ?? DEC_COLOR.PENDING
+  const digestMatch = ev.digest_match === true || ev.digest_match === 'true'
+  const patchVerifyOk = ev.patch_verify_ok === true || ev.patch_verify_ok === 'true'
+  const runtimeVerifyOk = ev.runtime_verify_ok === true || ev.runtime_verify_ok === 'true'
+  const patchVerify = (() => {
+    try {
+      if (!ev.patch_verify_b64) return null
+      return JSON.parse(atob(ev.patch_verify_b64))
+    } catch {
+      return null
+    }
+  })()
+  const runtimeVerify = (() => {
+    try {
+      if (!ev.runtime_verify_b64) return null
+      return JSON.parse(atob(ev.runtime_verify_b64))
+    } catch {
+      return null
+    }
+  })()
 
   return (
     <div style={{
@@ -372,6 +468,28 @@ function ExpandedPanel({ vuln, onApprove }) {
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Image</span>
                   <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.image}</span>
                 </>}
+                {ev.source_branch && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Feature Branch</span>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.source_branch}</span>
+                </>}
+                {ev.source_commit && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Commit SHA</span>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
+                    {ev.source_commit}
+                  </span>
+                </>}
+                {ev.ecr_image_digest && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>ECR Digest</span>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
+                    {ev.ecr_image_digest}
+                  </span>
+                </>}
+                {ev.ecs_image_digest && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>ECS Running Digest</span>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
+                    {ev.ecs_image_digest}
+                  </span>
+                </>}
                 {ev.task_arn && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Task ARN</span>
                   <a href={`https://us-east-1.console.aws.amazon.com/ecs/v2/clusters/orderflow-dev/tasks`}
@@ -388,6 +506,103 @@ function ExpandedPanel({ vuln, onApprove }) {
                   </a>
                 </>}
               </div>
+
+              {/* Audit-grade artifact checks */}
+              {(ev.source_commit || ev.ecr_image_digest || ev.ecs_image_digest || patchVerify || runtimeVerify) && (
+                <div style={{
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 10, padding: '12px 14px',
+                  background: 'rgba(15,23,42,0.45)', marginBottom: 16,
+                }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Audit Evidence
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                    <div style={{
+                      border: `1px solid ${digestMatch ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      background: digestMatch ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                      borderRadius: 8, padding: '10px 12px',
+                    }}>
+                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                        {digestMatch ? '✅ Image Digest Match' : '❌ Digest Mismatch'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                        ECS running digest vs ECR digest
+                      </div>
+                    </div>
+                    <div style={{
+                      border: `1px solid ${patchVerifyOk ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      background: patchVerifyOk ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                      borderRadius: 8, padding: '10px 12px',
+                    }}>
+                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                        {patchVerifyOk ? '✅ Patch Verified In Image' : '❌ Patch Verification Failed'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                        CI checks package versions in built container image
+                      </div>
+                    </div>
+                    <div style={{
+                      border: `1px solid ${runtimeVerifyOk ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+                      background: runtimeVerifyOk ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                      borderRadius: 8, padding: '10px 12px',
+                    }}>
+                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                        {runtimeVerifyOk ? '✅ Patch Verified In Runtime Container' : '❌ Runtime Verification Missing/Failed'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                        Parsed from live task startup logs in CloudWatch
+                      </div>
+                    </div>
+                  </div>
+
+                  {patchVerify?.results?.length > 0 && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Package</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Image</th>
+                          <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {patchVerify.results.map((r, i) => (
+                          <tr key={`${r.package}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
+                            <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
+                            <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
+                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>{r.ok ? '✅' : '❌'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {runtimeVerify?.results?.length > 0 && (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Runtime Package</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Runtime</th>
+                          <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {runtimeVerify.results.map((r, i) => (
+                          <tr key={`runtime-${r.package}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
+                            <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
+                            <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
+                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>{r.ok ? '✅' : '❌'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
 
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
@@ -542,38 +757,6 @@ function ExpandedPanel({ vuln, onApprove }) {
   )
 }
 
-function PatchTimeline() {
-  const stages = [
-    { label: 'Detected',     color: '#ef4444', icon: '🔍' },
-    { label: 'PR Created',   color: '#3b82f6', icon: '⎇'  },
-    { label: 'Dev Deployed', color: '#22c55e', icon: '🚀'  },
-    { label: 'Prod Approved',color: '#f59e0b', icon: '🛡'  },
-    { label: 'Prod Deployed',color: '#22c55e', icon: '✓'   },
-  ]
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
-      {stages.map((s, i) => (
-        <div key={s.label} style={{ display: 'flex', alignItems: 'center', flex: i < stages.length - 1 ? 1 : 0 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: '50%',
-              background: `${s.color}22`, border: `2px solid ${s.color}66`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, boxShadow: `0 0 12px ${s.color}33`,
-            }}>{s.icon}</div>
-            <span style={{ fontSize: 10, color: '#64748b', textAlign: 'center', whiteSpace: 'nowrap' }}>
-              {s.label}
-            </span>
-          </div>
-          {i < stages.length - 1 && (
-            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)', margin: '0 4px', marginBottom: 18 }} />
-          )}
-        </div>
-      ))}
-    </div>
-  )
-}
-
 // ── Main dashboard ────────────────────────────────────────────────────────────
 export default function SecurityDashboard() {
   const navigate   = useNavigate()
@@ -587,6 +770,7 @@ export default function SecurityDashboard() {
   const [search,    setSearch]   = useState('')
   const [sevFilter, setSevFilter]= useState('ALL')
   const [decFilter, setDecFilter]= useState('ALL')
+  const [historyRange, setHistoryRange] = useState('today')
   const [sort,      setSort]     = useState({ col: 'severity', dir: 'desc' })
   const [groupBy,   setGroupBy]  = useState(true)
   const [approving, setApproving]= useState(null)   // record_id being approved
@@ -667,6 +851,7 @@ export default function SecurityDashboard() {
   const metrics  = data?.metrics ?? {}
   const vulns    = data?.active  ?? []
   const history  = data?.history ?? []
+  const serviceRiskSnapshot = data?.service_risk ?? []
 
   if (!loading && !error && vulns.length === 0) return (
     <div style={darkPage}>
@@ -688,12 +873,76 @@ export default function SecurityDashboard() {
   const escalate  = vulns.filter(v => v.decision === 'ESCALATE').length
   const lastScan  = history[0]?.scanned_at ?? metrics?.last_scan_at ?? null
 
+  const historyFiltered = history.filter(h => {
+    const dt = h.scanned_at
+    if (historyRange === 'today') return sameCalendarDay(dt, 0)
+    if (historyRange === 'yesterday') return sameCalendarDay(dt, 1)
+    if (historyRange === '2d') return inLastDays(dt, 2)
+    if (historyRange === '3d') return inLastDays(dt, 3)
+    return inLastDays(dt, 7)
+  })
+
   // Chart data from history
-  const chartData = history.slice().reverse().map((h, i) => ({
+  const chartData = historyFiltered.slice().reverse().map((h, i) => ({
     name: h.scanned_at ? new Date(h.scanned_at).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }) : `Scan ${i + 1}`,
     scans: h.total_found ?? 0,
   }))
   if (chartData.length === 0) chartData.push({ name: 'Now', scans: vulns.length })
+
+  const serviceRiskData = (serviceRiskSnapshot.length ? serviceRiskSnapshot : Object.values(
+    vulns.reduce((acc, v) => {
+      const svc = v.service || 'unknown'
+      if (!acc[svc]) {
+        acc[svc] = { service: svc, CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0, TOTAL: 0 }
+      }
+      const sev = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(v.severity) ? v.severity : 'UNKNOWN'
+      acc[svc][sev] += 1
+      acc[svc].TOTAL += 1
+      return acc
+    }, {})
+  ))
+    .map(row => ({
+      service: row.service ?? 'unknown',
+      CRITICAL: Number(row.CRITICAL ?? 0),
+      HIGH: Number(row.HIGH ?? 0),
+      MEDIUM: Number(row.MEDIUM ?? 0),
+      LOW: Number(row.LOW ?? 0),
+      UNKNOWN: Number(row.UNKNOWN ?? 0),
+      TOTAL: Number(
+        row.TOTAL
+        ?? (Number(row.CRITICAL ?? 0) + Number(row.HIGH ?? 0) + Number(row.MEDIUM ?? 0) + Number(row.LOW ?? 0) + Number(row.UNKNOWN ?? 0))
+      ),
+    }))
+    .sort((a, b) => (b.TOTAL - a.TOTAL) || a.service.localeCompare(b.service))
+
+  const latestAuto = [...vulns]
+    .filter(v => v.decision === 'AUTO_PATCH')
+    .sort((a, b) => new Date(b.detected_at || 0) - new Date(a.detected_at || 0))[0]
+
+  const executionEvents = latestAuto ? [
+    { label: 'Detected', iso: latestAuto.detected_at, done: true },
+    { label: 'Dev Deploy Started', iso: latestAuto.dev_deploying_at, done: !!latestAuto.dev_deploying_at },
+    { label: 'Dev Verified', iso: latestAuto.dev_deployed_at, done: !!latestAuto.dev_deployed_at },
+    { label: 'PR Created', iso: latestAuto.pr_created_at, done: !!latestAuto.pr_created_at },
+    { label: 'Prod Approved', iso: latestAuto.prod_approved_at, done: !!latestAuto.prod_approved_at },
+    { label: 'Prod Deployed', iso: latestAuto.prod_deployed_at, done: !!latestAuto.prod_deployed_at },
+  ] : []
+
+  const executionSummary = latestAuto
+    ? (latestAuto.status === 'DEV_FAILED' ? 'Deployment to dev failed. AI stopped and did not create PR.' :
+      latestAuto.status === 'DEV_DEPLOYING' ? 'Deploying patch to dev and validating health checks.' :
+      latestAuto.status === 'DEV_HEALTHY' || latestAuto.status === 'PR_CREATED' ? 'Dev verified. PR created and waiting for production approval.' :
+      latestAuto.status === 'AWAITING_PROD_APPROVAL' ? 'Waiting for human approval before production deploy.' :
+      latestAuto.status === 'PROD_DEPLOYED' ? 'Patch fully completed and deployed to production.' :
+      'Detected and waiting for next action.')
+    : ''
+
+  // More accurate KPI than old placeholder metric:
+  // Detected -> Dev Verified/PR stage time in minutes.
+  const mttrSamples = vulns
+    .map(v => minsBetween(v.detected_at, v.dev_deployed_at || v.pr_created_at || v.prod_approved_at || v.prod_deployed_at))
+    .filter(m => Number.isFinite(m) && m > 0)
+  const mttr = mttrSamples.length ? Math.round(mttrSamples.reduce((a, b) => a + b, 0) / mttrSamples.length) : null
 
   const toggleSort = col => setSort(p => ({ col, dir: p.col === col && p.dir === 'desc' ? 'asc' : 'desc' }))
 
@@ -771,9 +1020,9 @@ export default function SecurityDashboard() {
           sub="safe to apply automatically" icon="✅" color="#22c55e" />
         <KpiCard label="Awaiting Approval" value={escalate}
           sub="human review required" icon="⏳" color="#f59e0b" />
-        <KpiCard label="Mean Time to Patch"
-          value={metrics.mean_time_to_patch ? `${metrics.mean_time_to_patch}m` : '—'}
-          sub="mean time to remediate" icon="⏱" color="#3b82f6" />
+        <KpiCard label="Mean Time to Dev Verify"
+          value={mttr != null ? `${mttr}m` : '—'}
+          sub="average detect → dev verified" icon="⏱" color="#3b82f6" />
       </div>
 
       {/* ── Phase 2 banner ──────────────────────────────────────── */}
@@ -1000,8 +1249,8 @@ export default function SecurityDashboard() {
         </table>
       </div>
 
-      {/* ── Bottom: chart + patch timeline ──────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      {/* ── Bottom: trend + risk snapshot + execution view ───────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
 
         {/* Scan history chart */}
         <div style={{
@@ -1010,12 +1259,15 @@ export default function SecurityDashboard() {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>Scan History</p>
-            <select style={{
+            <select value={historyRange} onChange={e => setHistoryRange(e.target.value)} style={{
               background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#94a3b8', outline: 'none',
             }}>
-              <option style={{ background: '#0f172a' }}>Last 7 Days</option>
-              <option style={{ background: '#0f172a' }}>Last 30 Days</option>
+              <option value="today" style={{ background: '#0f172a' }}>Today</option>
+              <option value="yesterday" style={{ background: '#0f172a' }}>Yesterday</option>
+              <option value="2d" style={{ background: '#0f172a' }}>Last 2 Days</option>
+              <option value="3d" style={{ background: '#0f172a' }}>Last 3 Days</option>
+              <option value="7d" style={{ background: '#0f172a' }}>Last 7 Days</option>
             </select>
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -1033,27 +1285,97 @@ export default function SecurityDashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* Patch timeline */}
+        {/* Service Risk Snapshot */}
         <div style={{
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
           borderRadius: 16, padding: '20px 24px',
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 20px' }}>Patch Timeline</p>
-          <PatchTimeline />
-          <div style={{ marginTop: 20, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14 }}>
-            {[
-              { label: 'Detected',     time: history[0]?.scanned_at ? new Date(history[0].scanned_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—' },
-              { label: 'PR Created',   time: autoPatch > 0 ? '(auto)' : '—' },
-              { label: 'Dev Deployed', time: autoPatch > 0 ? '(auto)' : '—' },
-              { label: 'Prod Approved',time: '—' },
-              { label: 'Prod Deployed',time: '—' },
-            ].map(s => (
-              <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 11, color: '#475569' }}>{s.label}</span>
-                <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>{s.time}</span>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px' }}>
+            Service Risk Snapshot
+          </p>
+          {serviceRiskData.length === 0 ? (
+            <div style={{
+              height: 180, borderRadius: 12,
+              border: '1px dashed rgba(148,163,184,0.25)',
+              background: 'rgba(148,163,184,0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textAlign: 'center', padding: 16,
+            }}>
+              <div>
+                <p style={{ fontSize: 12, color: '#cbd5e1', margin: '0 0 4px' }}>No active vulnerabilities right now.</p>
+                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Run a scan to populate service-wise risk distribution.</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={180}>
+                <BarChart data={serviceRiskData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="service" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(148,163,184,0.08)' }}
+                    content={<RiskSnapshotTooltip />}
+                  />
+                  <Legend wrapperStyle={{ fontSize: 10, color: '#64748b' }} />
+                  <Bar dataKey="CRITICAL" stackId="sev" fill="#ef4444" />
+                  <Bar dataKey="HIGH"     stackId="sev" fill="#f97316" />
+                  <Bar dataKey="MEDIUM"   stackId="sev" fill="#eab308" />
+                  <Bar dataKey="LOW"      stackId="sev" fill="#22c55e" />
+                  <Bar dataKey="UNKNOWN"  stackId="sev" fill="#64748b">
+                    <LabelList dataKey="TOTAL" position="top" fill="#cbd5e1" fontSize={10} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p style={{ fontSize: 11, color: '#64748b', margin: '10px 0 0' }}>
+                Active vulnerability count by service and severity.
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* Execution timeline (real events) */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 16, padding: '20px 24px',
+        }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px' }}>
+            Execution Timeline (Latest AUTO_PATCH)
+          </p>
+          {!latestAuto ? (
+            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>No AUTO_PATCH execution events yet.</p>
+          ) : (
+            <>
+              <div style={{
+                background: 'rgba(99,102,241,0.08)',
+                border: '1px solid rgba(99,102,241,0.2)',
+                borderRadius: 10, padding: '10px 12px',
+                marginBottom: 14,
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', margin: '0 0 4px' }}>AI Summary</p>
+                <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
+                  {`Service ${latestAuto.service}: ${executionSummary}`}
+                </p>
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+                {executionEvents.map((e) => (
+                  <div key={e.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        width: 8, height: 8, borderRadius: '50%',
+                        background: e.done ? '#22c55e' : '#334155',
+                        boxShadow: e.done ? '0 0 8px rgba(34,197,94,0.5)' : 'none',
+                      }} />
+                      <span style={{ fontSize: 11, color: e.done ? '#cbd5e1' : '#64748b' }}>{e.label}</span>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                      {e.iso ? new Date(e.iso).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
       </div>
