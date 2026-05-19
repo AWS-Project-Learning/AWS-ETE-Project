@@ -139,52 +139,52 @@ jobs:
   # Starts only after dev deploy succeeds.
   # Also requires approval (same App-deploy-approver environment).
 
-  deploy-sit:
-    name: Deploy UI → sit
-    runs-on: ubuntu-latest
-    needs: [build, deploy-dev]
-    if: needs.deploy-dev.result == 'success'
-    environment: App-deploy-approver
+  # deploy-sit:
+  #   name: Deploy UI → sit
+  #   runs-on: ubuntu-latest
+  #   needs: [build, deploy-dev]
+  #   if: needs.deploy-dev.result == 'success'
+  #   environment: App-deploy-approver
 
-    steps:
-      - name: Configure AWS (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region:     ${{ env.AWS_REGION }}
+  #   steps:
+  #     - name: Configure AWS (OIDC)
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+  #         aws-region:     ${{ env.AWS_REGION }}
 
-      - name: Download dist artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build.outputs.artifact_name }}
-          path: dist/
+  #     - name: Download dist artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: ${{ needs.build.outputs.artifact_name }}
+  #         path: dist/
 
-      - name: Read infra values from SSM
-        run: |
-          BUCKET=$(aws ssm get-parameter \
-            --name "/orderflow/sit/infra/frontend-bucket" \
-            --query "Parameter.Value" --output text)
-          CF_ID=$(aws ssm get-parameter \
-            --name "/orderflow/sit/infra/cloudfront-id" \
-            --query "Parameter.Value" --output text)
-          echo "BUCKET=$BUCKET" >> $GITHUB_ENV
-          echo "CF_ID=$CF_ID"   >> $GITHUB_ENV
-          echo "S3 bucket : $BUCKET"
-          echo "CloudFront: $CF_ID"
+  #     - name: Read infra values from SSM
+  #       run: |
+  #         BUCKET=$(aws ssm get-parameter \
+  #           --name "/orderflow/sit/infra/frontend-bucket" \
+  #           --query "Parameter.Value" --output text)
+  #         CF_ID=$(aws ssm get-parameter \
+  #           --name "/orderflow/sit/infra/cloudfront-id" \
+  #           --query "Parameter.Value" --output text)
+  #         echo "BUCKET=$BUCKET" >> $GITHUB_ENV
+  #         echo "CF_ID=$CF_ID"   >> $GITHUB_ENV
+  #         echo "S3 bucket : $BUCKET"
+  #         echo "CloudFront: $CF_ID"
 
-      - name: Sync to S3
-        run: |
-          aws s3 sync dist/ s3://$BUCKET/ \
-            --delete \
-            --cache-control "public,max-age=31536000,immutable" \
-            --exclude "index.html"
-          aws s3 cp dist/index.html s3://$BUCKET/index.html \
-            --cache-control "no-cache,no-store,must-revalidate"
-          echo "Synced to s3://$BUCKET"
+  #     - name: Sync to S3
+  #       run: |
+  #         aws s3 sync dist/ s3://$BUCKET/ \
+  #           --delete \
+  #           --cache-control "public,max-age=31536000,immutable" \
+  #           --exclude "index.html"
+  #         aws s3 cp dist/index.html s3://$BUCKET/index.html \
+  #           --cache-control "no-cache,no-store,must-revalidate"
+  #         echo "Synced to s3://$BUCKET"
 
-      - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id $CF_ID \
-            --paths "/*"
-          echo "CloudFront cache invalidated — sit UI is live."
+  #     - name: Invalidate CloudFront cache
+  #       run: |
+  #         aws cloudfront create-invalidation \
+  #           --distribution-id $CF_ID \
+  #           --paths "/*"
+  #         echo "CloudFront cache invalidated — sit UI is live."

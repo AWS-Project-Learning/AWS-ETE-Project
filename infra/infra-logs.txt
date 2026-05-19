@@ -1,99 +1,101 @@
-Run FUNCTION_NAME="orderflow-vulnerability-agent-dev"
-Invoking orderflow-vulnerability-agent-dev with action=scan ...
-{"action":"scan"}{
+AWS-ETE-Project [Rajeshkoki] git:(main) ✗ aws lambda invoke \
+  --function-name orderflow-vulnerability-agent-dev \
+  --payload '{"action":"reason"}' \
+  --cli-binary-format raw-in-base64-out \
+  --region us-east-1 \
+  --profile personal \
+  --no-cli-pager \
+  /tmp/reason.json
+
+echo "=== Lambda Response ==="
+cat /tmp/reason.json | python3 -m json.tool 2>/dev/null || cat /tmp/reason.json
+{
     "StatusCode": 200,
-    "LogResult": "U1RBUlQgUmVxdWVzdElkOiBlN2Y3ZWRhMS1kZjNmLTQwZDItODQwYS0xOTAzMzQ4Mjg0OGQgVmVyc2lvbjogJExBVEVTVApbSU5GT10JMjAyNi0wNS0xOVQwMDozNzoxNC44MzhaCWU3ZjdlZGExLWRmM2YtNDBkMi04NDBhLTE5MDMzNDgyODQ4ZAlEaXJlY3QgaW52b2NhdGlvbjogYWN0aW9uPXNjYW4KW0lORk9dCTIwMjYtMDUtMTlUMDA6Mzc6MTQuODM4WgllN2Y3ZWRhMS1kZjNmLTQwZDItODQwYS0xOTAzMzQ4Mjg0OGQJU3RhcnRpbmcgdnVsbmVyYWJpbGl0eSBzY2FuIChQaGFzZSAxKQpbSU5GT10JMjAyNi0wNS0xOVQwMDozNzoxNi4wNzlaCWU3ZjdlZGExLWRmM2YtNDBkMi04NDBhLTE5MDMzNDgyODQ4ZAlTY2FubmluZyBBV1MtUHJvamVjdC1MZWFybmluZy9BV1MtRVRFLVByb2plY3RAbWFpbiDigJQgMyBzZXJ2aWNlKHMpOiBbJ29yZGVyLXNlcnZpY2UnLCAnaW52b2ljZS1zZXJ2aWNlJywgJ2JmZiddCltJTkZPXQkyMDI2LTA1LTE5VDAwOjM3OjE2LjMwMVoJZTdmN2VkYTEtZGYzZi00MGQyLTg0MGEtMTkwMzM0ODI4NDhkCW9yZGVyLXNlcnZpY2U6IDkgcGlubmVkIHBhY2thZ2VzIGZvdW5kIGluIGJhY2tlbmQtc2VydmljZXMvb3JkZXItc2VydmljZS9yZXF1aXJlbWVudHMudHh0CltJTkZPXQkyMDI2LTA1LTE5VDAwOjM3OjE2LjM3OFoJZTdmN2VkYTEtZGYzZi00MGQyLTg0MGEtMTkwMzM0ODI4NDhkCWludm9pY2Utc2VydmljZTogOSBwaW5uZWQgcGFja2FnZXMgZm91bmQgaW4gYmFja2VuZC1zZXJ2aWNlcy9pbnZvaW
     "ExecutedVersion": "$LATEST"
 }
---- Raw Lambda response ---
+=== Lambda Response ===
 {
     "status": "ok",
-    "action": "scan",
+    "action": "reason",
     "result": {
-        "scan_id": "SCAN#2026-05-19#6d9085c3",
-        "total_found": 9,
-        "by_severity": {
-            "UNKNOWN": 9
-        },
-        "by_service": {
-            "order-service": 4,
-            "invoice-service": 4,
-            "bff": 1
-        },
-        "sample_vulns": [
+        "total": 9,
+        "auto_patch": 3,
+        "escalate": 6,
+        "ignore": 0,
+        "decisions": [
             {
-                "cve_id": "GHSA-79v4-65xg-pq4g",
-                "service": "order-service",
                 "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-m959-cc7f-wv43",
-                "service": "order-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-r6ph-v2qm-q3c2",
-                "service": "order-service",
-                "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-mf9w-mj56-hr94",
-                "service": "order-service",
-                "package": "python-dotenv",
-                "current_version": "1.0.1",
-                "safe_version": "1.2.2",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
-            },
-            {
-                "cve_id": "GHSA-79v4-65xg-pq4g",
                 "service": "invoice-service",
+                "severity": "LOW",
+                "decision": "ESCALATE",
+                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
+                "confidence": 90
+            },
+            {
                 "package": "cryptography",
-                "current_version": "43.0.1",
-                "safe_version": "48.0.0",
-                "severity": "UNKNOWN",
-                "summary": "No description available"
+                "service": "order-service",
+                "severity": "LOW",
+                "decision": "ESCALATE",
+                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
+                "confidence": 90
+            },
+            {
+                "package": "cryptography",
+                "service": "invoice-service",
+                "severity": "HIGH",
+                "decision": "ESCALATE",
+                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
+                "confidence": 90
+            },
+            {
+                "package": "cryptography",
+                "service": "order-service",
+                "severity": "HIGH",
+                "decision": "ESCALATE",
+                "reasoning": "cryptography is a high-criticality package (auth/crypto/DB/AWS SDK) \u2014 human review required",
+                "confidence": 90
+            },
+            {
+                "package": "python-dotenv",
+                "service": "bff",
+                "severity": "MEDIUM",
+                "decision": "AUTO_PATCH",
+                "reasoning": "The version bump from 1.0.1 to 1.2.2 is a minor update that addresses a medium severity vulnerability without introducing breaking changes.",
+                "confidence": 85
+            },
+            {
+                "package": "python-dotenv",
+                "service": "invoice-service",
+                "severity": "MEDIUM",
+                "decision": "AUTO_PATCH",
+                "reasoning": "The vulnerability is medium severity and affects a dev dependency with no network exposure, suggesting a low risk of exploitation in this context.",
+                "confidence": 85
+            },
+            {
+                "package": "python-dotenv",
+                "service": "order-service",
+                "severity": "MEDIUM",
+                "decision": "AUTO_PATCH",
+                "reasoning": "The vulnerability is medium severity and affects a dev dependency, with a minor version bump to a safe version, indicating low risk of breaking changes.",
+                "confidence": 85
+            },
+            {
+                "package": "cryptography",
+                "service": "invoice-service",
+                "severity": "CRITICAL",
+                "decision": "ESCALATE",
+                "reasoning": "CRITICAL severity requires human review",
+                "confidence": 95
+            },
+            {
+                "package": "cryptography",
+                "service": "order-service",
+                "severity": "CRITICAL",
+                "decision": "ESCALATE",
+                "reasoning": "CRITICAL severity requires human review",
+                "confidence": 95
             }
         ]
     }
 }
-0s
-Run python3 - <<'PYEOF'
-============================================================
-  VULNERABILITY SCAN COMPLETE
-============================================================
-  Scan ID     : SCAN#2026-05-19#6d9085c3
-  Total found : 9
-  UNKNOWN   : 9
-  order-service         : 4 CVE(s)
-  invoice-service       : 4 CVE(s)
-  bff                   : 1 CVE(s)
-  Sample findings (first 5):
-    [UNKNOWN] GHSA-79v4-65xg-pq4g
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-m959-cc7f-wv43
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-r6ph-v2qm-q3c2
-      order-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-    [UNKNOWN] GHSA-mf9w-mj56-hr94
-      order-service/python-dotenv  1.0.1 → upgrade to 1.2.2
-      No description available
-    [UNKNOWN] GHSA-79v4-65xg-pq4g
-      invoice-service/cryptography  43.0.1 → upgrade to 48.0.0
-      No description available
-============================================================
+➜  AWS-ETE-Project [Rajeshkoki] git:(main) ✗ 

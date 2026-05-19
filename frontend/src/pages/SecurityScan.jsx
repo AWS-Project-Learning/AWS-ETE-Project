@@ -85,6 +85,7 @@ export default function SecurityScan() {
   const [stepPcts,   setStepPcts]   = useState(freshPct)
   const [logs,       setLogs]       = useState([])
   const [error,      setError]      = useState(null)
+  const [scanDone,   setScanDone]   = useState(null)   // { sid, total, auto_patch, escalate }
 
   const progress = useFakeProgress(stepPcts, setStepPcts, null, running)
 
@@ -105,7 +106,7 @@ export default function SecurityScan() {
   const activeIdx = AGENTS.findIndex(a => stepStates[a.id] === 'active')
 
   async function handleStartScan() {
-    setRunning(true); setError(null); setLogs([])
+    setRunning(true); setError(null); setLogs([]); setScanDone(null)
     setStepStates(freshStates()); setStepDescs(freshDescs()); progress.reset()
 
     try {
@@ -161,14 +162,9 @@ export default function SecurityScan() {
 
       if (total === 0) {
         addLog(ts(), 'Report', 'scan complete — no vulnerabilities found ✓', 'success')
-        // Stay on scan page — nothing to show in dashboard yet
       } else {
-        addLog(ts(), 'Report', `${total} vulnerabilities ready — opening dashboard`, 'success')
-        await delay(1000)
-        // Pass scan summary via router state so dashboard doesn't need a second API call
-        navigate('/security/dashboard', {
-          state: { scan_id: sid, total, auto_patch, escalate, ignore }
-        })
+        addLog(ts(), 'Report', `${total} vulnerabilities found — ${auto_patch} auto-patch · ${escalate} escalate`, 'success')
+        setScanDone({ sid, total, auto_patch, escalate, ignore })
       }
 
     } catch (err) {
@@ -195,7 +191,7 @@ export default function SecurityScan() {
   }
 
   function handleReset() {
-    setError(null); setLogs([])
+    setError(null); setLogs([]); setScanDone(null)
     setStepStates(freshStates()); setStepDescs(freshDescs()); progress.reset()
   }
 
@@ -384,6 +380,39 @@ export default function SecurityScan() {
           <div ref={logEndRef} />
         </div>
       </div>
+
+      {/* ── Scan complete banner ────────────────────────────────── */}
+      {scanDone && !running && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)',
+          borderRadius: 12, padding: '12px 20px', marginBottom: 12, flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <CheckCircle2 size={16} color="#22c55e" />
+            <span style={{ fontSize: 13, color: '#e2e8f0' }}>
+              Scan complete —{' '}
+              <strong style={{ color: '#f87171' }}>{scanDone.total} vulnerabilities</strong>
+              {' '}found &nbsp;·&nbsp;{' '}
+              <span style={{ color: '#fbbf24' }}>{scanDone.auto_patch} auto-patch</span>
+              {' · '}
+              <span style={{ color: '#f87171' }}>{scanDone.escalate} escalate</span>
+            </span>
+          </div>
+          <button
+            onClick={() => navigate('/security/dashboard')}
+            style={{
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              border: 'none', color: '#fff',
+              padding: '8px 20px', borderRadius: 8,
+              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+              whiteSpace: 'nowrap',
+            }}>
+            View Results →
+          </button>
+        </div>
+      )}
 
       {/* ── Bottom bar: error / step indicator ───────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

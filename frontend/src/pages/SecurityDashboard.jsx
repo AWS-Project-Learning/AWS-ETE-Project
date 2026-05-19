@@ -184,15 +184,11 @@ function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
 }
 
 function ExpandedPanel({ vuln, onApprove }) {
-  const [tab, setTab] = useState('ai')   // 'ai' | 'evidence'
+  const [tab, setTab] = useState('ai')   // 'ai' | 'evidence' | 'logs'
   const ev  = vuln.evidence || {}
   const hasEvidence = vuln.status === 'DEV_HEALTHY' || vuln.status === 'PR_CREATED' ||
                       vuln.status === 'AWAITING_PROD_APPROVAL' || vuln.status === 'PROD_DEPLOYED' ||
                       vuln.status === 'DEV_FAILED'
-
-  const CHECK = ok => ok
-    ? <span style={{ color: '#22c55e' }}>✅</span>
-    : <span style={{ color: '#ef4444' }}>❌</span>
 
   const advisoryId  = vuln.advisory_id  || vuln.cve_id  || vuln.ghsa_id || '—'
   const advisoryUrl = vuln.advisory_url || (vuln.cve_id?.startsWith('CVE-') ? `https://nvd.nist.gov/vuln/detail/${vuln.cve_id}` : null)
@@ -217,8 +213,9 @@ function ExpandedPanel({ vuln, onApprove }) {
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         {[
-          { key: 'ai',       label: '🤖 AI Findings & Reasoning' },
-          { key: 'evidence', label: '🔬 Deploy Evidence', disabled: !hasEvidence },
+          { key: 'ai',       label: '🤖 AI Findings & Reasoning', disabled: false },
+          { key: 'evidence', label: '🔬 Deploy Evidence',          disabled: !hasEvidence },
+          { key: 'logs',     label: '🖥 Health & Container Logs',  disabled: !hasEvidence },
         ].map(t => (
           <button key={t.key}
             onClick={() => !t.disabled && setTab(t.key)}
@@ -231,8 +228,8 @@ function ExpandedPanel({ vuln, onApprove }) {
               cursor: t.disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
             }}>
             {t.label}
-            {t.key === 'evidence' && !hasEvidence && (
-              <span style={{ fontSize: 10, color: '#334155', marginLeft: 6 }}>— runs after patch</span>
+            {t.disabled && (
+              <span style={{ fontSize: 10, color: '#334155', marginLeft: 6 }}>— after patch</span>
             )}
           </button>
         ))}
@@ -329,7 +326,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                 ❌ Dev deployment failed — no PR raised
               </p>
               <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 8px' }}>
-                {ev.failure_reason || 'One or more health checks did not pass.'}
+                {ev.failure_reason || 'One or more health checks did not pass. Check the Health & Container Logs tab for details.'}
               </p>
               {ev.workflow_run && (
                 <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
@@ -341,7 +338,7 @@ function ExpandedPanel({ vuln, onApprove }) {
           ) : (
             <>
               {/* Evidence header */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', margin: 0 }}>
                   ✅ Dev Deployment Verified
                 </p>
@@ -350,45 +347,50 @@ function ExpandedPanel({ vuln, onApprove }) {
                 </span>
               </div>
 
-              {/* Evidence table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 14 }}>
-                <tbody>
-                  {[
-                    { label: 'ECS Tasks Running',    value: `${ev.ecs_running ?? '?'}/${ev.ecs_desired ?? '?'}`, ok: ev.ecs_running === ev.ecs_desired && ev.ecs_running > 0 },
-                    { label: 'ALB Target Health',    value: ev.alb_state ?? 'unknown', ok: ev.alb_state === 'healthy' },
-                    { label: 'Startup Log Signature',value: ev.startup_log_ok ? '"Application startup complete"' : 'Not found', ok: ev.startup_log_ok },
-                    { label: 'Error Check',          value: ev.error_log_ok ? 'No errors detected' : 'Errors found', ok: ev.error_log_ok },
-                  ].map(row => (
-                    <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b', width: 180 }}>{row.label}</td>
-                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#e2e8f0', fontFamily: 'monospace' }}>{row.value}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{CHECK(row.ok)}</td>
-                    </tr>
-                  ))}
-                  {ev.task_arn && (
-                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b' }}>ECS Task ARN</td>
-                      <td colSpan={2} style={{ padding: '8px 12px', fontSize: 11, color: '#60a5fa', fontFamily: 'monospace' }}>
-                        <a href={ev.workflow_run ? ev.workflow_run.replace('/runs/', '/logs/') : '#'}
-                          target="_blank" rel="noopener noreferrer"
-                          style={{ color: '#60a5fa', textDecoration: 'none' }}>
-                          {ev.task_arn.slice(-40)} ↗
-                        </a>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              {/* Summary cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: 'ECS Tasks',   value: `${ev.ecs_running ?? '?'} / ${ev.ecs_desired ?? '?'}`, ok: ev.ecs_running === ev.ecs_desired && ev.ecs_running > 0 },
+                  { label: 'ALB Health',  value: ev.alb_state ?? 'unknown', ok: ['healthy', 'skipped'].includes(ev.alb_state) },
+                  { label: 'Error Check', value: ev.error_log_ok ? 'Clean' : 'Errors found', ok: ev.error_log_ok },
+                ].map(card => (
+                  <div key={card.label} style={{
+                    background: card.ok ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
+                    border: `1px solid ${card.ok ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    borderRadius: 8, padding: '10px 14px', textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 18, marginBottom: 4 }}>{card.ok ? '✅' : '❌'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', fontFamily: 'monospace' }}>{card.value}</div>
+                    <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{card.label}</div>
+                  </div>
+                ))}
+              </div>
 
-              {/* Docker image */}
-              {ev.image && (
-                <p style={{ fontSize: 11, color: '#334155', fontFamily: 'monospace', margin: '0 0 14px' }}>
-                  Image: {ev.image}
-                </p>
-              )}
+              {/* Deployment metadata */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 12, marginBottom: 16 }}>
+                {ev.image && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Image</span>
+                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.image}</span>
+                </>}
+                {ev.task_arn && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Task ARN</span>
+                  <a href={`https://us-east-1.console.aws.amazon.com/ecs/v2/clusters/orderflow-dev/tasks`}
+                    target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#60a5fa', fontFamily: 'monospace', fontSize: 11, textDecoration: 'none', wordBreak: 'break-all' }}>
+                    {ev.task_arn.slice(-50)} ↗
+                  </a>
+                </>}
+                {ev.workflow_run && <>
+                  <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>CI Run</span>
+                  <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
+                    style={{ color: '#60a5fa', fontSize: 11, textDecoration: 'none' }}>
+                    GitHub Actions ↗
+                  </a>
+                </>}
+              </div>
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {vuln.pr_url && (
                   <a href={vuln.pr_url} target="_blank" rel="noopener noreferrer" style={{
                     background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)',
@@ -423,6 +425,116 @@ function ExpandedPanel({ vuln, onApprove }) {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── Tab 3: Health & Container Logs ── */}
+      {tab === 'logs' && (
+        <div style={{ padding: '16px 20px' }}>
+
+          {/* Health check results */}
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+            Health Check Results
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'left', fontWeight: 600 }}>Check</th>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'left', fontWeight: 600 }}>Value</th>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'right', fontWeight: 600 }}>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                {
+                  label: 'ECS Tasks Running',
+                  value: `${ev.ecs_running ?? '?'} running / ${ev.ecs_desired ?? '?'} desired`,
+                  ok: ev.ecs_running === ev.ecs_desired && ev.ecs_running > 0,
+                },
+                {
+                  label: 'ALB Target Health',
+                  value: ev.alb_state ?? 'unknown',
+                  ok: ['healthy', 'skipped'].includes(ev.alb_state),
+                  advisory: ev.alb_state === 'skipped',
+                },
+                {
+                  label: 'Startup Log Signature',
+                  value: ev.startup_log_ok ? '"Application startup complete" found' : 'Not found in CloudWatch',
+                  ok: ev.startup_log_ok,
+                  advisory: !ev.startup_log_ok,
+                },
+                {
+                  label: 'Error / Exception Check',
+                  value: ev.error_log_ok ? 'No ERROR / CRITICAL lines' : 'Error lines detected',
+                  ok: ev.error_log_ok,
+                },
+              ].map(row => (
+                <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b', width: 200 }}>{row.label}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#e2e8f0', fontFamily: 'monospace' }}>{row.value}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                    {row.ok
+                      ? <span style={{ color: '#22c55e' }}>✅ Pass</span>
+                      : row.advisory
+                      ? <span style={{ color: '#f59e0b' }}>⚠️ Advisory</span>
+                      : <span style={{ color: '#ef4444' }}>❌ Fail</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Container / CloudWatch log excerpt */}
+          <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', display: 'inline-block', boxShadow: '0 0 6px #22c55e' }} />
+            CloudWatch Container Logs
+          </p>
+          <div style={{
+            background: '#020810',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 10, padding: '12px 16px',
+            fontFamily: '"Fira Code", "Cascadia Code", monospace',
+            fontSize: 11, lineHeight: 1.7,
+            maxHeight: 260, overflowY: 'auto',
+          }}>
+            {/* Terminal title bar */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+              <span style={{ fontSize: 10, color: '#334155', marginLeft: 8 }}>
+                /ecs/orderflow/dev/{vuln.service}
+              </span>
+            </div>
+            {ev.log_excerpt ? (
+              String(ev.log_excerpt).split('|').filter(Boolean).map((line, i) => {
+                const isErr  = /ERROR|CRITICAL|Traceback|Exception/i.test(line)
+                const isWarn = /WARNING|WARN/i.test(line)
+                const isOk   = /startup complete|Application startup|Started server/i.test(line)
+                return (
+                  <div key={i} style={{
+                    color: isErr ? '#f87171' : isWarn ? '#fbbf24' : isOk ? '#22c55e' : '#64748b',
+                    padding: '1px 0',
+                  }}>
+                    {line.trim()}
+                  </div>
+                )
+              })
+            ) : (
+              <span style={{ color: '#334155', fontStyle: 'italic' }}>
+                No log excerpt available — check GitHub Actions for full output
+              </span>
+            )}
+          </div>
+
+          {ev.workflow_run && (
+            <div style={{ marginTop: 12, textAlign: 'right' }}>
+              <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>
+                View full logs in GitHub Actions ↗
+              </a>
+            </div>
           )}
         </div>
       )}
