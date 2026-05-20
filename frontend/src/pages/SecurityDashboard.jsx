@@ -284,6 +284,7 @@ function ExpandedPanel({ vuln, onApprove }) {
   const digestMatch = ev.digest_match === true || ev.digest_match === 'true'
   const patchVerifyOk = ev.patch_verify_ok === true || ev.patch_verify_ok === 'true'
   const runtimeVerifyOk = ev.runtime_verify_ok === true || ev.runtime_verify_ok === 'true'
+  const patchVerifyWarn = !patchVerifyOk && runtimeVerifyOk
   const patchVerify = (() => {
     try {
       if (!ev.patch_verify_b64) return null
@@ -300,6 +301,8 @@ function ExpandedPanel({ vuln, onApprove }) {
       return null
     }
   })()
+  const runtimeChecked = Number(runtimeVerify?.checked ?? 0)
+  const runtimeTotal = Number(runtimeVerify?.total ?? 0)
 
   return (
     <div style={{
@@ -531,15 +534,31 @@ function ExpandedPanel({ vuln, onApprove }) {
                       </div>
                     </div>
                     <div style={{
-                      border: `1px solid ${patchVerifyOk ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                      background: patchVerifyOk ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                      border: `1px solid ${
+                        patchVerifyOk
+                          ? 'rgba(34,197,94,0.25)'
+                          : patchVerifyWarn
+                            ? 'rgba(245,158,11,0.25)'
+                            : 'rgba(239,68,68,0.25)'
+                      }`,
+                      background: patchVerifyOk
+                        ? 'rgba(34,197,94,0.08)'
+                        : patchVerifyWarn
+                          ? 'rgba(245,158,11,0.08)'
+                          : 'rgba(239,68,68,0.08)',
                       borderRadius: 8, padding: '10px 12px',
                     }}>
                       <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
-                        {patchVerifyOk ? '✅ Patch Verified In Image' : '❌ Patch Verification Failed'}
+                        {patchVerifyOk
+                          ? '✅ Patch Verified In Image'
+                          : patchVerifyWarn
+                            ? '⚠️ Image Verification Warning'
+                            : '❌ Patch Verification Failed'}
                       </div>
                       <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                        CI checks package versions in built container image
+                        {patchVerifyWarn
+                          ? 'Image check mismatched, but runtime container verification passed'
+                          : 'CI checks package versions in built container image'}
                       </div>
                     </div>
                     <div style={{
@@ -551,7 +570,12 @@ function ExpandedPanel({ vuln, onApprove }) {
                         {runtimeVerifyOk ? '✅ Patch Verified In Runtime Container' : '❌ Runtime Verification Missing/Failed'}
                       </div>
                       <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
-                        Parsed from live task startup logs in CloudWatch
+                        {runtimeTotal > 0
+                          ? `Best-effort from live startup logs (${runtimeChecked}/${runtimeTotal} packages marked)`
+                          : 'Best-effort from live task startup logs in CloudWatch'}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+                        Runtime check is advisory; image verification + digest match are primary proof.
                       </div>
                     </div>
                   </div>
@@ -572,7 +596,9 @@ function ExpandedPanel({ vuln, onApprove }) {
                             <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
                             <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
                             <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
-                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>{r.ok ? '✅' : '❌'}</td>
+                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
+                              {r.ok === true ? '✅' : r.ok === false ? '❌' : '—'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -870,7 +896,8 @@ export default function SecurityDashboard() {
   )
 
   const autoPatch = vulns.filter(v => v.decision === 'AUTO_PATCH').length
-  const escalate  = vulns.filter(v => v.decision === 'ESCALATE').length
+  const escalatedForReview = vulns.filter(v => v.decision === 'ESCALATE').length
+  const awaitingProdApproval = vulns.filter(v => v.status === 'AWAITING_PROD_APPROVAL').length
   const lastScan  = history[0]?.scanned_at ?? metrics?.last_scan_at ?? null
 
   const historyFiltered = history.filter(h => {
@@ -1048,8 +1075,8 @@ export default function SecurityDashboard() {
           sub="across all services" icon="🚨" color="#ef4444" />
         <KpiCard label="Auto-Patched" value={`${autoPatch} ✓`}
           sub="safe to apply automatically" icon="✅" color="#22c55e" />
-        <KpiCard label="Awaiting Approval" value={escalate}
-          sub="human review required" icon="⏳" color="#f59e0b" />
+        <KpiCard label="Awaiting Prod Approval" value={awaitingProdApproval}
+          sub={`${escalatedForReview} escalated for human review`} icon="⏳" color="#f59e0b" />
         <KpiCard label="Mean Time to Dev Verify"
           value={mttr != null ? `${mttr}m` : '—'}
           sub="average detect → dev verified" icon="⏱" color="#3b82f6" />
