@@ -86,6 +86,38 @@ function RiskSnapshotTooltip({ active, payload, label }) {
   )
 }
 
+function ScanHistoryTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null
+  const row = payload[0]?.payload
+  if (!row) return null
+
+  return (
+    <div style={{
+      background: '#0f172a',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 8,
+      padding: '8px 10px',
+      fontSize: 11,
+      minWidth: 180,
+    }}>
+      <p style={{ margin: '0 0 6px', color: '#cbd5e1', fontWeight: 700 }}>
+        {row.scanned_at ? new Date(row.scanned_at).toLocaleString('en-AU') : 'Unknown run time'}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+        <span>Findings</span>
+        <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row.scans ?? 0}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+        <span>Scan ID</span>
+        <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row.scan_short || '—'}</span>
+      </div>
+      <div style={{ color: '#94a3b8', marginTop: 6 }}>
+        Services: <span style={{ color: '#e2e8f0' }}>{row.services_label || 'unknown'}</span>
+      </div>
+    </div>
+  )
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 function KpiCard({ label, value, sub, icon, color }) {
   return (
@@ -477,8 +509,11 @@ function ExpandedPanel({ vuln, onApprove }) {
                 </>}
                 {ev.source_commit && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Commit SHA</span>
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
-                    {ev.source_commit}
+                  <span
+                    title={ev.source_commit}
+                    style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}
+                  >
+                    {ev.source_commit_short || ev.source_commit.slice(0, 7)}
                   </span>
                 </>}
                 {ev.ecr_image_digest && <>
@@ -497,14 +532,30 @@ function ExpandedPanel({ vuln, onApprove }) {
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Task ARN</span>
                   <a href={`https://us-east-1.console.aws.amazon.com/ecs/v2/clusters/orderflow-dev/tasks`}
                     target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#60a5fa', fontFamily: 'monospace', fontSize: 11, textDecoration: 'none', wordBreak: 'break-all' }}>
+                    style={{
+                      color: '#60a5fa',
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      textDecoration: 'none',
+                      wordBreak: 'break-all',
+                      display: 'inline-flex',
+                      justifySelf: 'start',
+                      width: 'fit-content',
+                    }}>
                     {ev.task_arn.slice(-50)} ↗
                   </a>
                 </>}
                 {ev.workflow_run && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>CI Run</span>
                   <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#60a5fa', fontSize: 11, textDecoration: 'none' }}>
+                    style={{
+                      color: '#60a5fa',
+                      fontSize: 11,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      justifySelf: 'start',
+                      width: 'fit-content',
+                    }}>
                     GitHub Actions ↗
                   </a>
                 </>}
@@ -586,7 +637,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                         <tr>
                           <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Package</th>
                           <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Image</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Built Image (CI)</th>
                           <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
                         </tr>
                       </thead>
@@ -611,7 +662,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                         <tr>
                           <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Runtime Package</th>
                           <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Runtime</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Running Container Logs</th>
                           <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
                         </tr>
                       </thead>
@@ -621,7 +672,9 @@ function ExpandedPanel({ vuln, onApprove }) {
                             <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
                             <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
                             <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
-                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>{r.ok ? '✅' : '❌'}</td>
+                            <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
+                              {r.ok === true ? '✅' : r.ok === false ? '❌' : '—'}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -897,7 +950,9 @@ export default function SecurityDashboard() {
 
   const autoPatch = vulns.filter(v => v.decision === 'AUTO_PATCH').length
   const escalatedForReview = vulns.filter(v => v.decision === 'ESCALATE').length
-  const awaitingProdApproval = vulns.filter(v => v.status === 'AWAITING_PROD_APPROVAL').length
+  const awaitingProdApproval = vulns.filter(v =>
+    ['PR_CREATED', 'AWAITING_PROD_APPROVAL'].includes((v.status || '').toString().trim().toUpperCase())
+  ).length
   const lastScan  = history[0]?.scanned_at ?? metrics?.last_scan_at ?? null
 
   const historyFiltered = history.filter(h => {
@@ -910,10 +965,24 @@ export default function SecurityDashboard() {
   })
 
   // Chart data from history
-  const chartData = historyFiltered.slice().reverse().map((h, i) => ({
-    name: h.scanned_at ? new Date(h.scanned_at).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }) : `Scan ${i + 1}`,
-    scans: h.vuln_count ?? h.total_found ?? 0,
-  }))
+  const chartData = historyFiltered.slice().reverse().map((h, i) => {
+    const dt = h.scanned_at ? new Date(h.scanned_at) : null
+    const label = dt
+      ? (historyRange === 'today'
+        ? dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })
+        : dt.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }))
+      : `Scan ${i + 1}`
+    const services = Array.isArray(h.services) ? h.services : []
+    return {
+      name: label,
+      scans: h.vuln_count ?? h.total_found ?? 0,
+      scanned_at: h.scanned_at || '',
+      scan_id: h.scan_id || '',
+      scan_short: (h.scan_id || '').replace('SCAN#', '').slice(0, 16) || '',
+      services_label: services.length ? services.join(', ') : 'unknown',
+      service_counts: h.service_counts || {},
+    }
+  })
   if (chartData.length === 0) chartData.push({ name: 'Now', scans: vulns.length })
 
   const serviceRiskData = (serviceRiskSnapshot.length ? serviceRiskSnapshot : Object.values(
@@ -1333,13 +1402,16 @@ export default function SecurityDashboard() {
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
               <Tooltip
-                contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: '#94a3b8' }} itemStyle={{ color: '#3b82f6' }}
+                cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }}
+                content={<ScanHistoryTooltip />}
               />
               <Line type="monotone" dataKey="scans" stroke="#3b82f6" strokeWidth={2.5}
                 dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6, boxShadow: '0 0 10px #3b82f6' }} />
             </LineChart>
           </ResponsiveContainer>
+          <p style={{ fontSize: 11, color: '#64748b', margin: '10px 0 0' }}>
+            Y-axis = total findings per scan run (across services included in that run).
+          </p>
         </div>
 
         {/* Service Risk Snapshot */}

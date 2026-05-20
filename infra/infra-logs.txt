@@ -1,5 +1,5 @@
+  ~ update in-place
 Terraform will perform the following actions:
-
   # aws_lambda_function.vulnerability_agent will be updated in-place
   ~ resource "aws_lambda_function" "vulnerability_agent" {
         id                             = "orderflow-vulnerability-agent-dev"
@@ -7,7 +7,6 @@ Terraform will perform the following actions:
             "Name" = "orderflow-vulnerability-agent-dev"
         }
         # (23 unchanged attributes hidden)
-
       ~ environment {
           ~ variables = {
               + "DEFAULT_REPO_BRANCH"   = "main"
@@ -16,15 +15,12 @@ Terraform will perform the following actions:
                 # (3 unchanged elements hidden)
             }
         }
-
         # (3 unchanged blocks hidden)
     }
-
   # aws_lambda_function_url.vulnerability_agent will be updated in-place
   ~ resource "aws_lambda_function_url" "vulnerability_agent" {
         id                 = "orderflow-vulnerability-agent-dev"
         # (6 unchanged attributes hidden)
-
       ~ cors {
           ~ allow_headers     = [
               - "authorization",
@@ -37,9 +33,8 @@ Terraform will perform the following actions:
             # (5 unchanged attributes hidden)
         }
     }
-
 Plan: 0 to add, 2 to change, 0 to destroy.
-
 ─────────────────────────────────────────────────────────────────────────────
-
 Saved the plan to: tfplan
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"
