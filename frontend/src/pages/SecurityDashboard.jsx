@@ -885,7 +885,7 @@ export default function SecurityDashboard() {
   // Chart data from history
   const chartData = historyFiltered.slice().reverse().map((h, i) => ({
     name: h.scanned_at ? new Date(h.scanned_at).toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }) : `Scan ${i + 1}`,
-    scans: h.total_found ?? 0,
+    scans: h.vuln_count ?? h.total_found ?? 0,
   }))
   if (chartData.length === 0) chartData.push({ name: 'Now', scans: vulns.length })
 
@@ -917,15 +917,45 @@ export default function SecurityDashboard() {
 
   const latestAuto = [...vulns]
     .filter(v => v.decision === 'AUTO_PATCH')
-    .sort((a, b) => new Date(b.detected_at || 0) - new Date(a.detected_at || 0))[0]
+    .sort((a, b) => {
+      const aTs = Math.max(
+        new Date(a.prod_deployed_at || 0).getTime(),
+        new Date(a.prod_approved_at || 0).getTime(),
+        new Date(a.pr_created_at || 0).getTime(),
+        new Date(a.dev_deployed_at || 0).getTime(),
+        new Date(a.dev_deploying_at || 0).getTime(),
+        new Date(a.detected_at || 0).getTime(),
+      )
+      const bTs = Math.max(
+        new Date(b.prod_deployed_at || 0).getTime(),
+        new Date(b.prod_approved_at || 0).getTime(),
+        new Date(b.pr_created_at || 0).getTime(),
+        new Date(b.dev_deployed_at || 0).getTime(),
+        new Date(b.dev_deploying_at || 0).getTime(),
+        new Date(b.detected_at || 0).getTime(),
+      )
+      return bTs - aTs
+    })[0]
+
+  const statusStageRank = {
+    DETECTED: 1,
+    DEV_DEPLOYING: 2,
+    DEV_HEALTHY: 3,
+    PR_CREATED: 4,
+    AWAITING_PROD_APPROVAL: 5,
+    PROD_DEPLOYED: 6,
+    DEV_FAILED: 2,
+  }
+  const currentStatus = (latestAuto?.status || '').toString().trim().toUpperCase()
+  const currentRank = latestAuto ? (statusStageRank[currentStatus] ?? 1) : 0
 
   const executionEvents = latestAuto ? [
     { label: 'Detected', iso: latestAuto.detected_at, done: true },
-    { label: 'Dev Deploy Started', iso: latestAuto.dev_deploying_at, done: !!latestAuto.dev_deploying_at },
-    { label: 'Dev Verified', iso: latestAuto.dev_deployed_at, done: !!latestAuto.dev_deployed_at },
-    { label: 'PR Created', iso: latestAuto.pr_created_at, done: !!latestAuto.pr_created_at },
-    { label: 'Prod Approved', iso: latestAuto.prod_approved_at, done: !!latestAuto.prod_approved_at },
-    { label: 'Prod Deployed', iso: latestAuto.prod_deployed_at, done: !!latestAuto.prod_deployed_at },
+    { label: 'Dev Deploy Started', iso: latestAuto.dev_deploying_at, done: !!latestAuto.dev_deploying_at || currentRank >= 2 },
+    { label: 'Dev Verified', iso: latestAuto.dev_deployed_at, done: !!latestAuto.dev_deployed_at || currentRank >= 3 },
+    { label: 'PR Created', iso: latestAuto.pr_created_at, done: !!latestAuto.pr_created_at || currentRank >= 4 },
+    { label: 'Prod Approved', iso: latestAuto.prod_approved_at, done: !!latestAuto.prod_approved_at || currentRank >= 5 },
+    { label: 'Prod Deployed', iso: latestAuto.prod_deployed_at, done: !!latestAuto.prod_deployed_at || currentRank >= 6 },
   ] : []
 
   const executionSummary = latestAuto

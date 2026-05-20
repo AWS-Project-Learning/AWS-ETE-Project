@@ -248,8 +248,8 @@ jobs:
           else
             ALB_STATE="unknown"
             # During ECS rolling deploy, targets often pass through "initial" or
-            # "draining" before becoming healthy. Give ALB up to ~3 minutes.
-            for i in {1..18}; do
+            # "draining" before becoming healthy. Give ALB up to ~5 minutes.
+            for i in {1..30}; do
               ALB_STATE=$(aws elbv2 describe-target-health \
                 --target-group-arn "$TG_ARN" \
                 --region           ${{ env.AWS_REGION }} \
