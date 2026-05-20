@@ -1,59 +1,436 @@
-2s
-Run RUNNING=$(aws ecs describe-services \
-ECS: running=1 desired=1
-1m 6s
-Run # Look up target group by tag (service name)
-  
-ALB target state (attempt 1): draining
-ALB target state (attempt 2): draining
-ALB target state (attempt 3): draining
-ALB target state (attempt 4): draining
-ALB target state (attempt 5): draining
-ALB target state (attempt 6): draining
-Warning: ALB target not healthy: draining
-7s
-Run SERVICE="bff"
-  
-=== CloudWatch log excerpt ===
-INFO:     Started server process [1]	INFO:     Waiting for application startup.	INFO:app.main:Starting BFF...	INFO:app.main:ORDER_SERVICE_URL  = http://order-service.orderflow-dev.local:8001	INFO:app.main:INVOICE_SERVICE_URL = http://invoice-service.orderflow-dev.local:8002	INFO:app.main:CORS_ORIGINS        = https://d7v98dznpwca9.cloudfront.net,http://localhost:5173	INFO:     Application startup complete.	INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)	INFO:     10.0.1.65:2692 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:44796 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:57120 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:28710 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:22374 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:42334 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:51860 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.5.32:22212 - "GET /health HTTP/1.1" 200 OK	INFO:     127.0.0.1:53742 - "GET /health HTTP/1.1" 200 OK	INFO:     10.0.1.65:5
-Notice: Startup log signature found ✅
-0s
-Run ECS_OK="true"
-Health summary: ECS=true  ALB=false  STARTUP_LOG=true  ERROR_CHECK=true
-Error: One or more health checks failed — DEV_FAILED
-2s
-Run STATUS="DEV_FAILED"
-Sending callback to Lambda: DEV_FAILED
-{
-    "action": "patch_status",
-    "status": "DEV_FAILED",
-    "service": "bff",
-    "scan_id": "SCAN#2026-05-19#40981768",
-    "record_ids": [
-        "CVE-2026-28684#bff#python-dotenv"
-    ],
-    "evidence": {
-        "ecs_running": 1,
-        "ecs_desired": 1,
-        "alb_state": "draining",
-        "startup_log_ok": true,
-        "error_log_ok": true,
-        "task_arn": "arn:aws:ecs:us-east-1:109653023631:task/orderflow-dev/6ee2f613ef9448b5b157301d8d81c8b0",
-        "image": "109653023631.dkr.ecr.us-east-1.amazonaws.com/orderflow/bff:autopatch-6170702",
-        "verified_at": "2026-05-19T06:50:43Z",
-        "workflow_run": "https://github.com/AWS-Project-Learning/AWS-ETE-Project/actions/runs/26081064967"
+alb-dev/4322cf010ab7396b/f035b1bdbad96134/3c049fb26a377dc2]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # data.aws_iam_policy_document.frontend_bucket will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_iam_policy_document" "frontend_bucket" {
+      + id            = (known after apply)
+      + json          = (known after apply)
+      + minified_json = (known after apply)
+
+      + statement {
+          + actions   = [
+              + "s3:GetObject",
+            ]
+          + effect    = "Allow"
+          + resources = [
+              + "arn:aws:s3:::orderflow-frontend-dev-109653023631/*",
+            ]
+          + sid       = "AllowCloudFrontRead"
+
+          + condition {
+              + test     = "StringEquals"
+              + values   = [
+                  + "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE",
+                ]
+              + variable = "AWS:SourceArn"
+            }
+
+          + principals {
+              + identifiers = [
+                  + "cloudfront.amazonaws.com",
+                ]
+              + type        = "Service"
+            }
+        }
     }
-}
-{
-    "StatusCode": 200,
-    "ExecutedVersion": "$LATEST"
-}
-Lambda callback response:
-{
-    "status": "ok",
-    "action": "patch_status",
-    "result": "DEV_FAILED",
-    "message": "Health check failed"
-}
-0s
-Post job cleanup.
+
+  # aws_cloudfront_distribution.frontend will be updated in-place
+  ~ resource "aws_cloudfront_distribution" "frontend" {
+        id                             = "E3HDWKPHQETVYE"
+        tags                           = {}
+        # (21 unchanged attributes hidden)
+
+      ~ ordered_cache_behavior {
+          ~ path_pattern           = "/security/*" -> "/security/approve"
+            # (11 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+      ~ ordered_cache_behavior {
+          ~ path_pattern           = "/api/*" -> "/security/health"
+            # (11 unchanged attributes hidden)
+
+            # (2 unchanged blocks hidden)
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/patch"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/patch-status"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/reason"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/results"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/scan"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/security/status"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+      + ordered_cache_behavior {
+          + allowed_methods        = [
+              + "DELETE",
+              + "GET",
+              + "HEAD",
+              + "OPTIONS",
+              + "PATCH",
+              + "POST",
+              + "PUT",
+            ]
+          + cached_methods         = [
+              + "GET",
+              + "HEAD",
+            ]
+          + compress               = true
+          + default_ttl            = 0
+          + max_ttl                = 0
+          + min_ttl                = 0
+          + path_pattern           = "/api/*"
+          + target_origin_id       = "alb-bff"
+          + viewer_protocol_policy = "redirect-to-https"
+
+          + forwarded_values {
+              + headers                 = [
+                  + "Accept",
+                  + "Authorization",
+                  + "Content-Type",
+                  + "Origin",
+                ]
+              + query_string            = true
+              + query_string_cache_keys = (known after apply)
+
+              + cookies {
+                  + forward = "none"
+                }
+            }
+        }
+
+        # (7 unchanged blocks hidden)
+    }
+
+  # aws_iam_role_policy.lambda_agent_permissions will be updated in-place
+  ~ resource "aws_iam_role_policy" "lambda_agent_permissions" {
+        id     = "lambda-vulnerability-agent-dev:vulnerability-agent-permissions"
+        name   = "vulnerability-agent-permissions"
+      ~ policy = jsonencode(
+          ~ {
+              ~ Statement = [
+                    # (2 unchanged elements hidden)
+                    {
+                        Action   = [
+                            "bedrock:InvokeModel",
+                            "bedrock:InvokeModelWithResponseStream",
+                        ]
+                        Effect   = "Allow"
+                        Resource = [
+                            "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-micro-v1:0",
+                            "arn:aws:bedrock:us-east-1::foundation-model/amazon.nova-lite-v1:0",
+                            "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+                        ]
+                        Sid      = "BedrockInference"
+                    },
+                  - {
+                      - Action   = [
+                          - "lambda:InvokeFunction",
+                        ]
+                      - Effect   = "Allow"
+                      - Resource = [
+                          - "arn:aws:lambda:us-east-1:109653023631:function:orderflow-vulnerability-agent-dev",
+                          - "arn:aws:lambda:us-east-1:109653023631:function:orderflow-vulnerability-agent-dev:*",
+                        ]
+                      - Sid      = "LambdaSelfInvoke"
+                    },
+                ]
+                # (1 unchanged attribute hidden)
+            }
+        )
+        # (1 unchanged attribute hidden)
+    }
+
+  # aws_lambda_function.vulnerability_agent will be updated in-place
+  ~ resource "aws_lambda_function" "vulnerability_agent" {
+        id                             = "orderflow-vulnerability-agent-dev"
+        tags                           = {
+            "Name" = "orderflow-vulnerability-agent-dev"
+        }
+        # (23 unchanged attributes hidden)
+
+      ~ environment {
+          ~ variables = {
+              + "DEFAULT_REPO_BRANCH"   = "main"
+              + "DEFAULT_REPO_NAME"     = "AWS-ETE-Project"
+              + "DEFAULT_REPO_OWNER"    = "AWS-Project-Learning"
+                # (3 unchanged elements hidden)
+            }
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # aws_lambda_function_url.vulnerability_agent will be updated in-place
+  ~ resource "aws_lambda_function_url" "vulnerability_agent" {
+        id                 = "orderflow-vulnerability-agent-dev"
+        # (6 unchanged attributes hidden)
+
+      ~ cors {
+          ~ allow_headers     = [
+              - "authorization",
+              - "content-type",
+              - "x-amz-date",
+              + "Authorization",
+              + "Content-Type",
+              + "X-Amz-Date",
+            ]
+            # (5 unchanged attributes hidden)
+        }
+    }
+
+  # aws_s3_bucket_policy.frontend will be updated in-place
+  ~ resource "aws_s3_bucket_policy" "frontend" {
+        id     = "orderflow-frontend-dev-109653023631"
+      ~ policy = jsonencode(
+            {
+              - Statement = [
+                  - {
+                      - Action    = "s3:GetObject"
+                      - Condition = {
+                          - StringEquals = {
+                              - "AWS:SourceArn" = "arn:aws:cloudfront::109653023631:distribution/E3HDWKPHQETVYE"
+                            }
+                        }
+                      - Effect    = "Allow"
+                      - Principal = {
+                          - Service = "cloudfront.amazonaws.com"
+                        }
+                      - Resource  = "arn:aws:s3:::orderflow-frontend-dev-109653023631/*"
+                      - Sid       = "AllowCloudFrontRead"
+                    },
+                ]
+              - Version   = "2012-10-17"
+            }
+        ) -> (known after apply)
+        # (1 unchanged attribute hidden)
+    }
+
+Plan: 0 to add, 5 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"

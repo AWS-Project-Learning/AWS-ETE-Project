@@ -179,6 +179,16 @@ resource "aws_iam_role_policy" "lambda_agent_permissions" {
           "arn:aws:bedrock:${var.aws_region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
         ]
       },
+      {
+        # Allow async self-invocation for scan -> reason -> patch chaining.
+        Sid    = "LambdaSelfInvoke"
+        Effect = "Allow"
+        Action = ["lambda:InvokeFunction"]
+        Resource = [
+          aws_lambda_function.vulnerability_agent.arn,
+          "${aws_lambda_function.vulnerability_agent.arn}:*",
+        ]
+      },
     ]
   })
 }
