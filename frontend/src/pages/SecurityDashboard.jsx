@@ -441,6 +441,58 @@ function ExpandedPanel({ vuln, onApprove }) {
             <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
               "{vuln.reasoning || 'AI reasoning will appear here after Phase 2 is run.'}"
             </p>
+
+            {(vuln.risk_explanation || vuln.changelog_risk || (Array.isArray(vuln.validation_plan) && vuln.validation_plan.length > 0)) && (
+              <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                {vuln.risk_explanation && (
+                  <div style={{
+                    border: '1px solid rgba(59,130,246,0.2)',
+                    background: 'rgba(59,130,246,0.07)',
+                    borderRadius: 8, padding: '10px 12px',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', margin: '0 0 4px' }}>
+                      Service-aware Risk Context
+                    </p>
+                    <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>{vuln.risk_explanation}</p>
+                  </div>
+                )}
+
+                {(vuln.changelog_risk || vuln.changelog_summary) && (
+                  <div style={{
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    background: 'rgba(245,158,11,0.07)',
+                    borderRadius: 8, padding: '10px 12px',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#fcd34d', margin: '0 0 4px' }}>
+                      Changelog + Breaking Risk
+                    </p>
+                    <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
+                      Risk: <span style={{ fontFamily: 'monospace', color: '#fbbf24' }}>{vuln.changelog_risk || 'UNKNOWN'}</span>
+                      {vuln.changelog_summary ? ` — ${vuln.changelog_summary}` : ''}
+                    </p>
+                  </div>
+                )}
+
+                {Array.isArray(vuln.validation_plan) && vuln.validation_plan.length > 0 && (
+                  <div style={{
+                    border: '1px solid rgba(34,197,94,0.2)',
+                    background: 'rgba(34,197,94,0.07)',
+                    borderRadius: 8, padding: '10px 12px',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#86efac', margin: '0 0 6px' }}>
+                      Dynamic Validation Plan
+                    </p>
+                    <div style={{ display: 'grid', gap: 4 }}>
+                      {vuln.validation_plan.slice(0, 5).map((step, idx) => (
+                        <p key={`${idx}-${step}`} style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
+                          {idx + 1}. {step}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
