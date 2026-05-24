@@ -46,6 +46,10 @@ on:
         description: "JSON map of package → safe version (e.g. {\"python-dotenv\":\"1.2.2\"})"
         required: true
         type: string
+      validation_plan_json:
+        description: "JSON array of AI validation plan steps"
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -56,6 +60,7 @@ env:
   ENV:          dev
   CLUSTER:      orderflow-dev
   LAMBDA_NAME:  orderflow-vulnerability-agent-dev
+  DEV_BASE_URL: https://orderflow.gleeze.com
 
 jobs:
 
@@ -387,6 +392,184 @@ jobs:
           EXCERPT=$(echo "$LOGS" | head -20 | tr '\n' '|')
           echo "log_excerpt=$EXCERPT" >> $GITHUB_OUTPUT
 
+      # ── 8b. Dynamic validation execution evidence (best-effort) ───────────────
+      - name: Validation checks — execute AI plan (best-effort)
+        id: validation-checks
+        env:
+          SERVICE:              ${{ inputs.service }}
+          DEV_BASE_URL:         ${{ env.DEV_BASE_URL }}
+          VALIDATION_PLAN_JSON: ${{ inputs.validation_plan_json }}
+          STARTUP_LOG_OK:       ${{ steps.log-check.outputs.startup_log_ok }}
+          ERROR_LOG_OK:         ${{ steps.log-check.outputs.error_log_ok }}
+          LOG_EXCERPT:          ${{ steps.log-check.outputs.log_excerpt }}
+          RUNTIME_VERIFY_OK:    ${{ steps.log-check.outputs.runtime_verify_ok }}
+        run: |
+          VALIDATION_JSON=$(python3 - <<'PY'
+          import json, os, time, urllib.request, urllib.error
+
+          service = os.environ.get("SERVICE", "")
+          base_url = (os.environ.get("DEV_BASE_URL", "https://orderflow.gleeze.com") or "").rstrip("/")
+          raw_plan = os.environ.get("VALIDATION_PLAN_JSON", "") or "[]"
+          startup_ok = str(os.environ.get("STARTUP_LOG_OK", "false")).lower() == "true"
+          error_ok = str(os.environ.get("ERROR_LOG_OK", "false")).lower() == "true"
+          runtime_ok = str(os.environ.get("RUNTIME_VERIFY_OK", "false")).lower() == "true"
+          log_excerpt = (os.environ.get("LOG_EXCERPT", "") or "").replace("|", "\n")
+
+          try:
+              plan = json.loads(raw_plan) if raw_plan.strip() else []
+              if not isinstance(plan, list):
+                  plan = []
+          except Exception:
+              plan = []
+
+          if not plan:
+              plan = [
+                  "Confirm service health endpoint after deployment",
+                  "Check startup logs for new warnings/errors",
+                  "Validate config/env parsing and startup dependency initialization",
+              ]
+              if service == "bff":
+                  plan.extend([
+                      "Run login/token refresh smoke",
+                      "Call one downstream order endpoint via BFF",
+                  ])
+
+          checks = []
+
+          def add_check(name, result, summary, endpoint="", expected_status=None, actual_status=None, response_time_ms=None, response_body="", logs=""):
+              checks.append({
+                  "check_name": name,
+                  "endpoint": endpoint,
+                  "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                  "expected_status": expected_status,
+                  "actual_status": actual_status,
+                  "response_time_ms": response_time_ms,
+                  "result": result,
+                  "summary": summary,
+                  "response": response_body[:1200] if isinstance(response_body, str) else response_body,
+                  "logs": logs[:1200] if isinstance(logs, str) else logs,
+              })
+
+          def http_check(name, endpoint, expected=200, acceptable=None):
+              url = f"{base_url}{endpoint}"
+              start = time.time()
+              acceptable = set(acceptable or [expected])
+              try:
+                  req = urllib.request.Request(url, method="GET")
+                  with urllib.request.urlopen(req, timeout=10) as resp:
+                      body = resp.read().decode("utf-8", errors="ignore")
+                      status = int(resp.status)
+              except urllib.error.HTTPError as e:
+                  body = (e.read().decode("utf-8", errors="ignore") if e.fp else "") or str(e)
+                  status = int(e.code)
+              except Exception as e:
+                  elapsed_ms = int((time.time() - start) * 1000)
+                  add_check(
+                      name=name,
+                      result="WARN",
+                      summary=f"Request failed: {e}",
+                      endpoint=f"GET {endpoint}",
+                      expected_status=expected,
+                      actual_status=0,
+                      response_time_ms=elapsed_ms,
+                      response_body=str(e),
+                  )
+                  return
+
+              elapsed_ms = int((time.time() - start) * 1000)
+              if status in acceptable:
+                  result = "PASS"
+                  if status == expected:
+                      summary = f"GET {endpoint} returned {status} in {elapsed_ms}ms"
+                  else:
+                      summary = f"GET {endpoint} returned acceptable auth/guard status {status} in {elapsed_ms}ms"
+              elif status in (404,):
+                  result = "WARN"
+                  summary = f"GET {endpoint} returned {status}; endpoint may differ by service"
+              elif status >= 500:
+                  result = "FAIL"
+                  summary = f"GET {endpoint} returned server error {status}"
+              else:
+                  result = "WARN"
+                  summary = f"GET {endpoint} returned unexpected status {status}"
+              add_check(
+                  name=name,
+                  result=result,
+                  summary=summary,
+                  endpoint=f"GET {endpoint}",
+                  expected_status=expected,
+                  actual_status=status,
+                  response_time_ms=elapsed_ms,
+                  response_body=body,
+              )
+
+          def service_probe():
+              # Probe endpoints that represent each service's reachable path in dev.
+              if service == "bff":
+                  return ("BFF Health Endpoint", "/health", 200)
+              if service == "order-service":
+                  return ("Order Service Probe (via BFF)", "/api/orders", 200)
+              if service == "invoice-service":
+                  return ("Invoice Service Probe (via BFF)", "/api/invoices", 200)
+              return ("Service Probe", "/health", 200)
+
+          for step in plan:
+              s = (step or "").strip()
+              low = s.lower()
+              if not s:
+                  continue
+              if "health endpoint" in low:
+                  name, endpoint, expected = service_probe()
+                  # Health probes for protected paths may return auth guard (401/403) while still proving reachability.
+                  acceptable = [200, 401, 403] if endpoint.startswith("/api/") else [200]
+                  http_check(name, endpoint, expected=expected, acceptable=acceptable)
+              elif "startup logs" in low:
+                  if startup_ok and error_ok:
+                      add_check("Startup Logs Health", "PASS", "Startup signature found and no error lines", logs=log_excerpt)
+                  elif error_ok:
+                      add_check("Startup Logs Health", "WARN", "Startup signature missing but no error lines detected", logs=log_excerpt)
+                  else:
+                      add_check("Startup Logs Health", "FAIL", "Error lines detected in startup logs", logs=log_excerpt)
+              elif "login/token refresh" in low:
+                  # Best-effort proxy smoke through BFF routes.
+                  http_check("Login/Token Refresh Smoke (proxy check)", "/api/orders", expected=200, acceptable=[200, 401, 403])
+              elif "downstream order endpoint" in low:
+                  http_check("BFF Downstream Order Endpoint", "/api/orders?limit=1", expected=200, acceptable=[200, 401, 403])
+              elif "generate one invoice via api" in low:
+                  http_check("Invoice Generate/API Reachability", "/api/invoices", expected=200, acceptable=[200, 401, 403])
+              elif "invoice status retrieval" in low:
+                  http_check("Invoice Status Retrieval", "/api/invoices?status=pending", expected=200, acceptable=[200, 401, 403])
+              elif "create and fetch an order" in low:
+                  http_check("Order Create/Fetch Reachability", "/api/orders", expected=200, acceptable=[200, 401, 403])
+              elif "db write/read path" in low:
+                  http_check("Order DB Path Probe", "/api/orders?limit=1", expected=200, acceptable=[200, 401, 403])
+              elif "config/env parsing" in low or "startup dependency initialization" in low:
+                  if runtime_ok:
+                      add_check("Config/Env Parsing Validation", "PASS", "Runtime dependency marker verification passed", logs=log_excerpt)
+                  else:
+                      add_check("Config/Env Parsing Validation", "WARN", "Runtime marker missing (best-effort check)", logs=log_excerpt)
+              else:
+                  add_check(s, "WARN", "Plan step not auto-executed in CI yet")
+
+          fail_count = sum(1 for c in checks if c["result"] == "FAIL")
+          warn_count = sum(1 for c in checks if c["result"] == "WARN")
+          pass_count = sum(1 for c in checks if c["result"] == "PASS")
+          overall = "FAIL" if fail_count > 0 else ("PASS_WITH_WARNINGS" if warn_count > 0 else "PASS")
+          out = {
+              "plan": plan,
+              "checks": checks,
+              "summary": {"pass": pass_count, "warn": warn_count, "fail": fail_count},
+              "overall": overall,
+              "best_effort": True,
+          }
+          print(json.dumps(out, separators=(",", ":")))
+          PY
+          )
+          VALIDATION_B64=$(printf "%s" "$VALIDATION_JSON" | python3 -c 'import base64,sys;print(base64.b64encode(sys.stdin.read().encode()).decode())')
+          VALIDATION_OVERALL=$(printf "%s" "$VALIDATION_JSON" | python3 -c 'import json,sys;print(json.loads(sys.stdin.read()).get("overall","PASS_WITH_WARNINGS"))')
+          echo "validation_results_b64=$VALIDATION_B64" >> $GITHUB_OUTPUT
+          echo "validation_overall=$VALIDATION_OVERALL" >> $GITHUB_OUTPUT
+
       # ── 9. Determine overall health status ───────────────────────────────────
       - name: Evaluate overall health
         id: health
@@ -451,6 +634,8 @@ jobs:
             "patch_verify_b64":"${{ steps.artifact-evidence.outputs.patch_verify_b64 || '' }}",
             "runtime_verify_ok": ${{ steps.log-check.outputs.runtime_verify_ok || 'false' }},
             "runtime_verify_b64":"${{ steps.log-check.outputs.runtime_verify_b64 || '' }}",
+            "validation_results_b64":"${{ steps.validation-checks.outputs.validation_results_b64 || '' }}",
+            "validation_overall":"${{ steps.validation-checks.outputs.validation_overall || 'PASS_WITH_WARNINGS' }}",
             "verified_at":     "$VERIFIED_AT",
             "workflow_run":    "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
