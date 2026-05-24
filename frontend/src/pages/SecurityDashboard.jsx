@@ -333,6 +333,14 @@ function ExpandedPanel({ vuln, onApprove }) {
       return null
     }
   })()
+  const validationEvidence = (() => {
+    try {
+      if (!ev.validation_results_b64) return null
+      return JSON.parse(atob(ev.validation_results_b64))
+    } catch {
+      return null
+    }
+  })()
   const runtimeChecked = Number(runtimeVerify?.checked ?? 0)
   const runtimeTotal = Number(runtimeVerify?.total ?? 0)
 
@@ -735,6 +743,55 @@ function ExpandedPanel({ vuln, onApprove }) {
                 </div>
               )}
 
+              {/* Validation execution evidence (from AI plan) */}
+              {validationEvidence?.checks?.length > 0 && (
+                <div style={{
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 10, padding: '12px 14px',
+                  background: 'rgba(15,23,42,0.45)', marginBottom: 16,
+                }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Validation Evidence
+                  </p>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
+                      color: validationEvidence.overall === 'FAIL' ? '#f87171' : validationEvidence.overall === 'PASS' ? '#22c55e' : '#f59e0b',
+                      background: validationEvidence.overall === 'FAIL' ? 'rgba(239,68,68,0.15)' : validationEvidence.overall === 'PASS' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                    }}>
+                      {validationEvidence.overall || ev.validation_overall || 'PASS_WITH_WARNINGS'}
+                    </span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                      PASS {validationEvidence?.summary?.pass ?? 0} • WARN {validationEvidence?.summary?.warn ?? 0} • FAIL {validationEvidence?.summary?.fail ?? 0}
+                    </span>
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Check</th>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Request / Endpoint</th>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Summary</th>
+                        <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {validationEvidence.checks.map((c, i) => (
+                        <tr key={`${c.check_name}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px' }}>{c.check_name}</td>
+                          <td style={{ fontSize: 11, color: '#cbd5e1', padding: '6px 4px', fontFamily: 'monospace' }}>
+                            {c.endpoint || '—'}
+                          </td>
+                          <td style={{ fontSize: 11, color: '#cbd5e1', padding: '6px 4px' }}>{c.summary || '—'}</td>
+                          <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
+                            {c.result === 'PASS' ? '✅ PASS' : c.result === 'FAIL' ? '❌ FAIL' : '⚠️ WARN'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               {/* Action buttons */}
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 {vuln.pr_url && (
@@ -830,6 +887,55 @@ function ExpandedPanel({ vuln, onApprove }) {
               ))}
             </tbody>
           </table>
+
+          {validationEvidence?.checks?.length > 0 && (
+            <>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
+                Validation Request + Response Evidence
+              </p>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
+                {validationEvidence.checks.map((c, i) => (
+                  <div key={`val-log-${i}`} style={{
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 8, background: 'rgba(2,8,16,0.65)', padding: '10px 12px',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+                      <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>{c.check_name}</span>
+                      <span style={{ fontSize: 11, color: c.result === 'PASS' ? '#22c55e' : c.result === 'FAIL' ? '#ef4444' : '#f59e0b' }}>
+                        {c.result || 'WARN'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                      Request: {c.endpoint || '—'} | Expected: {c.expected_status ?? '—'} | Actual: {c.actual_status ?? '—'} | Latency: {c.response_time_ms ?? '—'}ms
+                    </div>
+                    {c.summary && (
+                      <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4 }}>{c.summary}</div>
+                    )}
+                    {c.response && (
+                      <pre style={{
+                        margin: '6px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        fontSize: 10, color: '#94a3b8', fontFamily: 'monospace',
+                        background: 'rgba(15,23,42,0.6)', borderRadius: 6, padding: '6px 8px',
+                        maxHeight: 120, overflowY: 'auto',
+                      }}>
+                        {typeof c.response === 'string' ? c.response : JSON.stringify(c.response, null, 2)}
+                      </pre>
+                    )}
+                    {c.logs && (
+                      <pre style={{
+                        margin: '6px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        fontSize: 10, color: '#64748b', fontFamily: 'monospace',
+                        background: 'rgba(2,8,16,0.8)', borderRadius: 6, padding: '6px 8px',
+                        maxHeight: 120, overflowY: 'auto',
+                      }}>
+                        {c.logs}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {/* Container / CloudWatch log excerpt */}
           <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
