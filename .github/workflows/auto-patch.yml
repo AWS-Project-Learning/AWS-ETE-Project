@@ -468,7 +468,7 @@ jobs:
                       name=name,
                       result="WARN",
                       summary=f"Request failed: {e}",
-                      endpoint=f"GET {endpoint}",
+                      endpoint=f"GET {url}",
                       expected_status=expected,
                       actual_status=0,
                       response_time_ms=elapsed_ms,
@@ -496,7 +496,7 @@ jobs:
                   name=name,
                   result=result,
                   summary=summary,
-                  endpoint=f"GET {endpoint}",
+                  endpoint=f"GET {url}",
                   expected_status=expected,
                   actual_status=status,
                   response_time_ms=elapsed_ms,
@@ -506,7 +506,9 @@ jobs:
           def service_probe():
               # Probe endpoints that represent each service's reachable path in dev.
               if service == "bff":
-                  return ("BFF Health Endpoint", "/health", 200)
+                  # /health at domain root is served by frontend CloudFront behavior.
+                  # Use an /api path so request is routed to BFF via ALB.
+                  return ("BFF API Reachability", "/api/orders?limit=1", 200)
               if service == "order-service":
                   return ("Order Service Probe (via BFF)", "/api/orders", 200)
               if service == "invoice-service":
