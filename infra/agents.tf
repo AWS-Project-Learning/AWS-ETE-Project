@@ -189,6 +189,21 @@ resource "aws_iam_role_policy" "lambda_agent_permissions" {
           "${aws_lambda_function.vulnerability_agent.arn}:*",
         ]
       },
+      {
+        # Phase B: live health probes — read ECS/ALB/CloudWatch (no mutations).
+        Sid    = "ProbeReadOnly"
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeServices",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+          "logs:GetLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = "*"
+      },
     ]
   })
 }
@@ -226,6 +241,9 @@ resource "aws_lambda_function" "vulnerability_agent" {
       DEFAULT_REPO_OWNER  = "AWS-Project-Learning"
       DEFAULT_REPO_NAME   = "AWS-ETE-Project"
       DEFAULT_REPO_BRANCH = "main"
+      ENVIRONMENT         = var.environment
+      ECS_CLUSTER         = "${var.project}-${var.environment}"
+      DEV_BASE_URL        = var.custom_domain != "" ? "https://${var.custom_domain}" : ""
       # NOTE: Do NOT set AWS_REGION here — Lambda reserves that env var.
       # The runtime already exposes AWS_REGION automatically.
     }

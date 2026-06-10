@@ -35,7 +35,9 @@ export const getInvoice   = (id)     => request("GET", `/api/invoices/${id}`)
 
 // ── Security — calls /security/* which routes via ALB directly to Lambda ───
 // These calls NEVER touch the BFF. CloudFront → ALB → Lambda target group.
+// mode: scan_only | scan_reason | full_remediation (default when omitted on backend)
 export const triggerScan       = (config = {})  => request("POST", "/security/scan",         config)
+export const triggerProbe      = (payload)      => request("POST", "/security/probe",        payload)
 export const triggerReason     = (scan_id)       => request("POST", "/security/reason",       scan_id ? { scan_id } : {})
 export const triggerPatch      = (scan_id)       => request("POST", "/security/patch",        scan_id ? { scan_id } : {})
 export const approveProdPatch  = (payload)       => request("POST", "/security/approve",      payload)

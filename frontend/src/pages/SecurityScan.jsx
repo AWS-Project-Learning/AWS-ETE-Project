@@ -124,7 +124,9 @@ export default function SecurityScan() {
       progress.start('scanner')
       addLog(ts(), 'CVE Detective', 'fetching requirements files from GitHub')
 
-      const svcKey   = scope.startsWith('All') ? {} : { services: { [scope]: `backend-services/${scope}/requirements.txt` } }
+      const svcKey   = scope.startsWith('All')
+        ? { mode: 'full_remediation' }
+        : { mode: 'full_remediation', services: { [scope]: `backend-services/${scope}/requirements.txt` } }
       const scanRes  = await triggerScan(svcKey)
       const sid      = scanRes.result?.scan_id
       const total    = scanRes.result?.total_found ?? 0
