@@ -465,11 +465,7 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      <SecurityChatAssistant
-        title="Ask AI — Scan Details"
-        subtitle="Scans, health & status"
-        scanId={scanDone?.sid}
-      />
+      <SecurityChatAssistant scanId={scanDone?.sid} />
     </div>
   )
 }

@@ -2,11 +2,7 @@ import { useState } from 'react'
 import { MessageCircle, ChevronDown } from 'lucide-react'
 import { triggerChat } from '../api/client'
 
-export default function SecurityChatAssistant({
-  title = 'Ask AI',
-  subtitle = 'Scans, health & status',
-  scanId,
-}) {
+export default function SecurityChatAssistant({ scanId }) {
   const [open, setOpen]       = useState(false)
   const [messages, setMessages] = useState([])
   const [input, setInput]       = useState('')
@@ -60,7 +56,7 @@ export default function SecurityChatAssistant({
         onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
       >
         <MessageCircle size={18} />
-        <span>{title}</span>
+        <span>Ask AI</span>
       </button>
     )
   }
@@ -91,10 +87,7 @@ export default function SecurityChatAssistant({
           }}>
             <MessageCircle size={16} color="#a5b4fc" />
           </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{title}</p>
-            <p style={{ margin: '1px 0 0', fontSize: 10, color: '#64748b' }}>{subtitle}</p>
-          </div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>Ask AI</p>
         </div>
         <button
           type="button"
