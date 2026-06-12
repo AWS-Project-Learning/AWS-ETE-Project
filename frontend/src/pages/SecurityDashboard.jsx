@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, Legend, LabelList } from 'recharts'
-import { getSecurityResults, approveProdPatch } from '../api/client'
+import { getSecurityResults, approveProdPatch, triggerChat } from '../api/client'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const SEV_COLOR = {
@@ -292,8 +292,137 @@ function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
   )
 }
 
+function SecurityChatPanel({ vuln }) {
+  const defaultChips = [
+    `Is ${vuln.service} healthy right now?`,
+    `Scan ${vuln.service} for vulnerabilities`,
+    'Why was this escalated?',
+    'Show patch evidence for this finding',
+    'Summarize validation results',
+  ]
+  const [messages, setMessages] = useState([{
+    role: 'assistant',
+    text: 'Ask about scans, live health, patch evidence, or why this finding was escalated. I only handle OrderFlow security tasks.',
+  }])
+  const [chips, setChips]       = useState(defaultChips)
+  const [input, setInput]       = useState('')
+  const [loading, setLoading]   = useState(false)
+
+  const sendMessage = async (text) => {
+    const msg = (text || input).trim()
+    if (!msg || loading) return
+    setInput('')
+    setMessages(prev => [...prev, { role: 'user', text: msg }])
+    setLoading(true)
+    try {
+      const res = await triggerChat({
+        message:   msg,
+        scan_id:   vuln.scan_id,
+        record_id: vuln.record_id,
+        service:   vuln.service,
+      })
+      const r = res.result || {}
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: r.reply || 'No response.',
+        outOfScope: !!r.out_of_scope,
+        intent: r.intent,
+      }])
+      if (Array.isArray(r.chips) && r.chips.length) setChips(r.chips)
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: `Sorry, something went wrong: ${err.message}`,
+        error: true,
+      }])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 320 }}>
+      <p style={{ fontSize: 11, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+        Security assistant only — scans, live health, remediation evidence. Tap a suggestion or type below.
+      </p>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        {chips.map(chip => (
+          <button key={chip} type="button" onClick={() => sendMessage(chip)} disabled={loading}
+            style={{
+              fontSize: 11, padding: '5px 10px', borderRadius: 999,
+              border: '1px solid rgba(99,102,241,0.35)',
+              background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
+              cursor: loading ? 'default' : 'pointer',
+            }}>
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      <div style={{
+        flex: 1, minHeight: 180, maxHeight: 280, overflowY: 'auto',
+        background: '#020810', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10,
+      }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{
+            alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+            maxWidth: '92%',
+            background: m.role === 'user'
+              ? 'rgba(59,130,246,0.15)'
+              : m.outOfScope
+                ? 'rgba(245,158,11,0.08)'
+                : 'rgba(15,23,42,0.8)',
+            border: `1px solid ${m.role === 'user' ? 'rgba(59,130,246,0.3)' : m.outOfScope ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.06)'}`,
+            borderRadius: 10, padding: '8px 12px',
+          }}>
+            <p style={{
+              fontSize: 12, color: m.role === 'user' ? '#bfdbfe' : '#cbd5e1',
+              margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.55,
+            }}>
+              {m.text}
+            </p>
+            {m.intent && m.role === 'assistant' && (
+              <span style={{ fontSize: 10, color: '#475569', marginTop: 4, display: 'block' }}>
+                intent: {m.intent}
+              </span>
+            )}
+          </div>
+        ))}
+        {loading && (
+          <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>Thinking…</span>
+        )}
+      </div>
+
+      <form onSubmit={(e) => { e.preventDefault(); sendMessage() }}
+        style={{ display: 'flex', gap: 8 }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder={`e.g. Scan ${vuln.service} · Health check · Why escalated?`}
+          disabled={loading}
+          style={{
+            flex: 1, fontSize: 12, padding: '10px 12px', borderRadius: 8,
+            border: '1px solid rgba(255,255,255,0.1)', background: '#0f172a', color: '#e2e8f0',
+          }}
+        />
+        <button type="submit" disabled={loading || !input.trim()}
+          style={{
+            fontSize: 12, fontWeight: 600, padding: '10px 16px', borderRadius: 8,
+            border: 'none', background: '#6366f1', color: '#fff',
+            cursor: loading || !input.trim() ? 'default' : 'pointer',
+            opacity: loading || !input.trim() ? 0.5 : 1,
+          }}>
+          Send
+        </button>
+      </form>
+    </div>
+  )
+}
+
 function ExpandedPanel({ vuln, onApprove }) {
-  const [tab, setTab] = useState('ai')   // 'ai' | 'evidence' | 'logs'
+  const [tab, setTab] = useState('ai')   // 'ai' | 'evidence' | 'logs' | 'chat'
   const ev  = vuln.evidence || {}
   const hasEvidence = vuln.status === 'DEV_HEALTHY' || vuln.status === 'PR_CREATED' ||
                       vuln.status === 'AWAITING_PROD_APPROVAL' || vuln.status === 'PROD_DEPLOYED' ||
@@ -353,6 +482,7 @@ function ExpandedPanel({ vuln, onApprove }) {
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         {[
           { key: 'ai',       label: '🤖 AI Findings & Reasoning', disabled: false },
+          { key: 'chat',     label: '💬 Ask AI',                   disabled: false },
           { key: 'evidence', label: '🔬 Deploy Evidence',          disabled: !hasEvidence },
           { key: 'logs',     label: '🖥 Health & Container Logs',  disabled: !hasEvidence },
         ].map(t => (
@@ -503,6 +633,11 @@ function ExpandedPanel({ vuln, onApprove }) {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Tab: Ask AI (chatbot) ── */}
+      {tab === 'chat' && (
+        <SecurityChatPanel vuln={vuln} />
       )}
 
       {/* ── Tab 2: Deploy Evidence ── */}
