@@ -5,6 +5,7 @@ import {
   CheckCircle2, Loader2, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
 import { triggerScan } from '../api/client'
+import ScanChatAssistant from '../components/ScanChatAssistant'
 
 // ── 4-agent pipeline matching the mockup ──────────────────────────────────────
 const AGENTS = [
@@ -43,6 +44,11 @@ const AGENTS = [
 ]
 
 const SERVICES = ['All Services (3)', 'order-service', 'invoice-service', 'bff']
+
+function scopeToService(scope) {
+  if (!scope || scope.startsWith('All')) return 'bff'
+  return scope
+}
 
 const freshStates = () => Object.fromEntries(AGENTS.map(a => [a.id, 'idle']))
 const freshDescs  = () => Object.fromEntries(AGENTS.map(a => [a.id, a.desc]))
@@ -197,9 +203,10 @@ export default function SecurityScan() {
   return (
     <div style={{
       height: '100vh',
+      position: 'relative',
       display: 'flex', flexDirection: 'column',
       background: 'linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0d1b2a 100%)',
-      padding: '28px 32px',
+      padding: '28px 32px 88px',
       fontFamily: 'inherit',
       color: '#e2e8f0',
       boxSizing: 'border-box',
@@ -461,6 +468,11 @@ export default function SecurityScan() {
           })}
         </div>
       </div>
+
+      <ScanChatAssistant
+        service={scopeToService(scope)}
+        scanId={scanDone?.sid}
+      />
     </div>
   )
 }
