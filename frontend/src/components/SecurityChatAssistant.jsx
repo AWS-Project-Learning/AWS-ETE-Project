@@ -1,30 +1,16 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { MessageCircle, ChevronDown } from 'lucide-react'
 import { triggerChat } from '../api/client'
 
-function chipsForService(service) {
-  const svc = service || 'bff'
-  return [
-    `Is ${svc} healthy right now?`,
-    `How many scans did ${svc} run today?`,
-    `Scan ${svc} for vulnerabilities`,
-    `What's the security status for ${svc}?`,
-  ]
-}
-
-export default function ScanChatAssistant({ service, scanId }) {
+export default function SecurityChatAssistant({
+  title = 'Ask AI',
+  subtitle = 'Scans, health & status',
+  scanId,
+}) {
   const [open, setOpen]       = useState(false)
-  const [chips, setChips]     = useState(() => chipsForService(service))
-  const [messages, setMessages] = useState([{
-    role: 'assistant',
-    text: 'Ask about live health, scan history, or run a read-only scan — without starting a full remediation from here.',
-  }])
-  const [input, setInput]     = useState('')
+  const [messages, setMessages] = useState([])
+  const [input, setInput]       = useState('')
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    setChips(chipsForService(service))
-  }, [service])
 
   const sendMessage = async (text) => {
     const msg = (text || input).trim()
@@ -35,7 +21,6 @@ export default function ScanChatAssistant({ service, scanId }) {
     try {
       const res = await triggerChat({
         message: msg,
-        service: service || undefined,
         scan_id: scanId || undefined,
       })
       const r = res.result || {}
@@ -44,7 +29,6 @@ export default function ScanChatAssistant({ service, scanId }) {
         text: r.reply || 'No response.',
         outOfScope: !!r.out_of_scope,
       }])
-      if (Array.isArray(r.chips) && r.chips.length) setChips(r.chips)
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -62,7 +46,7 @@ export default function ScanChatAssistant({ service, scanId }) {
         type="button"
         onClick={() => setOpen(true)}
         style={{
-          position: 'absolute', bottom: 20, right: 24, zIndex: 40,
+          position: 'fixed', bottom: 24, right: 24, zIndex: 50,
           display: 'flex', alignItems: 'center', gap: 10,
           background: 'linear-gradient(135deg, #4f46e5, #6366f1)',
           border: '1px solid rgba(129,140,248,0.45)',
@@ -76,15 +60,15 @@ export default function ScanChatAssistant({ service, scanId }) {
         onMouseLeave={e => { e.currentTarget.style.transform = 'none' }}
       >
         <MessageCircle size={18} />
-        <span>Ask AI — Scan Details</span>
+        <span>{title}</span>
       </button>
     )
   }
 
   return (
     <div style={{
-      position: 'absolute', bottom: 20, right: 24, zIndex: 40,
-      width: 360, maxWidth: 'calc(100vw - 320px)',
+      position: 'fixed', bottom: 24, right: 24, zIndex: 50,
+      width: 360, maxWidth: 'calc(100vw - 48px)',
       background: 'rgba(15,23,42,0.97)',
       border: '1px solid rgba(99,102,241,0.35)',
       borderRadius: 16,
@@ -93,7 +77,6 @@ export default function ScanChatAssistant({ service, scanId }) {
       overflow: 'hidden',
       backdropFilter: 'blur(12px)',
     }}>
-      {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 14px',
@@ -109,12 +92,8 @@ export default function ScanChatAssistant({ service, scanId }) {
             <MessageCircle size={16} color="#a5b4fc" />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>
-              Ask AI — Scan Details
-            </p>
-            <p style={{ margin: '1px 0 0', fontSize: 10, color: '#64748b' }}>
-              Health · scan history · service status
-            </p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>{title}</p>
+            <p style={{ margin: '1px 0 0', fontSize: 10, color: '#64748b' }}>{subtitle}</p>
           </div>
         </div>
         <button
@@ -131,28 +110,17 @@ export default function ScanChatAssistant({ service, scanId }) {
         </button>
       </div>
 
-      {/* Chips */}
-      <div style={{ padding: '10px 12px 0', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {chips.map(chip => (
-          <button key={chip} type="button" onClick={() => sendMessage(chip)} disabled={loading}
-            style={{
-              fontSize: 10, padding: '4px 9px', borderRadius: 999,
-              border: '1px solid rgba(99,102,241,0.35)',
-              background: 'rgba(99,102,241,0.1)', color: '#a5b4fc',
-              cursor: loading ? 'default' : 'pointer',
-            }}>
-            {chip}
-          </button>
-        ))}
-      </div>
-
-      {/* Messages */}
       <div style={{
-        height: 220, overflowY: 'auto', margin: '10px 12px',
+        height: 220, overflowY: 'auto', margin: '12px 12px 10px',
         background: '#020810', border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 10, padding: '10px 12px',
         display: 'flex', flexDirection: 'column', gap: 8,
       }}>
+        {messages.length === 0 && !loading && (
+          <span style={{ fontSize: 11, color: '#475569', fontStyle: 'italic' }}>
+            Ask anything about scans, health, or findings.
+          </span>
+        )}
         {messages.map((m, i) => (
           <div key={i} style={{
             alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
@@ -176,7 +144,6 @@ export default function ScanChatAssistant({ service, scanId }) {
         )}
       </div>
 
-      {/* Input */}
       <form
         onSubmit={e => { e.preventDefault(); sendMessage() }}
         style={{ display: 'flex', gap: 8, padding: '0 12px 12px' }}
@@ -184,7 +151,7 @@ export default function ScanChatAssistant({ service, scanId }) {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="e.g. Is bff healthy? · Scan counts today"
+          placeholder="Type your question…"
           disabled={loading}
           style={{
             flex: 1, fontSize: 11, padding: '9px 11px', borderRadius: 8,
