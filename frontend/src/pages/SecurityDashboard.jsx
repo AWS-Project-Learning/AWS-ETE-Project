@@ -46,16 +46,28 @@ function inLastDays(iso, days) {
   return ts >= (Date.now() - days * 24 * 60 * 60 * 1000)
 }
 
-function sameCalendarDay(iso, offsetDays = 0) {
+function melbourneCalendarDay(iso, offsetDays = 0) {
   if (!iso) return false
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return false
-  const t = new Date()
-  t.setHours(0, 0, 0, 0)
-  t.setDate(t.getDate() - offsetDays)
-  const next = new Date(t)
-  next.setDate(next.getDate() + 1)
-  return d >= t && d < next
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Melbourne',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+  const scanDay = fmt.format(d)
+  const anchor  = new Date()
+  anchor.setDate(anchor.getDate() - offsetDays)
+  return scanDay === fmt.format(anchor)
+}
+
+function historyRangeLabel(range) {
+  return ({
+    today:     'today (Melbourne time)',
+    yesterday: 'yesterday (Melbourne time)',
+    '2d':      'the last 2 days',
+    '3d':      'the last 3 days',
+    '7d':      'the last 7 days',
+  })[range] || range
 }
 
 function RiskSnapshotTooltip({ active, payload, label }) {
@@ -102,7 +114,7 @@ function ScanHistoryTooltip({ active, payload }) {
       minWidth: 180,
     }}>
       <p style={{ margin: '0 0 6px', color: '#cbd5e1', fontWeight: 700 }}>
-        {row.scanned_at ? new Date(row.scanned_at).toLocaleString('en-AU') : 'Unknown run time'}
+        {row.scanned_at ? new Date(row.scanned_at).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }) : 'Unknown run time'}
       </p>
       <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
         <span>Findings</span>
@@ -113,8 +125,13 @@ function ScanHistoryTooltip({ active, payload }) {
         <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row.scan_short || '—'}</span>
       </div>
       <div style={{ color: '#94a3b8', marginTop: 6 }}>
-        Services: <span style={{ color: '#e2e8f0' }}>{row.services_label || 'unknown'}</span>
+        Services: <span style={{ color: '#e2e8f0' }}>{row.services_label || '—'}</span>
       </div>
+      {row.scan_mode && (
+        <div style={{ color: '#94a3b8', marginTop: 4 }}>
+          Mode: <span style={{ color: '#e2e8f0' }}>{row.scan_mode}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -1121,20 +1138,26 @@ export default function SecurityDashboard() {
 
   const historyFiltered = history.filter(h => {
     const dt = h.scanned_at
-    if (historyRange === 'today') return sameCalendarDay(dt, 0)
-    if (historyRange === 'yesterday') return sameCalendarDay(dt, 1)
+    if (historyRange === 'today') return melbourneCalendarDay(dt, 0)
+    if (historyRange === 'yesterday') return melbourneCalendarDay(dt, 1)
     if (historyRange === '2d') return inLastDays(dt, 2)
     if (historyRange === '3d') return inLastDays(dt, 3)
     return inLastDays(dt, 7)
   })
 
-  // Chart data from history
+  // Chart data from real scan runs only — never mix in active finding counts
   const chartData = historyFiltered.slice().reverse().map((h, i) => {
     const dt = h.scanned_at ? new Date(h.scanned_at) : null
     const label = dt
       ? (historyRange === 'today'
-        ? dt.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false })
-        : dt.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' }))
+        ? dt.toLocaleTimeString('en-AU', {
+            timeZone: 'Australia/Melbourne',
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          })
+        : dt.toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Melbourne',
+            month: 'short', day: 'numeric',
+          }))
       : `Scan ${i + 1}`
     const services = Array.isArray(h.services) ? h.services : []
     return {
@@ -1142,12 +1165,12 @@ export default function SecurityDashboard() {
       scans: h.vuln_count ?? h.total_found ?? 0,
       scanned_at: h.scanned_at || '',
       scan_id: h.scan_id || '',
-      scan_short: (h.scan_id || '').replace('SCAN#', '').slice(0, 16) || '',
-      services_label: services.length ? services.join(', ') : 'unknown',
+      scan_short: (h.scan_id || '').replace('SCAN#', '').slice(0, 20) || '—',
+      services_label: services.length ? services.join(', ') : '—',
+      scan_mode: h.scan_mode || '',
       service_counts: h.service_counts || {},
     }
   })
-  if (chartData.length === 0) chartData.push({ name: 'Now', scans: vulns.length })
 
   const serviceRiskData = (serviceRiskSnapshot.length ? serviceRiskSnapshot : Object.values(
     vulns.reduce((acc, v) => {
@@ -1560,6 +1583,24 @@ export default function SecurityDashboard() {
               <option value="7d" style={{ background: '#0f172a' }}>Last 7 Days</option>
             </select>
           </div>
+          {chartData.length === 0 ? (
+            <div style={{
+              height: 180, borderRadius: 12,
+              border: '1px dashed rgba(148,163,184,0.25)',
+              background: 'rgba(148,163,184,0.04)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              textAlign: 'center', padding: 16,
+            }}>
+              <div>
+                <p style={{ fontSize: 12, color: '#cbd5e1', margin: '0 0 4px' }}>
+                  No scans recorded for {historyRangeLabel(historyRange)}.
+                </p>
+                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+                  Run Scan on the scan page, or switch to Yesterday / Last 7 Days to see earlier runs.
+                </p>
+              </div>
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -1573,6 +1614,7 @@ export default function SecurityDashboard() {
                 dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6, boxShadow: '0 0 10px #3b82f6' }} />
             </LineChart>
           </ResponsiveContainer>
+          )}
           <p style={{ fontSize: 11, color: '#64748b', margin: '10px 0 0' }}>
             Y-axis = total findings per scan run (across services included in that run).
           </p>
