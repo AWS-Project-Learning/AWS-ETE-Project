@@ -465,7 +465,7 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      <SecurityChatAssistant scanId={scanDone?.sid} />
+      <SecurityChatAssistant page="scan" scanId={scanDone?.sid} service="bff" />
     </div>
   )
 }

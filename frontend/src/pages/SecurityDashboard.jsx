@@ -1064,7 +1064,7 @@ export default function SecurityDashboard() {
           <p style={{ fontSize: 13 }}>Loading scan results…</p>
         </div>
       </div>
-      <SecurityChatAssistant />
+      <SecurityChatAssistant page="dashboard" />
     </>
   )
 
@@ -1102,7 +1102,7 @@ export default function SecurityDashboard() {
           <button onClick={() => navigate('/security')} style={btnSecondary}>▶ New Scan</button>
         </div>
       </div>
-      <SecurityChatAssistant />
+      <SecurityChatAssistant page="dashboard" />
     </div>
   )
 
@@ -1125,7 +1125,7 @@ export default function SecurityDashboard() {
         </p>
         <button onClick={() => navigate('/security')} style={btnPrimary}>▶ Run a Scan</button>
       </div>
-      <SecurityChatAssistant />
+      <SecurityChatAssistant page="dashboard" />
     </div>
   )
 
@@ -1715,7 +1715,7 @@ export default function SecurityDashboard() {
 
       </div>
 
-      <SecurityChatAssistant scanId={history[0]?.scan_id} />
+      <SecurityChatAssistant page="dashboard" scanId={history[0]?.scan_id} />
     </div>
   )
 }
