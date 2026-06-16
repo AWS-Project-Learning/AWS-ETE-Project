@@ -74,8 +74,12 @@ function summarizeAction(action, r) {
     case 'status':
       return `${res.service}: ${res.open_findings ?? 0} open finding(s) · risk ${res.risk || 'LOW'}.`
     case 'remediate':
-      return `Assessed ${res.assessed ?? 0} finding(s): ${res.auto_patch ?? 0} auto-patch, ${res.escalate ?? 0} escalate. ` +
-             `Patch + deploy steps are proposed — review them in agent.tools.`
+      if (res.executed) {
+        return `Remediation started for ${res.service} — ${res.patched ?? 0} patch(es) applied: branch + version bump pushed, dev deploy & health check running, PR raised for approval. ` +
+               `${res.escalate ?? 0} escalated for manual review. Track progress in agent.tools and the dashboard.`
+      }
+      return `Assessed ${res.assessed ?? 0} finding(s): ${res.auto_patch ?? 0} auto-patchable, ${res.escalate ?? 0} escalate. ` +
+             `These are proposals — review the plan in agent.tools, then approve to run it.`
     case 'draft':
       return `Drafted a notification for ${res.service}'s code owners — ready to send (below).`
     default:
@@ -185,23 +189,39 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
   }
 
   // Step 2 — service chosen → run the action against it.
+  // Remediate is a WRITE flow: explain it and ask for approval before running.
   const chooseService = (action, value) => {
     setMessages(prev => prev.map(m => (m.choices ? { ...m, choices: null } : m)))
     setPending(null)
     pushMsg({ role: 'user', text: value === 'all' ? 'All services' : value })
+    if (action === 'remediate') { proposeRemediation(value); return }
     runAction(action, value)
   }
 
-  const runAction = async (action, serviceValue) => {
+  const proposeRemediation = (serviceValue) => {
+    const target = serviceValue === 'all' ? 'all services' : serviceValue
+    pushMsg({
+      role: 'assistant',
+      text: `Here's how I'll remediate ${target}:\n` +
+        `• Pull the open findings and look up the fixed version for each\n` +
+        `• Let the AI assess risk per finding\n` +
+        `• Low-risk → auto-patch: open a branch, bump the version, deploy to dev + health-check, then raise a PR for human approval before prod\n` +
+        `• Higher-risk or no safe version → escalate for manual review\n\n` +
+        `Proceed?`,
+      approve: { action: 'remediate', service: serviceValue },
+    })
+  }
+
+  const runAction = async (action, serviceValue, confirm = false) => {
     if (busy) return
     setBusy(true)
     const service = serviceValue === 'all' ? '' : serviceValue
     const target  = serviceValue === 'all' ? 'all services' : serviceValue
     const label   = ACTIONS.find(a => a.key === action)?.label || action
     const evId = uid()
-    tools?.startEvent({ id: evId, ts: ts(), title: `${label} · ${target}` })
+    tools?.startEvent({ id: evId, ts: ts(), title: `${label} · ${target}${confirm ? ' · approved' : ''}` })
     try {
-      const res = await triggerAgentAction({ action, service: service || undefined })
+      const res = await triggerAgentAction({ action, service: service || undefined, confirm: confirm || undefined })
       const r = res.result || {}
       await streamTrace(evId, r.trace)
       tools?.finishEvent(evId, { tokens: r.tokens, model: r.model, status: r.status })
@@ -210,6 +230,7 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
         text: summarizeAction(action, r),
         report: r.response || null,
         findings: (action === 'scan' || action === 'status') ? (r.result?.findings || null) : null,
+        dashboard: (action === 'scan' || action === 'status' || action === 'remediate'),
       })
     } catch (err) {
       tools?.finishEvent(evId, { status: 'error' })
@@ -217,6 +238,16 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
     } finally {
       setBusy(false)
     }
+  }
+
+  const approveRemediation = (idx, p) => {
+    setMessages(prev => prev.map((m, i) => (i === idx ? { ...m, approve: null } : m)))
+    pushMsg({ role: 'user', text: 'Approve' })
+    runAction('remediate', p.service, true)
+  }
+  const cancelRemediation = (idx) => {
+    setMessages(prev => prev.map((m, i) => (i === idx ? { ...m, approve: null } : m)))
+    pushMsg({ role: 'assistant', text: 'Cancelled — no changes were made.' })
   }
 
   const sendMessage = async (text, extra = {}) => {
@@ -332,6 +363,24 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
             )}
             {m.findings && <FindingsList findings={m.findings} />}
             {m.report && <ReportCard text={m.report} />}
+            {m.approve && (
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button onClick={() => approveRemediation(i, m.approve)} disabled={busy}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#1c1407', cursor: 'pointer' }}>
+                  <Check size={12} /> Approve &amp; run
+                </button>
+                <button onClick={() => cancelRemediation(i)} disabled={busy}
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#94a3b8', cursor: 'pointer' }}>
+                  <X size={12} /> Cancel
+                </button>
+              </div>
+            )}
+            {m.dashboard && (
+              <a href="/security/dashboard"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 10.5, fontWeight: 600, color: '#818cf8', textDecoration: 'none' }}>
+                <FileText size={11} /> View detailed results in the dashboard →
+              </a>
+            )}
             {m.pending && (
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                 <button onClick={() => confirmPending(i, m.pending)} disabled={busy}
