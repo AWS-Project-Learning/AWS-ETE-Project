@@ -92,7 +92,9 @@ export default function SecurityScan() {
   const [toolEvents, setToolEvents] = useState([])     // agent tool-call traces (live)
 
   // Live tool-trace handlers — the console pushes steps as they stream in.
-  const startEvent  = (ev) => setToolEvents(prev => [...prev, { ...ev, steps: [], status: 'running' }])
+  // Each new run resets the panel so the toolbox + payloads reflect only the
+  // current action/question (not a growing pile from earlier runs).
+  const startEvent  = (ev) => setToolEvents([{ ...ev, steps: [], status: 'running' }])
   const addStep     = (id, step) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, steps: [...e.steps, step] } : e))
   const finishEvent = (id, meta) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, ...meta, status: meta.status || 'ok' } : e))
   const toolHandlers = { startEvent, addStep, finishEvent }

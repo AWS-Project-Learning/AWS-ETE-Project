@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Search, Activity, ShieldCheck, Wrench, FileText, Send,
-  Sparkles, Copy, Check, X, Loader2, Bot,
+  Sparkles, Copy, Check, X, Loader2, Bot, ChevronRight, ChevronDown,
 } from 'lucide-react'
 import { triggerAgentAction, triggerChat } from '../api/client'
 
@@ -18,6 +18,41 @@ const ACTIONS = [
 const delay = (ms) => new Promise(r => setTimeout(r, ms))
 const uid   = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
+// The model sometimes narrates reasoning in <thinking>…</thinking>. Pull it out
+// so the answer stays clean; the reasoning is shown briefly, then collapses.
+function splitThinking(text) {
+  if (!text) return { thinking: '', answer: text || '' }
+  const closed = text.match(/<thinking>([\s\S]*?)<\/thinking>/i)
+  if (closed) {
+    const answer = (text.slice(0, closed.index) + text.slice(closed.index + closed[0].length))
+      .replace(/<\/?thinking>/gi, '').trim()
+    return { thinking: closed[1].trim(), answer }
+  }
+  const open = text.match(/<thinking>([\s\S]*)/i)
+  if (open) return { thinking: open[1].trim(), answer: text.slice(0, open.index).trim() }
+  return { thinking: '', answer: text }
+}
+
+function ThinkingBlock({ text }) {
+  const [open, setOpen] = useState(true)
+  // Reveal the reasoning briefly, then tuck it away (still re-expandable).
+  useEffect(() => { const t = setTimeout(() => setOpen(false), 2600); return () => clearTimeout(t) }, [])
+  if (!text) return null
+  return (
+    <div style={{ marginBottom: open ? 6 : 4 }}>
+      <button type="button" onClick={() => setOpen(o => !o)}
+        style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none',
+          cursor: 'pointer', color: '#64748b', fontSize: 10.5, fontWeight: 600, padding: 0 }}>
+        {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />} Thought
+      </button>
+      {open && (
+        <p style={{ margin: '4px 0 0', fontSize: 11, fontStyle: 'italic', color: '#475569',
+          whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{text}</p>
+      )}
+    </div>
+  )
+}
+
 function detectService(text, allowAll) {
   const low = (text || '').toLowerCase()
   if (allowAll && /\b(all|every|everything)\b/.test(low)) return 'all'
@@ -27,9 +62,13 @@ function detectService(text, allowAll) {
 function summarizeAction(action, r) {
   const res = r.result || {}
   switch (action) {
-    case 'scan':
-      return `Scan complete — ${res.total_found ?? 0} finding(s) across ${(res.services || []).join(', ') || 'all services'}.` +
-             (res.scan_id ? ` (scan_id …${String(res.scan_id).slice(-8)})` : '')
+    case 'scan': {
+      const n = res.total_found ?? 0
+      const head = `Scan complete — ${n} finding(s) across ${(res.services || []).join(', ') || 'all services'}.` +
+                   (res.scan_id ? ` (scan_id …${String(res.scan_id).slice(-8)})` : '')
+      if (!n) return head + ' No known vulnerabilities — you\'re clean.'
+      return head
+    }
     case 'health':
       return `${res.service || 'service'} is ${res.overall || 'UNKNOWN'} — containers + endpoint checked live.`
     case 'status':
@@ -60,6 +99,45 @@ function ReportCard({ text }) {
         </button>
       </div>
       <p style={{ margin: 0, padding: '8px 10px', fontSize: 11, color: '#d1fae5', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{text}</p>
+    </div>
+  )
+}
+
+const SEV_COLOR = {
+  CRITICAL: '#f87171', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#60a5fa', UNKNOWN: '#94a3b8',
+}
+
+function FindingsList({ findings }) {
+  if (!findings?.length) return null
+  return (
+    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {findings.map((f, i) => {
+        const sev = (f.severity || 'UNKNOWN').toUpperCase()
+        const color = SEV_COLOR[sev] || SEV_COLOR.UNKNOWN
+        return (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.07)',
+            borderRadius: 8, padding: '6px 9px',
+          }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: 0.4, padding: '2px 6px', borderRadius: 5,
+              color, background: `${color}22`, border: `1px solid ${color}55`, flexShrink: 0,
+            }}>{sev}</span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600, color: '#e2e8f0' }}>
+                {f.package}{f.cve_id ? ` · ${f.cve_id}` : ''}
+              </p>
+              {(f.current_version || f.safe_version) && (
+                <p style={{ margin: '1px 0 0', fontSize: 10, color: '#64748b' }}>
+                  {f.current_version || '?'}{f.safe_version ? ` → ${f.safe_version}` : ''}
+                  {f.service ? ` · ${f.service}` : ''}
+                </p>
+              )}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -127,7 +205,12 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
       const r = res.result || {}
       await streamTrace(evId, r.trace)
       tools?.finishEvent(evId, { tokens: r.tokens, model: r.model, status: r.status })
-      pushMsg({ role: 'assistant', text: summarizeAction(action, r), report: r.response || null })
+      pushMsg({
+        role: 'assistant',
+        text: summarizeAction(action, r),
+        report: r.response || null,
+        findings: (action === 'scan' || action === 'status') ? (r.result?.findings || null) : null,
+      })
     } catch (err) {
       tools?.finishEvent(evId, { status: 'error' })
       pushMsg({ role: 'assistant', text: `Couldn't complete that action: ${err.message}`, error: true })
@@ -227,14 +310,19 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
             <p style={{ margin: '6px 0 0', fontSize: 11 }}>Each tool the agent uses appears live in <span style={{ color: '#818cf8' }}>agent.tools</span> on the right.</p>
           </div>
         )}
-        {messages.map((m, i) => (
+        {messages.map((m, i) => {
+          const { thinking, answer } = m.role === 'assistant'
+            ? splitThinking(m.text)
+            : { thinking: '', answer: m.text }
+          return (
           <div key={i} style={{
             alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%',
             background: m.role === 'user' ? 'rgba(59,130,246,0.15)' : m.error ? 'rgba(239,68,68,0.08)' : 'rgba(15,23,42,0.85)',
             border: `1px solid ${m.role === 'user' ? 'rgba(59,130,246,0.3)' : m.error ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.07)'}`,
             borderRadius: 12, padding: '8px 11px',
           }}>
-            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: m.role === 'user' ? '#bfdbfe' : '#cbd5e1' }}>{m.text}</p>
+            {thinking && <ThinkingBlock text={thinking} />}
+            {answer && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: m.role === 'user' ? '#bfdbfe' : '#cbd5e1' }}>{answer}</p>}
             {m.choices && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                 {m.choices.map(c => (
@@ -242,6 +330,7 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
                 ))}
               </div>
             )}
+            {m.findings && <FindingsList findings={m.findings} />}
             {m.report && <ReportCard text={m.report} />}
             {m.pending && (
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
@@ -256,7 +345,8 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
         {busy && <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>working…</span>}
         <div ref={endRef} />
       </div>
