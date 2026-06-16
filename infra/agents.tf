@@ -250,10 +250,12 @@ resource "aws_lambda_function" "vulnerability_agent" {
   }
 
   lifecycle {
-    # Terraform owns the shell; the deploy pipeline owns the code.
-    # Without this, every `terraform apply` would revert the real code
-    # back to the placeholder stub.
-    ignore_changes = [filename, source_code_hash]
+    # Terraform owns the shell; the deploy pipeline owns the code AND env vars.
+    # Without this, every `terraform apply` would revert the real code back to
+    # the placeholder stub, and strip env vars (CHAT_ENGINE, AGENT_MODEL, …) that
+    # lambda_deploy.py injects from values-{env}.yaml. The `environment` block
+    # below only seeds defaults on first create.
+    ignore_changes = [filename, source_code_hash, environment]
   }
 
   tags = { Name = "${var.project}-vulnerability-agent-${var.environment}" }
