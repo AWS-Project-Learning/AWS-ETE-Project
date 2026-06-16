@@ -20,17 +20,28 @@ const uid   = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 // The model sometimes narrates reasoning in <thinking>…</thinking>. Pull it out
 // so the answer stays clean; the reasoning is shown briefly, then collapses.
+function stripTags(s) {
+  // Drop stray wrapper tags the model sometimes emits around its answer.
+  return (s || '').replace(/<\/?(response|answer|final|output)>/gi, '').trim()
+}
+
 function splitThinking(text) {
   if (!text) return { thinking: '', answer: text || '' }
+  let thinking = ''
+  let answer = text
   const closed = text.match(/<thinking>([\s\S]*?)<\/thinking>/i)
   if (closed) {
-    const answer = (text.slice(0, closed.index) + text.slice(closed.index + closed[0].length))
-      .replace(/<\/?thinking>/gi, '').trim()
-    return { thinking: closed[1].trim(), answer }
+    thinking = closed[1].trim()
+    answer = (text.slice(0, closed.index) + text.slice(closed.index + closed[0].length)).replace(/<\/?thinking>/gi, '')
+  } else {
+    const open = text.match(/<thinking>([\s\S]*)/i)
+    if (open) { thinking = open[1].trim(); answer = text.slice(0, open.index) }
   }
-  const open = text.match(/<thinking>([\s\S]*)/i)
-  if (open) return { thinking: open[1].trim(), answer: text.slice(0, open.index).trim() }
-  return { thinking: '', answer: text }
+  answer = stripTags(answer)
+  // If the model put everything inside <thinking> and left no answer, surface the
+  // reasoning as the answer rather than showing an empty bubble.
+  if (!answer && thinking) return { thinking: '', answer: thinking }
+  return { thinking, answer }
 }
 
 function ThinkingBlock({ text }) {
@@ -159,8 +170,11 @@ function Chip({ label, onClick, disabled }) {
   )
 }
 
-export default function AgentConsole({ service = 'bff', tools, scanId, recordId }) {
-  const defaultSvc = KNOWN_SERVICES.includes(service) ? service : 'bff'
+export default function AgentConsole({ service = '', tools, scanId, recordId }) {
+  // Only treat this as a real selection if a specific service is chosen on the page.
+  // When nothing specific is selected we send NO service, so Bedrock gets honest
+  // context and can ask which service instead of assuming one.
+  const selectedSvc = KNOWN_SERVICES.includes(service) ? service : null
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -270,7 +284,7 @@ export default function AgentConsole({ service = 'bff', tools, scanId, recordId 
     tools?.startEvent({ id: evId, ts: ts(), title: msg || `confirm: ${extra.confirm_action}` })
     try {
       const res = await triggerChat({
-        message: msg || undefined, service: defaultSvc,
+        message: msg || undefined, service: selectedSvc || undefined,
         scan_id: scanId || undefined, record_id: recordId || undefined, page: 'scan', ...extra,
       })
       const r = res.result || {}

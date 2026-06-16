@@ -404,7 +404,7 @@ export default function SecurityScan() {
 
         {/* ── Security Agent console (center) ─────────────────────── */}
         <AgentConsole
-          service={scope.startsWith('All') ? 'bff' : scope}
+          service={scope.startsWith('All') ? '' : scope}
           scanId={scanDone?.sid}
           tools={toolHandlers}
         />
