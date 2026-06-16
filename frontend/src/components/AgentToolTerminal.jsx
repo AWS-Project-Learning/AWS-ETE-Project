@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { Database, Zap, Wrench, Sparkles, FileText, Trash2, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
+import { Database, Zap, Wrench, Sparkles, FileText, Trash2, ChevronRight, ChevronDown, Loader2, Check } from 'lucide-react'
+
+// The full agent toolbox (generic names) — shown as a catalog; used ones light up green.
+const TOOL_CATALOG = [
+  'List Services', 'Read Dependencies', 'Scan for Vulnerabilities', 'Save Findings',
+  'Get Findings', 'Score Risk', 'Check Containers', 'Check Endpoint', 'Summarize Health',
+  'Assess Risk', 'Create Patch', 'Deploy Patch', 'Draft Report',
+]
 
 // Pick an icon from the (generic) tool name — names are human-readable now.
 function iconFor(tool = '', type = '') {
@@ -110,6 +117,8 @@ export default function AgentToolTerminal({ events = [], onClear }) {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [events])
 
   const totalCalls = events.reduce((n, e) => n + (e.steps?.length || 0), 0)
+  const used = new Set()
+  events.forEach(e => e.steps?.forEach(s => used.add(s.tool)))
 
   return (
     <div style={{
@@ -141,6 +150,32 @@ export default function AgentToolTerminal({ events = [], onClear }) {
         </div>
       </div>
 
+      {/* Toolbox catalog — used tools light up green, the rest stay grey */}
+      <div style={{
+        flexShrink: 0, padding: '10px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}>
+        <p style={{ margin: '0 0 7px', fontSize: 9, fontWeight: 700, letterSpacing: 0.6,
+          textTransform: 'uppercase', color: '#475569' }}>Toolbox</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+          {TOOL_CATALOG.map(name => {
+            const on = used.has(name)
+            return (
+              <span key={name} style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                fontSize: 9, fontWeight: 600, padding: '3px 7px', borderRadius: 999,
+                border: `1px solid ${on ? 'rgba(34,197,94,0.55)' : 'rgba(255,255,255,0.08)'}`,
+                background: on ? 'rgba(34,197,94,0.16)' : 'transparent',
+                color: on ? '#86efac' : '#475569',
+                transition: 'all 0.3s',
+              }}>
+                {on && <Check size={9} />} {name}
+              </span>
+            )
+          })}
+        </div>
+      </div>
+
       <div style={{
         flex: 1, overflowY: 'auto',
         padding: '14px 18px', fontFamily: 'monospace', fontSize: 12,
@@ -163,7 +198,10 @@ export default function AgentToolTerminal({ events = [], onClear }) {
             {ev.status === 'running' && ev.steps?.length === 0 && (
               <span style={{ marginLeft: 18, color: '#475569' }}>· orchestrating…</span>
             )}
-            {ev.status !== 'running' && ev.steps?.length === 0 && (
+            {ev.status === 'error' && ev.steps?.length === 0 && (
+              <span style={{ marginLeft: 18, color: '#f87171' }}>· request failed — no tools ran</span>
+            )}
+            {ev.status === 'ok' && ev.steps?.length === 0 && (
               <span style={{ marginLeft: 18, color: '#475569' }}>· answered directly — no tools needed</span>
             )}
             {(ev.tokens > 0 || ev.model) && ev.status !== 'running' && (

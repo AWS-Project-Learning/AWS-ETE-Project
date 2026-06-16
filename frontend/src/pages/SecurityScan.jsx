@@ -306,14 +306,20 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      {/* ── Agent pipeline — full width ──────────────────────────── */}
+      {/* ── Main region: [pipeline + log + agent] left · agent.tools right ── */}
+      <div style={{ flex: 1, minHeight: 0, marginBottom: 16, display: 'flex', gap: 16 }}>
+
+      {/* LEFT column — pipeline on top, log + agent below ─────────── */}
+      <div style={{ flex: 2.4, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── Agent pipeline (only as wide as the agent console edge) ─ */}
       <div style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 16, padding: '20px 24px',
-        marginBottom: 16, flexShrink: 0,
+        borderRadius: 16, padding: '14px 18px',
+        flexShrink: 0,
       }}>
-        <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', margin: '0 0 16px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Agent Pipeline
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
@@ -330,9 +336,9 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      {/* ── Lower region: agent.log | Security Agent | agent.tools ── */}
+      {/* ── Lower row: agent.log | Security Agent ─────────────────── */}
       <div style={{
-        flex: 1, minHeight: 0, marginBottom: 16,
+        flex: 1, minHeight: 0,
         display: 'flex', gap: 16,
       }}>
       {/* ── Live scan log (left) ─────────────────────────────────── */}
@@ -400,10 +406,12 @@ export default function SecurityScan() {
           scanId={scanDone?.sid}
           tools={toolHandlers}
         />
+      </div>{/* end lower row */}
+      </div>{/* end LEFT column */}
 
-        {/* ── agent.tools — live tool calls (right) ──────────────── */}
-        <AgentToolTerminal events={toolEvents} onClear={() => setToolEvents([])} />
-      </div>
+      {/* ── agent.tools — full height (right) ──────────────────────── */}
+      <AgentToolTerminal events={toolEvents} onClear={() => setToolEvents([])} />
+      </div>{/* end main region */}
 
       {/* ── Scan complete banner ────────────────────────────────── */}
       {scanDone && !running && (
