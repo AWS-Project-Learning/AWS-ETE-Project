@@ -5,7 +5,8 @@ import {
   CheckCircle2, Loader2, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
 import { triggerScan } from '../api/client'
-import SecurityChatAssistant from '../components/SecurityChatAssistant'
+import AgentConsole from '../components/AgentConsole'
+import AgentToolTerminal from '../components/AgentToolTerminal'
 
 // ── 4-agent pipeline matching the mockup ──────────────────────────────────────
 const AGENTS = [
@@ -88,6 +89,13 @@ export default function SecurityScan() {
   const [logs,       setLogs]       = useState([])
   const [error,      setError]      = useState(null)
   const [scanDone,   setScanDone]   = useState(null)   // { sid, total }
+  const [toolEvents, setToolEvents] = useState([])     // agent tool-call traces (live)
+
+  // Live tool-trace handlers — the console pushes steps as they stream in.
+  const startEvent  = (ev) => setToolEvents(prev => [...prev, { ...ev, steps: [], status: 'running' }])
+  const addStep     = (id, step) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, steps: [...e.steps, step] } : e))
+  const finishEvent = (id, meta) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, ...meta, status: meta.status || 'ok' } : e))
+  const toolHandlers = { startEvent, addStep, finishEvent }
 
   const progress = useFakeProgress(stepPcts, setStepPcts, null, running)
 
@@ -322,14 +330,18 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      {/* ── Live log — flex-grows to fill all remaining height ───── */}
+      {/* ── Lower region: agent.log | Security Agent | agent.tools ── */}
+      <div style={{
+        flex: 1, minHeight: 0, marginBottom: 16,
+        display: 'flex', gap: 16,
+      }}>
+      {/* ── Live scan log (left) ─────────────────────────────────── */}
       <div style={{
         flex: 1,
-        minHeight: 0,
+        minWidth: 0,
         background: 'rgba(0,0,0,0.45)',
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 16, overflow: 'hidden',
-        marginBottom: 16,
         display: 'flex', flexDirection: 'column',
       }}>
         {/* Titlebar */}
@@ -380,6 +392,17 @@ export default function SecurityScan() {
           {running && <span style={{ color: '#334155' }}>▌</span>}
           <div ref={logEndRef} />
         </div>
+      </div>
+
+        {/* ── Security Agent console (center) ─────────────────────── */}
+        <AgentConsole
+          service={scope.startsWith('All') ? 'bff' : scope}
+          scanId={scanDone?.sid}
+          tools={toolHandlers}
+        />
+
+        {/* ── agent.tools — live tool calls (right) ──────────────── */}
+        <AgentToolTerminal events={toolEvents} onClear={() => setToolEvents([])} />
       </div>
 
       {/* ── Scan complete banner ────────────────────────────────── */}
@@ -465,7 +488,6 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      <SecurityChatAssistant page="scan" scanId={scanDone?.sid} service="bff" />
     </div>
   )
 }

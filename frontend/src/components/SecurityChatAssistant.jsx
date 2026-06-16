@@ -1,19 +1,9 @@
-import { useState } from 'react'
-import {
-  MessageCircle, ChevronDown, ChevronRight, Activity,
-  Check, X, ArrowRight, Database, Wrench, Zap,
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { MessageCircle, ChevronDown, Check, X } from 'lucide-react'
 import { triggerChat } from '../api/client'
 
 const KNOWN_SERVICES = ['bff', 'order-service', 'invoice-service']
-
-// The bounded toolset the agent can use — drives the legend + highlighting.
-const TOOL_META = {
-  get_security_data:   { label: 'Security data',  type: 'read',  icon: Database },
-  get_finding_details: { label: 'Finding detail', type: 'read',  icon: Database },
-  run_security_action: { label: 'Run action',     type: 'write', icon: Zap },
-}
-const TOOL_ORDER = ['get_security_data', 'get_finding_details', 'run_security_action']
 
 function getStarterChips({ page = 'dashboard', service = 'bff', scanId } = {}) {
   const svc = KNOWN_SERVICES.includes(service) ? service : 'bff'
@@ -64,147 +54,6 @@ function ChipRow({ chips, onSelect, disabled }) {
   )
 }
 
-function JsonBlock({ value }) {
-  let text
-  try {
-    text = JSON.stringify(value, null, 2)
-  } catch {
-    text = String(value)
-  }
-  if (text && text.length > 1400) text = text.slice(0, 1400) + '\n… (truncated)'
-  return (
-    <pre style={{
-      margin: '4px 0 0', padding: '6px 8px', borderRadius: 6,
-      background: '#01060d', border: '1px solid rgba(255,255,255,0.06)',
-      color: '#93c5fd', fontSize: 9.5, lineHeight: 1.45,
-      whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 160, overflow: 'auto',
-    }}>
-      {text}
-    </pre>
-  )
-}
-
-const STATUS_COLOR = {
-  ok: '#34d399',
-  error: '#f87171',
-  awaiting_confirmation: '#fbbf24',
-}
-
-function ToolStep({ step }) {
-  const [open, setOpen] = useState(false)
-  const meta = TOOL_META[step.tool] || { label: step.tool, type: step.type }
-  const Icon = meta.icon || Wrench
-  const isWrite = (step.type || meta.type) === 'write'
-  const statusColor = STATUS_COLOR[step.status] || '#94a3b8'
-
-  return (
-    <div style={{
-      border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8,
-      background: 'rgba(2,8,16,0.6)', overflow: 'hidden',
-    }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center', gap: 7,
-          padding: '6px 8px', background: 'transparent', border: 'none',
-          cursor: 'pointer', textAlign: 'left',
-        }}
-      >
-        {open ? <ChevronDown size={12} color="#64748b" /> : <ChevronRight size={12} color="#64748b" />}
-        <Icon size={12} color={isWrite ? '#fbbf24' : '#818cf8'} />
-        <span style={{ fontSize: 10.5, fontWeight: 600, color: '#e2e8f0' }}>{meta.label}</span>
-        <span style={{
-          fontSize: 8, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase',
-          padding: '1px 5px', borderRadius: 4,
-          background: isWrite ? 'rgba(251,191,36,0.15)' : 'rgba(129,140,248,0.15)',
-          color: isWrite ? '#fbbf24' : '#a5b4fc',
-        }}>
-          {isWrite ? 'write' : 'read'}
-        </span>
-        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {typeof step.duration_ms === 'number' && step.duration_ms > 0 && (
-            <span style={{ fontSize: 8.5, color: '#475569' }}>{step.duration_ms}ms</span>
-          )}
-          <span style={{
-            width: 7, height: 7, borderRadius: 999, background: statusColor,
-            boxShadow: `0 0 6px ${statusColor}`,
-          }} />
-        </span>
-      </button>
-      {open && (
-        <div style={{ padding: '0 8px 8px 24px' }}>
-          <div style={{ fontSize: 8.5, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ArrowRight size={9} /> request
-          </div>
-          <JsonBlock value={step.input} />
-          <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ArrowRight size={9} style={{ transform: 'rotate(180deg)' }} /> response
-          </div>
-          <JsonBlock value={step.output} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function ToolActivity({ trace, usage }) {
-  const [open, setOpen] = useState(false)
-  if (!trace?.length) return null
-  const usedTools = new Set(trace.map(s => s.tool))
-
-  return (
-    <div style={{ marginTop: 6 }}>
-      <button
-        type="button"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6, width: '100%',
-          padding: '4px 2px', background: 'transparent', border: 'none',
-          cursor: 'pointer', color: '#818cf8',
-        }}
-      >
-        <Activity size={11} />
-        <span style={{ fontSize: 9.5, fontWeight: 600 }}>
-          Tool activity · {trace.length} step{trace.length > 1 ? 's' : ''}
-        </span>
-        {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-      </button>
-
-      {open && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-          {/* Legend — highlights which tools were used for this answer */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-            {TOOL_ORDER.map(name => {
-              const meta = TOOL_META[name]
-              const used = usedTools.has(name)
-              return (
-                <span key={name} style={{
-                  fontSize: 8.5, fontWeight: 600, padding: '2px 7px', borderRadius: 999,
-                  border: `1px solid ${used ? 'rgba(129,140,248,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                  background: used ? 'rgba(99,102,241,0.18)' : 'transparent',
-                  color: used ? '#c7d2fe' : '#475569',
-                  display: 'flex', alignItems: 'center', gap: 4,
-                }}>
-                  {used && <Check size={9} />} {meta.label}
-                </span>
-              )
-            })}
-          </div>
-          {trace.map((step, i) => <ToolStep key={i} step={step} />)}
-          {usage?.input_tokens != null && (
-            <span style={{ fontSize: 8.5, color: '#475569' }}>
-              {usage.model ? `${usage.model} · ` : ''}
-              {usage.llm_calls || 1} call{(usage.llm_calls || 1) > 1 ? 's' : ''} ·{' '}
-              {(usage.input_tokens || 0) + (usage.output_tokens || 0)} tokens
-            </span>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ConfirmCard({ pending, onConfirm, onCancel, disabled }) {
   const verb = pending.action === 'remediate' ? 'Remediate (auto-patch)' : 'Run scan on'
   return (
@@ -251,16 +100,27 @@ export default function SecurityChatAssistant({
   recordId,
   service = 'bff',
   page = 'dashboard',
+  onActivity,          // (event) => void — stream tool traces to the page terminal
+  redirectTo,          // if set, the Ask AI button navigates here instead of opening inline
 }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const [open, setOpen]         = useState(false)
   const [messages, setMessages] = useState([])
   const [followUpChips, setFollowUpChips] = useState([])
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
-  const [showTools, setShowTools] = useState(true)
+
+  // Auto-open when arriving from another page that requested the assistant.
+  useEffect(() => {
+    if (!redirectTo && location.state?.askAi) setOpen(true)
+  }, [location.state, redirectTo])
 
   const starterChips = getStarterChips({ page, service, scanId })
   const showStarters = messages.length === 0 && !loading
+
+  const ts = () => new Date().toLocaleTimeString('en-AU', { hour12: false })
 
   // One call to the backend; `extra` carries confirm_action for write approvals.
   const callChat = async (msg, extra = {}) => {
@@ -280,11 +140,20 @@ export default function SecurityChatAssistant({
         role: 'assistant',
         text: r.reply || 'No response.',
         outOfScope: !!r.out_of_scope,
-        trace: Array.isArray(r.trace) ? r.trace : [],
-        usage: r.usage || null,
         pendingAction: r.pending_action || null,
       }])
       if (Array.isArray(r.chips) && r.chips.length) setFollowUpChips(r.chips)
+      // Stream the tool trace to the page-level terminal.
+      if (onActivity) {
+        onActivity({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          ts: ts(),
+          query: msg || (extra.confirm_action ? `confirm: ${extra.confirm_action}` : ''),
+          reply: r.reply || '',
+          steps: Array.isArray(r.trace) ? r.trace : [],
+          usage: r.usage || null,
+        })
+      }
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -305,7 +174,6 @@ export default function SecurityChatAssistant({
     await callChat(msg)
   }
 
-  // Resolve a pending write action (clears the card so it can't be re-clicked).
   const resolvePending = (msgIndex) =>
     setMessages(prev => prev.map((m, i) => (i === msgIndex ? { ...m, pendingAction: null } : m)))
 
@@ -318,16 +186,19 @@ export default function SecurityChatAssistant({
 
   const cancelAction = (msgIndex) => {
     resolvePending(msgIndex)
-    setMessages(prev => [...prev, {
-      role: 'assistant', text: 'Cancelled — no changes were made.', trace: [],
-    }])
+    setMessages(prev => [...prev, { role: 'assistant', text: 'Cancelled — no changes were made.' }])
+  }
+
+  const handleLauncher = () => {
+    if (redirectTo) navigate(redirectTo, { state: { askAi: true } })
+    else setOpen(true)
   }
 
   if (!open) {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={handleLauncher}
         style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 50,
           display: 'flex', alignItems: 'center', gap: 10,
@@ -372,37 +243,22 @@ export default function SecurityChatAssistant({
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>Ask AI</p>
             <p style={{ margin: 0, fontSize: 9, color: '#64748b' }}>
-              Scans · health · findings · patches
+              {onActivity ? 'Tool activity shown in agent.tools →' : 'Scans · health · findings · patches'}
             </p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button
-            type="button"
-            onClick={() => setShowTools(s => !s)}
-            aria-label="Toggle tool activity"
-            title={showTools ? 'Hide tool activity' : 'Show tool activity'}
-            style={{
-              background: showTools ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.06)',
-              border: 'none', borderRadius: 8, padding: 6, cursor: 'pointer',
-              color: showTools ? '#a5b4fc' : '#64748b', display: 'flex', alignItems: 'center',
-            }}
-          >
-            <Activity size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Minimize chat"
-            style={{
-              background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 8,
-              padding: 6, cursor: 'pointer', color: '#94a3b8',
-              display: 'flex', alignItems: 'center',
-            }}
-          >
-            <ChevronDown size={16} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Minimize chat"
+          style={{
+            background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 8,
+            padding: 6, cursor: 'pointer', color: '#94a3b8',
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <ChevronDown size={16} />
+        </button>
       </div>
 
       <div style={{
@@ -443,7 +299,6 @@ export default function SecurityChatAssistant({
                 onCancel={() => cancelAction(i)}
               />
             )}
-            {m.role === 'assistant' && showTools && <ToolActivity trace={m.trace} usage={m.usage} />}
           </div>
         ))}
         {!showStarters && followUpChips.length > 0 && !loading && (

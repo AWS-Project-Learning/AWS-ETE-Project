@@ -40,6 +40,7 @@ export const triggerScan       = (config = {})  => request("POST", "/security/sc
 export const triggerProbe      = (payload)      => request("POST", "/security/probe",        payload)
 export const triggerExplain    = (payload)      => request("POST", "/security/explain",      payload)
 export const triggerChat       = (payload)      => request("POST", "/security/chat",         payload)
+export const triggerAgentAction = (payload)     => request("POST", "/security/action",       payload)
 export const triggerReason     = (scan_id)       => request("POST", "/security/reason",       scan_id ? { scan_id } : {})
 export const triggerPatch      = (scan_id)       => request("POST", "/security/patch",        scan_id ? { scan_id } : {})
 export const approveProdPatch  = (payload)       => request("POST", "/security/approve",      payload)
