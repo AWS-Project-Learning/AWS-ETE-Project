@@ -282,10 +282,18 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
     setBusy(true)
     const evId = uid()
     tools?.startEvent({ id: evId, ts: ts(), title: msg || `confirm: ${extra.confirm_action}` })
+    // Send recent text turns so follow-ups ("what are they?", "order") keep context.
+    // Strip the assistant's <thinking> so prior reasoning doesn't pollute context.
+    const history = messages
+      .filter(m => (m.role === 'user' || m.role === 'assistant') && m.text)
+      .slice(-8)
+      .map(m => ({ role: m.role, text: m.role === 'assistant' ? splitThinking(m.text).answer : m.text }))
+      .filter(h => h.text)
     try {
       const res = await triggerChat({
         message: msg || undefined, service: selectedSvc || undefined,
-        scan_id: scanId || undefined, record_id: recordId || undefined, page: 'scan', ...extra,
+        scan_id: scanId || undefined, record_id: recordId || undefined, page: 'scan',
+        history, ...extra,
       })
       const r = res.result || {}
       await streamTrace(evId, r.trace)
