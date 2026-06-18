@@ -81,7 +81,9 @@ function Step({ step, prev }) {
         onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '1px 0' }}
       >
-        {open ? <ChevronDown size={13} color="#1e293b" /> : <ChevronRight size={13} color="#1e293b" />}
+        {open
+          ? <ChevronDown size={14} color="#0f172a" strokeWidth={2.5} />
+          : <ChevronRight size={14} color="#0f172a" strokeWidth={2.5} />}
         <span style={{ color: ty.color, display: 'flex' }}><Icon size={12} /></span>
         <span style={{ color: '#0f172a', fontWeight: 600 }}>{step.tool}</span>
         <span style={{

@@ -279,12 +279,23 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
     }
 
     if (msg) pushMsg({ role: 'user', text: msg })
+
+    // Typed approval after the confirm gate (e.g. "confirm", "approve", "yes").
+    if (msg && !extra.confirm_action) {
+      const pendingMsg = [...messages].reverse().find(m => m.pending)
+      if (pendingMsg?.pending && /^(confirm|approve|yes|proceed|go ahead)\b/i.test(msg)) {
+        const idx = messages.lastIndexOf(pendingMsg)
+        confirmPending(idx >= 0 ? idx : messages.length - 1, pendingMsg.pending)
+        return
+      }
+    }
+
     setBusy(true)
     const evId = uid()
     tools?.startEvent({ id: evId, ts: ts(), title: msg || `confirm: ${extra.confirm_action}` })
     // Send recent text turns so follow-ups ("what are they?", "order") keep context.
     // Strip the assistant's <thinking> so prior reasoning doesn't pollute context.
-    const history = messages
+    const history = extra.confirm_action ? [] : messages
       .filter(m => (m.role === 'user' || m.role === 'assistant') && m.text)
       .slice(-8)
       .map(m => ({ role: m.role, text: m.role === 'assistant' ? splitThinking(m.text).answer : m.text }))
