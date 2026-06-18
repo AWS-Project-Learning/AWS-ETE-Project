@@ -40,7 +40,7 @@ export default function Orders() {
         </div>
         <button
           onClick={() => navigate('/orders/new')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
         >
           + New Order
         </button>
@@ -55,7 +55,7 @@ export default function Orders() {
             placeholder="Search by order ID or customer..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -65,7 +65,7 @@ export default function Orders() {
               key={s}
               onClick={() => setStatus(s)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors
-                ${status === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                ${status === s ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               {s}
             </button>
@@ -94,9 +94,9 @@ export default function Orders() {
                   <tr
                     key={o.id}
                     onClick={() => navigate(`/orders/${o.id}`)}
-                    className={`cursor-pointer hover:bg-indigo-50 transition-colors ${i !== filtered.length - 1 ? 'border-b border-gray-50' : ''}`}
+                    className={`cursor-pointer hover:bg-brand-50 transition-colors ${i !== filtered.length - 1 ? 'border-b border-gray-50' : ''}`}
                   >
-                    <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{o.id}</td>
+                    <td className="px-6 py-4 font-mono text-brand-600 font-medium">{o.id}</td>
                     <td className="px-6 py-4 font-medium text-gray-900">{o.customer_name}</td>
                     <td className="px-6 py-4 text-gray-400">{o.email}</td>
                     <td className="px-6 py-4 text-gray-500">{o.item_count ?? '-'}</td>

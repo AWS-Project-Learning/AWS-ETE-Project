@@ -5,6 +5,8 @@ import {
   CheckCircle2, Loader2, AlertTriangle, ShieldAlert,
 } from 'lucide-react'
 import { triggerScan } from '../api/client'
+import AgentConsole from '../components/AgentConsole'
+import AgentToolTerminal from '../components/AgentToolTerminal'
 
 // ── 4-agent pipeline matching the mockup ──────────────────────────────────────
 const AGENTS = [
@@ -13,36 +15,37 @@ const AGENTS = [
     label: 'Orchestrator',
     desc:  'Initiated scan workflow',
     Icon:  Bot,
-    color: '#22c55e',   // green
-    glow:  'rgba(34,197,94,0.35)',
+    color: '#009c99',   // brand teal
+    glow:  'rgba(0,156,153,0.28)',
   },
   {
     id:    'scanner',
     label: 'CVE Detective',
     desc:  'Checks packages for known vulnerabilities',
     Icon:  Search,
-    color: '#3b82f6',   // blue
-    glow:  'rgba(59,130,246,0.4)',
+    color: '#22bfe1',   // accent cyan
+    glow:  'rgba(34,191,225,0.28)',
   },
   {
     id:    'keeper',
     label: 'Data Keeper',
     desc:  'Ready to store findings',
     Icon:  Database,
-    color: '#a78bfa',   // violet
-    glow:  'rgba(167,139,250,0.35)',
+    color: '#fd6034',   // accent orange
+    glow:  'rgba(253,96,52,0.25)',
   },
   {
     id:    'report',
     label: 'Report',
     desc:  'Awaiting scan completion',
     Icon:  ShieldCheck,
-    color: '#94a3b8',   // slate (pending)
+    color: '#475569',   // slate (pending)
     glow:  'rgba(148,163,184,0.2)',
   },
 ]
 
 const SERVICES = ['All Services (3)', 'order-service', 'invoice-service', 'bff']
+
 
 const freshStates = () => Object.fromEntries(AGENTS.map(a => [a.id, 'idle']))
 const freshDescs  = () => Object.fromEntries(AGENTS.map(a => [a.id, a.desc]))
@@ -86,6 +89,15 @@ export default function SecurityScan() {
   const [logs,       setLogs]       = useState([])
   const [error,      setError]      = useState(null)
   const [scanDone,   setScanDone]   = useState(null)   // { sid, total }
+  const [toolEvents, setToolEvents] = useState([])     // agent tool-call traces (live)
+
+  // Live tool-trace handlers — the console pushes steps as they stream in.
+  // Each new run resets the panel so the toolbox + payloads reflect only the
+  // current action/question (not a growing pile from earlier runs).
+  const startEvent  = (ev) => setToolEvents([{ ...ev, steps: [], status: 'running' }])
+  const addStep     = (id, step) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, steps: [...e.steps, step] } : e))
+  const finishEvent = (id, meta) => setToolEvents(prev => prev.map(e => e.id === id ? { ...e, ...meta, status: meta.status || 'ok' } : e))
+  const toolHandlers = { startEvent, addStep, finishEvent }
 
   const progress = useFakeProgress(stepPcts, setStepPcts, null, running)
 
@@ -124,7 +136,9 @@ export default function SecurityScan() {
       progress.start('scanner')
       addLog(ts(), 'CVE Detective', 'fetching requirements files from GitHub')
 
-      const svcKey   = scope.startsWith('All') ? {} : { services: { [scope]: `backend-services/${scope}/requirements.txt` } }
+      const svcKey   = scope.startsWith('All')
+        ? { mode: 'full_remediation' }
+        : { mode: 'full_remediation', services: { [scope]: `backend-services/${scope}/requirements.txt` } }
       const scanRes  = await triggerScan(svcKey)
       const sid      = scanRes.result?.scan_id
       const total    = scanRes.result?.total_found ?? 0
@@ -195,11 +209,12 @@ export default function SecurityScan() {
   return (
     <div style={{
       height: '100vh',
+      position: 'relative',
       display: 'flex', flexDirection: 'column',
-      background: 'linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0d1b2a 100%)',
+      background: '#eaeef3',
       padding: '28px 32px',
       fontFamily: 'inherit',
-      color: '#e2e8f0',
+      color: '#111827',
       boxSizing: 'border-box',
       overflow: 'hidden',
     }}>
@@ -210,15 +225,15 @@ export default function SecurityScan() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 12,
-            background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+            background: 'linear-gradient(135deg, #009c99, #008c8a)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(99,102,241,0.5)',
+            boxShadow: '0 6px 18px rgba(0,156,153,0.35)',
           }}>
             <ShieldAlert size={22} color="#fff" />
           </div>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#f1f5f9' }}>Security Scan</h1>
-            <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>Security Scan</h1>
+            <p style={{ fontSize: 13, color: '#334155', margin: '2px 0 0' }}>
               AI agent scanning your services for vulnerabilities
             </p>
           </div>
@@ -230,8 +245,8 @@ export default function SecurityScan() {
           {running && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
-              color: '#3b82f6', fontSize: 12, fontWeight: 600,
+              background: 'rgba(0,156,153,0.12)', border: '1px solid rgba(0,156,153,0.3)',
+              color: '#008c8a', fontSize: 12, fontWeight: 600,
               padding: '6px 14px', borderRadius: 99,
             }}>
               <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
@@ -241,8 +256,8 @@ export default function SecurityScan() {
           {allDone && !running && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(34,197,94,0.15)', border: '1px solid rgba(34,197,94,0.3)',
-              color: '#22c55e', fontSize: 12, fontWeight: 600,
+              background: 'rgba(22,163,74,0.12)', border: '1px solid rgba(22,163,74,0.3)',
+              color: '#16a34a', fontSize: 12, fontWeight: 600,
               padding: '6px 14px', borderRadius: 99,
             }}>
               <CheckCircle2 size={11} /> Complete
@@ -256,21 +271,21 @@ export default function SecurityScan() {
               onChange={e => !running && setScope(e.target.value)}
               disabled={running}
               style={{
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
+                background: '#ffffff',
+                border: '1px solid #e0e5eb',
                 borderRadius: 10, padding: '9px 36px 9px 14px',
-                fontSize: 13, color: '#e2e8f0',
+                fontSize: 13, color: '#0f172a',
                 cursor: running ? 'not-allowed' : 'pointer',
                 appearance: 'none', outline: 'none',
                 minWidth: 180,
               }}
             >
               {SERVICES.map(s => (
-                <option key={s} value={s} style={{ background: '#0f172a', color: '#e2e8f0' }}>{s}</option>
+                <option key={s} value={s} style={{ background: '#ffffff', color: '#0f172a' }}>{s}</option>
               ))}
             </select>
             <svg style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
-              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+              width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="2">
               <polyline points="6 9 12 15 18 9" />
             </svg>
           </div>
@@ -280,12 +295,12 @@ export default function SecurityScan() {
             onClick={running ? handleCancel : handleStartScan}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: running ? 'rgba(239,68,68,0.15)' : 'linear-gradient(135deg, #3b82f6, #6366f1)',
+              background: running ? '#fff' : 'linear-gradient(135deg, #009c99, #008c8a)',
               border: running ? '1px solid rgba(239,68,68,0.4)' : 'none',
-              color: running ? '#f87171' : '#fff',
+              color: running ? '#dc2626' : '#fff',
               padding: '9px 22px', borderRadius: 10,
               fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              boxShadow: running ? 'none' : '0 4px 18px rgba(59,130,246,0.4)',
+              boxShadow: running ? 'none' : '0 6px 18px rgba(0,156,153,0.35)',
               transition: 'all 0.3s', whiteSpace: 'nowrap',
             }}>
             {running ? <><X size={14} /> Cancel</> : <><Play size={14} fill="#fff" /> Start Scan</>}
@@ -293,14 +308,21 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      {/* ── Agent pipeline — full width ──────────────────────────── */}
+      {/* ── Main region: [pipeline + log + agent] left · agent.tools right ── */}
+      <div style={{ flex: 1, minHeight: 0, marginBottom: 16, display: 'flex', gap: 16 }}>
+
+      {/* LEFT column — pipeline on top, log + agent below ─────────── */}
+      <div style={{ flex: 2.4, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* ── Agent pipeline (only as wide as the agent console edge) ─ */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 16, padding: '20px 24px',
-        marginBottom: 16, flexShrink: 0,
+        background: '#ffffff',
+        border: '1px solid #e0e5eb',
+        borderRadius: 16, padding: '14px 18px',
+        flexShrink: 0,
+        boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
       }}>
-        <p style={{ fontSize: 11, fontWeight: 600, color: '#475569', margin: '0 0 16px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', margin: '0 0 12px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Agent Pipeline
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
@@ -317,34 +339,39 @@ export default function SecurityScan() {
         </div>
       </div>
 
-      {/* ── Live log — flex-grows to fill all remaining height ───── */}
+      {/* ── Lower row: agent.log | Security Agent ─────────────────── */}
+      <div style={{
+        flex: 1, minHeight: 0,
+        display: 'flex', gap: 16,
+      }}>
+      {/* ── Live scan log (left) ─────────────────────────────────── */}
       <div style={{
         flex: 1,
-        minHeight: 0,
-        background: 'rgba(0,0,0,0.45)',
-        border: '1px solid rgba(255,255,255,0.06)',
+        minWidth: 0,
+        background: '#ffffff',
+        border: '1px solid #e0e5eb',
         borderRadius: 16, overflow: 'hidden',
-        marginBottom: 16,
         display: 'flex', flexDirection: 'column',
+        boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
       }}>
         {/* Titlebar */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-          padding: '10px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '10px 18px', borderBottom: '1px solid #e0e5eb', background: '#e6ebf1',
         }}>
           <div style={{ display: 'flex', gap: 6 }}>
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
             <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginLeft: 6 }}>agent.log</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginLeft: 6 }}>agent.log</span>
           {running && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 4 }}>
               <span style={{
-                width: 7, height: 7, borderRadius: '50%', background: '#22c55e', display: 'inline-block',
+                width: 7, height: 7, borderRadius: '50%', background: '#16a34a', display: 'inline-block',
                 animation: 'pulse 1.5s infinite',
               }} />
-              <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>Live</span>
+              <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>Live</span>
             </div>
           )}
         </div>
@@ -356,7 +383,7 @@ export default function SecurityScan() {
           display: 'flex', flexDirection: 'column', gap: 5,
         }}>
           {logs.length === 0 && (
-            <span style={{ color: '#334155', fontStyle: 'italic' }}>
+            <span style={{ color: '#475569', fontStyle: 'italic' }}>
               $ waiting for scan to start…
             </span>
           )}
@@ -365,42 +392,55 @@ export default function SecurityScan() {
               <span style={{ color: '#475569', marginRight: 8, flexShrink: 0 }}>[{entry.ts}]</span>
               <span style={{
                 marginRight: 8, fontWeight: 700, flexShrink: 0,
-                color: entry.type === 'error'   ? '#f87171' :
-                       entry.type === 'warn'    ? '#fbbf24' :
-                       entry.type === 'success' ? '#22c55e' : '#3b82f6',
+                color: entry.type === 'error'   ? '#dc2626' :
+                       entry.type === 'warn'    ? '#d97706' :
+                       entry.type === 'success' ? '#16a34a' : '#008c8a',
               }}>{entry.label}</span>
-              <span style={{ color: '#94a3b8' }}>{entry.msg}</span>
+              <span style={{ color: '#334155' }}>{entry.msg}</span>
             </div>
           ))}
-          {running && <span style={{ color: '#334155' }}>▌</span>}
+          {running && <span style={{ color: '#cbd5e1' }}>▌</span>}
           <div ref={logEndRef} />
         </div>
       </div>
+
+        {/* ── Security Agent console (center) ─────────────────────── */}
+        <AgentConsole
+          service={scope.startsWith('All') ? '' : scope}
+          scanId={scanDone?.sid}
+          tools={toolHandlers}
+        />
+      </div>{/* end lower row */}
+      </div>{/* end LEFT column */}
+
+      {/* ── agent.tools — full height (right) ──────────────────────── */}
+      <AgentToolTerminal events={toolEvents} onClear={() => setToolEvents([])} />
+      </div>{/* end main region */}
 
       {/* ── Scan complete banner ────────────────────────────────── */}
       {scanDone && !running && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)',
+          background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.25)',
           borderRadius: 12, padding: '12px 20px', marginBottom: 12, flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <CheckCircle2 size={16} color="#22c55e" />
-            <span style={{ fontSize: 13, color: '#e2e8f0' }}>
+            <CheckCircle2 size={16} color="#16a34a" />
+            <span style={{ fontSize: 13, color: '#0f172a' }}>
               Scan complete —{' '}
-              <strong style={{ color: '#f87171' }}>{scanDone.total} vulnerabilities</strong>
+              <strong style={{ color: '#dc2626' }}>{scanDone.total} vulnerabilities</strong>
               {' '}found &nbsp;·&nbsp;{' '}
-              <span style={{ color: '#22c55e' }}>AI reasoning + auto-patch started</span>
+              <span style={{ color: '#16a34a' }}>AI reasoning + auto-patch started</span>
             </span>
           </div>
           <button
             onClick={() => navigate('/security/dashboard')}
             style={{
-              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              background: 'linear-gradient(135deg, #009c99, #008c8a)',
               border: 'none', color: '#fff',
               padding: '8px 20px', borderRadius: 8,
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(34,197,94,0.35)',
+              boxShadow: '0 4px 14px rgba(0,156,153,0.35)',
               whiteSpace: 'nowrap',
             }}>
             View Results →
@@ -414,13 +454,13 @@ export default function SecurityScan() {
           {error && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+              background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)',
               borderRadius: 10, padding: '8px 14px',
             }}>
-              <AlertTriangle size={13} color="#f87171" />
-              <span style={{ fontSize: 13, color: '#f87171' }}>{error}</span>
+              <AlertTriangle size={13} color="#dc2626" />
+              <span style={{ fontSize: 13, color: '#dc2626' }}>{error}</span>
               <button onClick={handleReset} style={{
-                marginLeft: 6, fontSize: 11, color: '#f87171',
+                marginLeft: 6, fontSize: 11, color: '#dc2626',
                 background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline',
               }}>Reset</button>
             </div>
@@ -433,9 +473,9 @@ export default function SecurityScan() {
             const state    = stepStates[agent.id]
             const isDone   = state === 'complete'
             const isActive = state === 'active'
-            const numColor = isDone ? '#22c55e' : isActive ? '#3b82f6' : '#1e293b'
-            const numBg    = isDone ? 'rgba(34,197,94,0.15)' : isActive ? 'rgba(59,130,246,0.15)' : 'rgba(255,255,255,0.06)'
-            const numBorder= isDone ? '#22c55e' : isActive ? '#3b82f6' : '#1e293b'
+            const numColor = isDone ? '#16a34a' : isActive ? '#008c8a' : '#475569'
+            const numBg    = isDone ? 'rgba(22,163,74,0.12)' : isActive ? 'rgba(0,156,153,0.12)' : '#ffffff'
+            const numBorder= isDone ? '#16a34a' : isActive ? '#009c99' : '#d6dce3'
             return (
               <div key={agent.id} style={{ display: 'flex', alignItems: 'center' }}>
                 <div style={{
@@ -444,12 +484,12 @@ export default function SecurityScan() {
                   color: numColor, fontSize: 12, fontWeight: 700,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.4s',
-                  boxShadow: isActive ? `0 0 10px ${agent.color}66` : 'none',
+                  boxShadow: isActive ? `0 0 10px ${agent.color}44` : 'none',
                 }}>{idx + 1}</div>
                 {idx < AGENTS.length - 1 && (
                   <div style={{
                     width: 40, height: 2,
-                    background: isDone ? '#22c55e33' : 'rgba(255,255,255,0.06)',
+                    background: isDone ? '#16a34a55' : '#e0e5eb',
                     margin: '0 2px',
                     transition: 'background 0.4s',
                   }} />
@@ -459,6 +499,7 @@ export default function SecurityScan() {
           })}
         </div>
       </div>
+
     </div>
   )
 }
@@ -476,11 +517,11 @@ function AgentCard({ agent, state, desc, pct }) {
   // Card: always show a subtle colour border + glow; stronger when active
   const cardBorder = isActive   ? `${activeColor}99` :
                      isComplete ? '#22c55e66'         :
-                     isError    ? '#ef444466'         : `${color}33`
+                     isError    ? '#ef444466'         : `${color}66`
 
   const cardShadow = isActive
-    ? `0 0 30px ${activeGlow}, 0 0 60px ${activeGlow}`
-    : `0 0 12px ${glow}`   // subtle always-on glow
+    ? `0 8px 28px ${activeGlow}, 0 2px 6px rgba(16,24,40,0.06)`
+    : `0 1px 3px rgba(16,24,40,0.06), 0 6px 18px -8px ${glow}`   // subtle resting colour glow
 
   // Icon circle
   const iconBg     = isActive   ? `${activeColor}25` :
@@ -492,8 +533,8 @@ function AgentCard({ agent, state, desc, pct }) {
                      isError    ? '#ef444466'         : `${color}44`
 
   const iconShadow = isActive
-    ? `0 0 22px ${activeGlow}, 0 0 44px ${activeGlow}`
-    : `0 0 10px ${glow}`   // always-on icon glow
+    ? `0 4px 18px ${activeGlow}`
+    : 'none'
 
   const iconColor  = isComplete ? '#22c55e' : isError ? '#ef4444' : color
 
@@ -508,7 +549,7 @@ function AgentCard({ agent, state, desc, pct }) {
 
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.03)',
+      background: '#ffffff',
       border: `1.5px solid ${cardBorder}`,
       borderRadius: 16,
       padding: '20px 14px',
@@ -538,7 +579,7 @@ function AgentCard({ agent, state, desc, pct }) {
       </div>
 
       {/* Name */}
-      <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px', color: '#e2e8f0' }}>
+      <p style={{ fontWeight: 700, fontSize: 13, margin: '0 0 8px', color: '#0f172a' }}>
         {label}
       </p>
 
@@ -563,7 +604,7 @@ function AgentCard({ agent, state, desc, pct }) {
       {/* Progress bar — only when active */}
       {isActive && (
         <div style={{ width: '100%', marginBottom: 8 }}>
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ height: 4, background: '#eef2f5', borderRadius: 99, overflow: 'hidden' }}>
             <div style={{
               height: '100%', borderRadius: 99,
               background: `linear-gradient(90deg, ${color}, ${color}bb)`,
@@ -572,12 +613,12 @@ function AgentCard({ agent, state, desc, pct }) {
               boxShadow: `0 0 10px ${glow}`,
             }} />
           </div>
-          <p style={{ fontSize: 10, color: '#475569', margin: '4px 0 0', textAlign: 'right' }}>{pct}%</p>
+          <p style={{ fontSize: 10, color: '#334155', margin: '4px 0 0', textAlign: 'right' }}>{pct}%</p>
         </div>
       )}
 
       {/* Description */}
-      <p style={{ fontSize: 11, color: '#64748b', lineHeight: 1.5, margin: 0 }}>{desc}</p>
+      <p style={{ fontSize: 11, color: '#334155', lineHeight: 1.5, margin: 0 }}>{desc}</p>
     </div>
   )
 }

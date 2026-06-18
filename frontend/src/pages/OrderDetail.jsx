@@ -52,7 +52,7 @@ export default function OrderDetail() {
   if (error)   return (
     <div className="p-8 text-center text-gray-400">
       <p className="text-lg">Order not found.</p>
-      <button onClick={() => navigate('/orders')} className="mt-4 text-indigo-600 hover:underline text-sm">Back to Orders</button>
+      <button onClick={() => navigate('/orders')} className="mt-4 text-brand-600 hover:underline text-sm">Back to Orders</button>
     </div>
   )
 

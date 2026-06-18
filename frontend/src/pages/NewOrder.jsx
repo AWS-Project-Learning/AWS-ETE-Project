@@ -98,20 +98,20 @@ export default function NewOrder() {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Customer Name *</label>
               <input required value={customer} onChange={e => setCustomer(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
                 placeholder="Acme Corp" />
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Email *</label>
               <input required type="email" value={email} onChange={e => setEmail(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
                 placeholder="billing@acme.com" />
             </div>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">Delivery Address</label>
             <input value={address} onChange={e => setAddress(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
               placeholder="123 Main St, City, State" />
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function NewOrder() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-gray-900">Order Items</h2>
-            <button type="button" onClick={addItem} className="flex items-center gap-1.5 text-indigo-600 text-sm font-medium hover:underline">
+            <button type="button" onClick={addItem} className="flex items-center gap-1.5 text-brand-600 text-sm font-medium hover:underline">
               <Plus size={14} /> Add Item
             </button>
           </div>
@@ -133,7 +133,7 @@ export default function NewOrder() {
                     required
                     value={item.productId}
                     onChange={e => updateItem(i, 'productId', e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
                   >
                     <option value="">Select product...</option>
                     {PRODUCTS.map(p => <option key={p.id} value={p.id}>{p.name} — ${p.price}</option>)}
@@ -141,7 +141,7 @@ export default function NewOrder() {
                   <input
                     type="number" min="1" value={item.qty}
                     onChange={e => updateItem(i, 'qty', Number(e.target.value))}
-                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                    className="w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-brand-300"
                   />
                   <span className="w-24 text-sm font-medium text-gray-700 text-right">
                     {product ? `$${(product.price * item.qty).toFixed(2)}` : '—'}
@@ -179,7 +179,7 @@ export default function NewOrder() {
             Cancel
           </button>
           <button type="submit" disabled={submitting}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+            className="flex-1 bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium py-2.5 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
             {submitting ? 'Creating…' : 'Create Order'}
           </button>
         </div>

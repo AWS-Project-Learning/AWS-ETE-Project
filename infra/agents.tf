@@ -189,6 +189,21 @@ resource "aws_iam_role_policy" "lambda_agent_permissions" {
           "${aws_lambda_function.vulnerability_agent.arn}:*",
         ]
       },
+      {
+        # Phase B: live health probes — read ECS/ALB/CloudWatch (no mutations).
+        Sid    = "ProbeReadOnly"
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeServices",
+          "ecs:ListTasks",
+          "ecs:DescribeTasks",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeTargetHealth",
+          "logs:GetLogEvents",
+          "logs:DescribeLogStreams",
+        ]
+        Resource = "*"
+      },
     ]
   })
 }
@@ -226,16 +241,21 @@ resource "aws_lambda_function" "vulnerability_agent" {
       DEFAULT_REPO_OWNER  = "AWS-Project-Learning"
       DEFAULT_REPO_NAME   = "AWS-ETE-Project"
       DEFAULT_REPO_BRANCH = "main"
+      ENVIRONMENT         = var.environment
+      ECS_CLUSTER         = "${var.project}-${var.environment}"
+      DEV_BASE_URL        = var.custom_domain != "" ? "https://${var.custom_domain}" : ""
       # NOTE: Do NOT set AWS_REGION here — Lambda reserves that env var.
       # The runtime already exposes AWS_REGION automatically.
     }
   }
 
   lifecycle {
-    # Terraform owns the shell; the deploy pipeline owns the code.
-    # Without this, every `terraform apply` would revert the real code
-    # back to the placeholder stub.
-    ignore_changes = [filename, source_code_hash]
+    # Terraform owns the shell; the deploy pipeline owns the code AND env vars.
+    # Without this, every `terraform apply` would revert the real code back to
+    # the placeholder stub, and strip env vars (CHAT_ENGINE, AGENT_MODEL, …) that
+    # lambda_deploy.py injects from values-{env}.yaml. The `environment` block
+    # below only seeds defaults on first create.
+    ignore_changes = [filename, source_code_hash, environment]
   }
 
   tags = { Name = "${var.project}-vulnerability-agent-${var.environment}" }

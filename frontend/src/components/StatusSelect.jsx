@@ -4,7 +4,7 @@ import { ChevronDown, Loader2 } from 'lucide-react'
 // StatusBadge — just with a chevron and click target.
 const COLOURS = {
   Delivered:  'bg-green-100 text-green-700  hover:bg-green-200',
-  Processing: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200',
+  Processing: 'bg-brand-100 text-brand-700 hover:bg-brand-200',
   Pending:    'bg-amber-100 text-amber-700  hover:bg-amber-200',
   Shipped:    'bg-blue-100 text-blue-700   hover:bg-blue-200',
   Cancelled:  'bg-red-100 text-red-700     hover:bg-red-200',
@@ -24,7 +24,7 @@ export default function StatusSelect({ value, options, onChange, disabled, savin
         onChange={(e) => onChange(e.target.value)}
         className={`appearance-none cursor-pointer pl-3 pr-7 py-1 rounded-full text-xs font-medium
           transition-colors disabled:opacity-60 disabled:cursor-wait
-          focus:outline-none focus:ring-2 focus:ring-indigo-300
+          focus:outline-none focus:ring-2 focus:ring-brand-300
           ${colour}`}
       >
         {options.map(opt => (

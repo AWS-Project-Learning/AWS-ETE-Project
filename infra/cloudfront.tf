@@ -59,6 +59,10 @@ resource "aws_cloudfront_distribution" "frontend" {
       "/security/status",
       "/security/results",
       "/security/health",
+      "/security/probe",
+      "/security/explain",
+      "/security/chat",
+      "/security/action",
     ])
     content {
       path_pattern           = ordered_cache_behavior.value
