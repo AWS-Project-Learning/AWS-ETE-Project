@@ -209,7 +209,18 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
     setPending(null)
     pushMsg({ role: 'user', text: value === 'all' ? 'All services' : value })
     if (action === 'remediate') { proposeRemediation(value); return }
+    if (action === 'scan') { proposeScan(value); return }
     runAction(action, value)
+  }
+
+  const proposeScan = (serviceValue) => {
+    const target = serviceValue === 'all' ? 'all services' : serviceValue
+    pushMsg({
+      role: 'assistant',
+      text: `I'll run a vulnerability scan on ${target} — read-only detection via pip-audit ` +
+        `(finds issues; does not auto-patch).\n\nProceed?`,
+      approve: { action: 'scan', service: serviceValue },
+    })
   }
 
   const proposeRemediation = (serviceValue) => {
@@ -254,12 +265,12 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
     }
   }
 
-  const approveRemediation = (idx, p) => {
+  const approveAction = (idx, p, userText = 'Approve') => {
     setMessages(prev => prev.map((m, i) => (i === idx ? { ...m, approve: null } : m)))
-    pushMsg({ role: 'user', text: 'Approve' })
-    runAction('remediate', p.service, true)
+    pushMsg({ role: 'user', text: userText })
+    runAction(p.action, p.service, p.action === 'remediate')
   }
-  const cancelRemediation = (idx) => {
+  const cancelAction = (idx) => {
     setMessages(prev => prev.map((m, i) => (i === idx ? { ...m, approve: null } : m)))
     pushMsg({ role: 'assistant', text: 'Cancelled — no changes were made.' })
   }
@@ -278,17 +289,26 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
       return
     }
 
-    if (msg) pushMsg({ role: 'user', text: msg })
-
-    // Typed approval after the confirm gate (e.g. "confirm", "approve", "yes").
     if (msg && !extra.confirm_action) {
-      const pendingMsg = [...messages].reverse().find(m => m.pending)
-      if (pendingMsg?.pending && /^(confirm|approve|yes|proceed|go ahead)\b/i.test(msg)) {
-        const idx = messages.lastIndexOf(pendingMsg)
-        confirmPending(idx >= 0 ? idx : messages.length - 1, pendingMsg.pending)
-        return
+      const approval = /^(confirm|approve|yes|proceed|go ahead)\b/i.test(msg)
+      if (approval) {
+        const pendingMsg = [...messages].reverse().find(m => m.pending)
+        if (pendingMsg?.pending) {
+          pushMsg({ role: 'user', text: msg })
+          const idx = messages.lastIndexOf(pendingMsg)
+          confirmPending(idx >= 0 ? idx : messages.length - 1, pendingMsg.pending)
+          return
+        }
+        const approveMsg = [...messages].reverse().find(m => m.approve)
+        if (approveMsg?.approve) {
+          const idx = messages.lastIndexOf(approveMsg)
+          approveAction(idx >= 0 ? idx : messages.length - 1, approveMsg.approve, msg)
+          return
+        }
       }
     }
+
+    if (msg) pushMsg({ role: 'user', text: msg })
 
     setBusy(true)
     const evId = uid()
@@ -399,11 +419,11 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
             {m.report && <ReportCard text={m.report} />}
             {m.approve && (
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                <button onClick={() => approveRemediation(i, m.approve)} disabled={busy}
+                <button onClick={() => approveAction(i, m.approve)} disabled={busy}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: 'none', background: '#f59e0b', color: '#1c1407', cursor: 'pointer' }}>
-                  <Check size={12} /> Approve &amp; run
+                  <Check size={12} /> {m.approve?.action === 'scan' ? 'Confirm & run' : 'Approve & run'}
                 </button>
-                <button onClick={() => cancelRemediation(i)} disabled={busy}
+                <button onClick={() => cancelAction(i)} disabled={busy}
                   style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid #cbd5e1', background: 'transparent', color: '#334155', cursor: 'pointer' }}>
                   <X size={12} /> Cancel
                 </button>
