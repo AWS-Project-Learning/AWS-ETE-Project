@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Theme tokens (Leadership-consultants teal palette) ───────────────── */
+:root {
+  --brand:        #009c99;
+  --brand-dark:   #008c8a;
+  --brand-darker: #00706e;
+  --brand-50:     #e6f6f6;
+  --brand-100:    #c4eae9;
+  --brand-200:    #9bdcda;
+
+  --accent-cyan:   #22bfe1;
+  --accent-orange: #fd6034;
+  --accent-gold:   #f1c50e;
+  --slate:         #b9c1cc;
+
+  --ink:        #111111;  /* primary text */
+  --ink-soft:   #475569;  /* secondary text */
+  --ink-faint:  #94a3b8;  /* muted text */
+
+  --surface:    #ffffff;  /* cards / panels */
+  --surface-2:  #f5f7fa;  /* app background */
+  --surface-3:  #eef2f5;  /* subtle fills */
+  --border:     #e0e5eb;  /* hairlines */
+  --border-2:   #ccd3db;
+}
+
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 antialiased;

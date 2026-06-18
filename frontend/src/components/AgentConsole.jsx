@@ -53,11 +53,11 @@ function ThinkingBlock({ text }) {
     <div style={{ marginBottom: open ? 6 : 4 }}>
       <button type="button" onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'none', border: 'none',
-          cursor: 'pointer', color: '#64748b', fontSize: 10.5, fontWeight: 600, padding: 0 }}>
+          cursor: 'pointer', color: '#334155', fontSize: 10.5, fontWeight: 600, padding: 0 }}>
         {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />} Thought
       </button>
       {open && (
-        <p style={{ margin: '4px 0 0', fontSize: 11, fontStyle: 'italic', color: '#475569',
+        <p style={{ margin: '4px 0 0', fontSize: 11, fontStyle: 'italic', color: '#334155',
           whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{text}</p>
       )}
     </div>
@@ -104,22 +104,22 @@ function ReportCard({ text }) {
     setCopied(true); setTimeout(() => setCopied(false), 1500)
   })
   return (
-    <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.06)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid rgba(34,197,94,0.2)' }}>
-        <FileText size={12} color="#34d399" />
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399' }}>Ready to send · email / Slack</span>
+    <div style={{ marginTop: 8, borderRadius: 10, overflow: 'hidden', border: '1px solid rgba(22,163,74,0.3)', background: 'rgba(22,163,74,0.06)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid rgba(22,163,74,0.2)' }}>
+        <FileText size={12} color="#16a34a" />
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a' }}>Ready to send · email / Slack</span>
         <button onClick={copy} title="Copy"
-          style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#34d399', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+          style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#16a34a', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
           {copied ? <Check size={12} /> : <Copy size={12} />} {copied ? 'Copied' : 'Copy'}
         </button>
       </div>
-      <p style={{ margin: 0, padding: '8px 10px', fontSize: 11, color: '#d1fae5', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{text}</p>
+      <p style={{ margin: 0, padding: '8px 10px', fontSize: 11, color: '#14532d', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>{text}</p>
     </div>
   )
 }
 
 const SEV_COLOR = {
-  CRITICAL: '#f87171', HIGH: '#fb923c', MEDIUM: '#fbbf24', LOW: '#60a5fa', UNKNOWN: '#94a3b8',
+  CRITICAL: '#dc2626', HIGH: '#ea580c', MEDIUM: '#d97706', LOW: '#0891b2', UNKNOWN: '#334155',
 }
 
 function FindingsList({ findings }) {
@@ -132,19 +132,19 @@ function FindingsList({ findings }) {
         return (
           <div key={i} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.07)',
+            background: '#f8fafc', border: '1px solid #e0e5eb',
             borderRadius: 8, padding: '6px 9px',
           }}>
             <span style={{
               fontSize: 9, fontWeight: 700, letterSpacing: 0.4, padding: '2px 6px', borderRadius: 5,
-              color, background: `${color}22`, border: `1px solid ${color}55`, flexShrink: 0,
+              color, background: `${color}1a`, border: `1px solid ${color}55`, flexShrink: 0,
             }}>{sev}</span>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600, color: '#e2e8f0' }}>
+              <p style={{ margin: 0, fontSize: 11.5, fontWeight: 600, color: '#0f172a' }}>
                 {f.package}{f.cve_id ? ` · ${f.cve_id}` : ''}
               </p>
               {(f.current_version || f.safe_version) && (
-                <p style={{ margin: '1px 0 0', fontSize: 10, color: '#64748b' }}>
+                <p style={{ margin: '1px 0 0', fontSize: 10, color: '#334155' }}>
                   {f.current_version || '?'}{f.safe_version ? ` → ${f.safe_version}` : ''}
                   {f.service ? ` · ${f.service}` : ''}
                 </p>
@@ -162,8 +162,8 @@ function Chip({ label, onClick, disabled }) {
     <button type="button" disabled={disabled} onClick={onClick}
       style={{
         fontSize: 11, fontWeight: 600, padding: '6px 12px', borderRadius: 999,
-        border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.14)',
-        color: '#c7d2fe', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+        border: '1px solid rgba(0,156,153,0.35)', background: 'rgba(0,156,153,0.1)',
+        color: '#008c8a', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
       }}>
       {label}
     </button>
@@ -319,34 +319,35 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
   return (
     <div style={{
       flex: 1.3, minWidth: 0,
-      background: 'rgba(10,15,30,0.6)', border: '1px solid rgba(99,102,241,0.3)',
+      background: '#ffffff', border: '1px solid #e0e5eb',
       borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column',
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
     }}>
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-        padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.08)',
-        background: 'linear-gradient(135deg, rgba(79,70,229,0.22), rgba(99,102,241,0.08))',
+        padding: '12px 16px', borderBottom: '1px solid #eef2f5',
+        background: 'linear-gradient(135deg, rgba(0,156,153,0.2), rgba(0,156,153,0.06))',
       }}>
-        <div style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Bot size={16} color="#a5b4fc" />
+        <div style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(0,156,153,0.16)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Bot size={16} color="#009c99" />
         </div>
         <div>
-          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#f1f5f9' }}>Security Agent</p>
-          <p style={{ margin: 0, fontSize: 9.5, color: '#64748b' }}>pick an action — I'll ask which service · tools run in agent.tools →</p>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Security Agent</p>
+          <p style={{ margin: 0, fontSize: 9.5, color: '#334155' }}>pick an action — I'll ask which service · tools run in agent.tools →</p>
         </div>
-        {busy && <Loader2 size={14} color="#818cf8" style={{ marginLeft: 'auto', animation: 'spin 1s linear infinite' }} />}
+        {busy && <Loader2 size={14} color="#009c99" style={{ marginLeft: 'auto', animation: 'spin 1s linear infinite' }} />}
       </div>
 
       {/* Action buttons */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.05)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '10px 14px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
         {ACTIONS.map(({ key, label, Icon, allowAll }) => (
           <button key={key} type="button" disabled={busy}
             onClick={() => askForService(key, label, allowAll)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600,
-              padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(99,102,241,0.4)',
-              background: 'rgba(99,102,241,0.14)', color: '#c7d2fe',
+              padding: '7px 12px', borderRadius: 9, border: '1px solid rgba(0,156,153,0.35)',
+              background: 'rgba(0,156,153,0.1)', color: '#008c8a',
               cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.5 : 1,
             }}>
             <Icon size={13} /> {label}
@@ -357,10 +358,10 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
       {/* Conversation */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
         {messages.length === 0 && (
-          <div style={{ color: '#475569', fontSize: 12, lineHeight: 1.6, margin: 'auto', textAlign: 'center', maxWidth: 290 }}>
+          <div style={{ color: '#334155', fontSize: 12, lineHeight: 1.6, margin: 'auto', textAlign: 'center', maxWidth: 290 }}>
             <Sparkles size={20} color="#475569" style={{ marginBottom: 8 }} />
             <p style={{ margin: 0 }}>Pick an action above — I'll ask which service, then run it.</p>
-            <p style={{ margin: '6px 0 0', fontSize: 11 }}>Each tool the agent uses appears live in <span style={{ color: '#818cf8' }}>agent.tools</span> on the right.</p>
+            <p style={{ margin: '6px 0 0', fontSize: 11 }}>Each tool the agent uses appears live in <span style={{ color: '#009c99', fontWeight: 600 }}>agent.tools</span> on the right.</p>
           </div>
         )}
         {messages.map((m, i) => {
@@ -370,12 +371,12 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
           return (
           <div key={i} style={{
             alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '88%',
-            background: m.role === 'user' ? 'rgba(59,130,246,0.15)' : m.error ? 'rgba(239,68,68,0.08)' : 'rgba(15,23,42,0.85)',
-            border: `1px solid ${m.role === 'user' ? 'rgba(59,130,246,0.3)' : m.error ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.07)'}`,
+            background: m.role === 'user' ? 'rgba(0,156,153,0.1)' : m.error ? 'rgba(220,38,38,0.06)' : '#f8fafc',
+            border: `1px solid ${m.role === 'user' ? 'rgba(0,156,153,0.3)' : m.error ? 'rgba(220,38,38,0.25)' : '#e0e5eb'}`,
             borderRadius: 12, padding: '8px 11px',
           }}>
             {thinking && <ThinkingBlock text={thinking} />}
-            {answer && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: m.role === 'user' ? '#bfdbfe' : '#cbd5e1' }}>{answer}</p>}
+            {answer && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', color: m.role === 'user' ? '#0f766e' : m.error ? '#b91c1c' : '#334155' }}>{answer}</p>}
             {m.choices && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                 {m.choices.map(c => (
@@ -392,14 +393,14 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
                   <Check size={12} /> Approve &amp; run
                 </button>
                 <button onClick={() => cancelRemediation(i)} disabled={busy}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#94a3b8', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid #cbd5e1', background: 'transparent', color: '#334155', cursor: 'pointer' }}>
                   <X size={12} /> Cancel
                 </button>
               </div>
             )}
             {m.dashboard && (
               <a href="/security/dashboard"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 10.5, fontWeight: 600, color: '#818cf8', textDecoration: 'none' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 10.5, fontWeight: 600, color: '#008c8a', textDecoration: 'none' }}>
                 <FileText size={11} /> View detailed results in the dashboard →
               </a>
             )}
@@ -410,7 +411,7 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
                   <Check size={12} /> Confirm
                 </button>
                 <button onClick={() => cancelPending(i)} disabled={busy}
-                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.15)', background: 'transparent', color: '#94a3b8', cursor: 'pointer' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 600, padding: '5px 11px', borderRadius: 7, border: '1px solid #cbd5e1', background: 'transparent', color: '#334155', cursor: 'pointer' }}>
                   <X size={12} /> Cancel
                 </button>
               </div>
@@ -418,18 +419,18 @@ export default function AgentConsole({ service = '', tools, scanId, recordId }) 
           </div>
           )
         })}
-        {busy && <span style={{ fontSize: 11, color: '#64748b', fontStyle: 'italic' }}>working…</span>}
+        {busy && <span style={{ fontSize: 11, color: '#334155', fontStyle: 'italic' }}>working…</span>}
         <div ref={endRef} />
       </div>
 
       {/* Input */}
       <form onSubmit={e => { e.preventDefault(); sendMessage() }}
-        style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+        style={{ display: 'flex', gap: 8, padding: '10px 14px', borderTop: '1px solid #eef2f5', flexShrink: 0 }}>
         <input value={input} onChange={e => setInput(e.target.value)} disabled={busy}
           placeholder={pending ? `Which service? ${pending.allowAll ? 'all / ' : ''}${KNOWN_SERVICES.join(' / ')}` : 'Ask about scans, health, findings…'}
-          style={{ flex: 1, fontSize: 12, padding: '9px 12px', borderRadius: 9, border: '1px solid rgba(255,255,255,0.1)', background: '#0f172a', color: '#e2e8f0', outline: 'none' }} />
+          style={{ flex: 1, fontSize: 12, padding: '9px 12px', borderRadius: 9, border: '1px solid #e0e5eb', background: '#ffffff', color: '#0f172a', outline: 'none' }} />
         <button type="submit" disabled={busy || !input.trim()}
-          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '9px 14px', borderRadius: 9, border: 'none', background: '#6366f1', color: '#fff', cursor: busy || !input.trim() ? 'default' : 'pointer', opacity: busy || !input.trim() ? 0.5 : 1 }}>
+          style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 600, padding: '9px 14px', borderRadius: 9, border: 'none', background: '#009c99', color: '#fff', cursor: busy || !input.trim() ? 'default' : 'pointer', opacity: busy || !input.trim() ? 0.5 : 1 }}>
           <Send size={13} />
         </button>
       </form>

@@ -83,7 +83,7 @@ export const revenueData = [
 
 export const statusDistribution = [
   { name: 'Delivered',  value: 102, color: '#22c55e' },
-  { name: 'Processing', value: 18,  color: '#6366f1' },
+  { name: 'Processing', value: 18,  color: '#009c99' },
   { name: 'Pending',    value: 23,  color: '#f59e0b' },
   { name: 'Shipped',    value: 5,   color: '#3b82f6' },
   { name: 'Cancelled',  value: 5,   color: '#ef4444' },

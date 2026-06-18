@@ -2,25 +2,38 @@
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   safelist: [
-    // SecurityScan agent-card dynamic colours
-    'bg-indigo-50',  'text-indigo-600', 'ring-indigo-200',  'bg-indigo-600',  'bg-indigo-500',
-    'bg-blue-50',    'text-blue-600',   'ring-blue-200',    'bg-blue-600',    'bg-blue-500',
-    'bg-violet-50',  'text-violet-600', 'ring-violet-200',  'bg-violet-600',  'bg-violet-500',
-    'bg-teal-50',    'text-teal-600',   'ring-teal-200',    'bg-teal-600',    'bg-teal-500',
-    'bg-emerald-50', 'text-emerald-600','ring-emerald-200', 'bg-emerald-600', 'bg-emerald-500',
+    // SecurityScan agent-card dynamic colours (teal-family + accents)
+    'bg-brand-50',   'text-brand-600',  'ring-brand-200',   'bg-brand-600',   'bg-brand-500',
+    'bg-cyan-50',    'text-cyan-600',   'ring-cyan-200',    'bg-cyan-600',     'bg-cyan-500',
+    'bg-sky-50',     'text-sky-600',    'ring-sky-200',     'bg-sky-600',      'bg-sky-500',
+    'bg-amber-50',   'text-amber-600',  'ring-amber-200',   'bg-amber-600',    'bg-amber-500',
+    'bg-emerald-50', 'text-emerald-600','ring-emerald-200', 'bg-emerald-600',  'bg-emerald-500',
+    'bg-orange-50',  'text-orange-600', 'ring-orange-200',  'bg-orange-600',   'bg-orange-500',
     'ring-4', 'ring-2',
-    // status badge backgrounds used dynamically
-    'bg-indigo-600', 'bg-blue-600', 'bg-violet-600', 'bg-teal-600', 'bg-emerald-600',
+    'bg-brand-600', 'bg-cyan-600', 'bg-sky-600', 'bg-amber-600', 'bg-emerald-600',
   ],
   theme: {
     extend: {
       colors: {
+        // Primary brand — teal, from the "Leadership consultants" template (#009c99)
         brand: {
-          50:  '#eef2ff',
-          100: '#e0e7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
+          50:  '#e6f6f6',
+          100: '#c4eae9',
+          200: '#9bdcda',
+          300: '#66cac7',
+          400: '#1fb3b0',
+          500: '#009c99',
+          600: '#008c8a',
+          700: '#00706e',
+          800: '#015553',
+          900: '#063e3d',
+        },
+        // Secondary accents from the same template palette
+        accent: {
+          cyan:   '#22bfe1',
+          orange: '#fd6034',
+          gold:   '#f1c50e',
+          slate:  '#b9c1cc',
         },
       },
     },

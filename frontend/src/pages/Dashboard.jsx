@@ -8,7 +8,7 @@ import { getDashboard } from '../api/client'
 
 const STATUS_COLORS = {
   Delivered:  '#22c55e',
-  Processing: '#6366f1',
+  Processing: '#009c99',
   Pending:    '#f59e0b',
   Shipped:    '#3b82f6',
   Cancelled:  '#ef4444',
@@ -51,7 +51,7 @@ export default function Dashboard() {
         </div>
         <button
           onClick={() => navigate('/orders/new')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
+          className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors"
         >
           + New Order
         </button>
@@ -59,7 +59,7 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Orders"   value={stats.total_orders}                          icon={ShoppingCart} color="bg-indigo-500" sub="All time" />
+        <StatCard label="Total Orders"   value={stats.total_orders}                          icon={ShoppingCart} color="bg-brand-500" sub="All time" />
         <StatCard label="Total Revenue"  value={`$${stats.total_revenue.toLocaleString()}`}  icon={DollarSign}   color="bg-green-500"  sub="All time" />
         <StatCard label="Pending Orders" value={stats.pending_orders}                         icon={Clock}        color="bg-amber-500"  sub="Awaiting processing" />
         <StatCard label="Delivered"      value={stats.delivered_orders}                       icon={CheckCircle}  color="bg-blue-500"   sub="Successfully delivered" />
@@ -88,7 +88,7 @@ export default function Dashboard() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">Recent Orders</h2>
-          <button onClick={() => navigate('/orders')} className="text-indigo-600 text-sm font-medium hover:underline">
+          <button onClick={() => navigate('/orders')} className="text-brand-600 text-sm font-medium hover:underline">
             View all
           </button>
         </div>
@@ -110,7 +110,7 @@ export default function Dashboard() {
                   onClick={() => navigate(`/orders/${o.id}`)}
                   className={`cursor-pointer hover:bg-gray-50 transition-colors ${i !== recent_orders.length - 1 ? 'border-b border-gray-50' : ''}`}
                 >
-                  <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{o.id}</td>
+                  <td className="px-6 py-4 font-mono text-brand-600 font-medium">{o.id}</td>
                   <td className="px-6 py-4 font-medium text-gray-900">{o.customer_name}</td>
                   <td className="px-6 py-4 text-gray-500">{o.item_count ?? '-'}</td>
                   <td className="px-6 py-4 font-semibold text-gray-900">${o.total?.toLocaleString()}</td>

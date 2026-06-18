@@ -9,14 +9,14 @@ const SEV_COLOR = {
   CRITICAL: { bg: '#fef2f2', text: '#dc2626', border: '#fca5a5', dark: '#ef4444' },
   HIGH:     { bg: '#fff7ed', text: '#ea580c', border: '#fdba74', dark: '#f97316' },
   MEDIUM:   { bg: '#fefce8', text: '#ca8a04', border: '#fde047', dark: '#eab308' },
-  LOW:      { bg: '#f0fdf4', text: '#16a34a', border: '#86efac', dark: '#22c55e' },
-  UNKNOWN:  { bg: '#f8fafc', text: '#64748b', border: '#cbd5e1', dark: '#94a3b8' },
+  LOW:      { bg: '#f0fdf4', text: '#16a34a', border: '#16a34a', dark: '#22c55e' },
+  UNKNOWN:  { bg: '#f8fafc', text: '#475569', border: '#334155', dark: '#64748b' },
 }
 const DEC_COLOR = {
-  AUTO_PATCH: { bg: 'rgba(34,197,94,0.15)',  text: '#22c55e' },
-  ESCALATE:   { bg: 'rgba(239,68,68,0.15)',  text: '#f87171' },
-  IGNORE:     { bg: 'rgba(148,163,184,0.15)',text: '#94a3b8' },
-  PENDING:    { bg: 'rgba(59,130,246,0.15)', text: '#3b82f6' },
+  AUTO_PATCH: { bg: 'rgba(22,163,74,0.12)',  text: '#16a34a' },
+  ESCALATE:   { bg: 'rgba(220,38,38,0.12)',  text: '#dc2626' },
+  IGNORE:     { bg: 'rgba(100,116,139,0.12)',text: '#475569' },
+  PENDING:    { bg: 'rgba(37,99,235,0.12)',  text: '#2563eb' },
 }
 const SEV_ORDER = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1, UNKNOWN: 0 }
 
@@ -77,23 +77,23 @@ function RiskSnapshotTooltip({ active, payload, label }) {
   const items = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'UNKNOWN']
   return (
     <div style={{
-      background: '#0f172a',
-      border: '1px solid rgba(255,255,255,0.1)',
+      background: '#ffffff',
+      border: '1px solid #e0e5eb',
       borderRadius: 8,
       padding: '8px 10px',
       fontSize: 11,
       minWidth: 150,
     }}>
-      <p style={{ margin: '0 0 6px', color: '#cbd5e1', fontWeight: 700 }}>{label}</p>
+      <p style={{ margin: '0 0 6px', color: '#334155', fontWeight: 700 }}>{label}</p>
       {items.map(k => (
-        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: 2 }}>
           <span>{k}</span>
-          <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row[k] ?? 0}</span>
+          <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{row[k] ?? 0}</span>
         </div>
       ))}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 6, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
-        <span style={{ color: '#94a3b8' }}>Total</span>
-        <span style={{ color: '#f8fafc', fontWeight: 700, fontFamily: 'monospace' }}>{row.TOTAL ?? 0}</span>
+      <div style={{ borderTop: '1px solid #e0e5eb', marginTop: 6, paddingTop: 4, display: 'flex', justifyContent: 'space-between' }}>
+        <span style={{ color: '#64748b' }}>Total</span>
+        <span style={{ color: '#0f172a', fontWeight: 700, fontFamily: 'monospace' }}>{row.TOTAL ?? 0}</span>
       </div>
     </div>
   )
@@ -106,30 +106,30 @@ function ScanHistoryTooltip({ active, payload }) {
 
   return (
     <div style={{
-      background: '#0f172a',
-      border: '1px solid rgba(255,255,255,0.1)',
+      background: '#ffffff',
+      border: '1px solid #e0e5eb',
       borderRadius: 8,
       padding: '8px 10px',
       fontSize: 11,
       minWidth: 180,
     }}>
-      <p style={{ margin: '0 0 6px', color: '#cbd5e1', fontWeight: 700 }}>
+      <p style={{ margin: '0 0 6px', color: '#334155', fontWeight: 700 }}>
         {row.scanned_at ? new Date(row.scanned_at).toLocaleString('en-AU', { timeZone: 'Australia/Melbourne' }) : 'Unknown run time'}
       </p>
-      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: 2 }}>
         <span>Findings</span>
-        <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row.scans ?? 0}</span>
+        <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{row.scans ?? 0}</span>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginBottom: 2 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', marginBottom: 2 }}>
         <span>Scan ID</span>
-        <span style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{row.scan_short || '—'}</span>
+        <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{row.scan_short || '—'}</span>
       </div>
-      <div style={{ color: '#94a3b8', marginTop: 6 }}>
-        Services: <span style={{ color: '#e2e8f0' }}>{row.services_label || '—'}</span>
+      <div style={{ color: '#64748b', marginTop: 6 }}>
+        Services: <span style={{ color: '#0f172a' }}>{row.services_label || '—'}</span>
       </div>
       {row.scan_mode && (
-        <div style={{ color: '#94a3b8', marginTop: 4 }}>
-          Mode: <span style={{ color: '#e2e8f0' }}>{row.scan_mode}</span>
+        <div style={{ color: '#64748b', marginTop: 4 }}>
+          Mode: <span style={{ color: '#0f172a' }}>{row.scan_mode}</span>
         </div>
       )}
     </div>
@@ -140,9 +140,10 @@ function ScanHistoryTooltip({ active, payload }) {
 function KpiCard({ label, value, sub, icon, color }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+      background: '#ffffff', border: '1px solid #e0e5eb',
       borderRadius: 16, padding: '20px 22px',
       display: 'flex', alignItems: 'center', gap: 18,
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
     }}>
       <div style={{
         width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
@@ -152,7 +153,7 @@ function KpiCard({ label, value, sub, icon, color }) {
         fontSize: 22,
       }}>{icon}</div>
       <div>
-        <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>{label}</p>
+        <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>{label}</p>
         <p style={{ fontSize: 28, fontWeight: 800, color, margin: '2px 0', lineHeight: 1 }}>{value}</p>
         {sub && <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>{sub}</p>}
       </div>
@@ -185,12 +186,12 @@ const STATUS_STAGE = {
 
 function StatusPipeline({ decision, status }) {
   if (decision === 'ESCALATE' || status === 'ESCALATED') return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#fbbf24' }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#d97706' }}>
       ⚠ Escalated — Human Review
     </span>
   )
   if (decision === 'IGNORE') return (
-    <span style={{ fontSize: 12, color: '#64748b' }}>Ignored</span>
+    <span style={{ fontSize: 12, color: '#475569' }}>Ignored</span>
   )
   if (decision === 'AUTO_PATCH' || [
     'DETECTED', 'REASONED', 'DEV_DEPLOYING', 'DEV_HEALTHY',
@@ -225,7 +226,7 @@ function StatusPipeline({ decision, status }) {
         {STAGES.map((s, i) => {
           const done    = i <= active && !failed
           const isFail  = failed && i === 1
-          const color   = isFail ? '#ef4444' : done ? '#22c55e' : '#334155'
+          const color   = isFail ? '#ef4444' : done ? '#22c55e' : '#64748b'
           const glow    = isFail ? '0 0 6px rgba(239,68,68,0.6)' : done ? '0 0 6px rgba(34,197,94,0.5)' : 'none'
           return (
             <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 3 }} title={s.label}>
@@ -235,16 +236,16 @@ function StatusPipeline({ decision, status }) {
                 border: `1px solid ${color}88`,
               }} />
               {i < STAGES.length - 1 && (
-                <div style={{ width: 10, height: 1, background: done && !failed ? '#22c55e44' : '#1e293b' }} />
+                <div style={{ width: 10, height: 1, background: done && !failed ? '#22c55e44' : '#e0e5eb' }} />
               )}
             </div>
           )
         })}
         </div>
-        <span style={{ fontSize: 11, color: failed ? '#ef4444' : '#cbd5e1', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 11, color: failed ? '#ef4444' : '#334155', whiteSpace: 'nowrap' }}>
           {activeLabel}
         </span>
-        <span style={{ fontSize: 10, color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ fontSize: 10, color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {failed ? 'Crossed: Detected' : `Crossed: ${crossed}`}
         </span>
       </div>
@@ -257,7 +258,7 @@ function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
   if (status === 'DEV_FAILED') return (
     <button onClick={onExpand} style={{
       background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
-      color: '#f87171', fontSize: 11, fontWeight: 600,
+      color: '#dc2626', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
     }}>⚠ Failed</button>
   )
@@ -265,8 +266,8 @@ function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
     <div style={{ display: 'flex', gap: 6 }}>
       {prUrl && (
         <a href={prUrl} target="_blank" rel="noopener noreferrer" style={{
-          background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)',
-          color: '#818cf8', fontSize: 11, fontWeight: 600,
+          background: 'rgba(0,156,153,0.12)', border: '1px solid rgba(0,156,153,0.35)',
+          color: '#008c8a', fontSize: 11, fontWeight: 600,
           padding: '5px 10px', borderRadius: 8, cursor: 'pointer',
           textDecoration: 'none', whiteSpace: 'nowrap',
         }}>View PR ↗</a>
@@ -290,21 +291,21 @@ function ActionButton({ decision, status, prUrl, vuln, onApprove, onExpand }) {
   if (decision === 'ESCALATE') return (
     <button onClick={onExpand} style={{
       background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
-      color: '#f87171', fontSize: 11, fontWeight: 600,
+      color: '#dc2626', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
     }}>Review</button>
   )
   if (decision === 'AUTO_PATCH') return (
     <button onClick={onExpand} style={{
       background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.35)',
-      color: '#60a5fa', fontSize: 11, fontWeight: 600,
+      color: '#0369a1', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
     }}>Details</button>
   )
   return (
     <button onClick={onExpand} style={{
       background: 'rgba(148,163,184,0.1)', border: '1px solid rgba(148,163,184,0.2)',
-      color: '#94a3b8', fontSize: 11, fontWeight: 600,
+      color: '#64748b', fontSize: 11, fontWeight: 600,
       padding: '5px 12px', borderRadius: 8, cursor: 'pointer',
     }}>View</button>
   )
@@ -364,11 +365,11 @@ function ExpandedPanel({ vuln, onApprove }) {
 
   return (
     <div style={{
-      background: '#070d1a', border: '1px solid rgba(255,255,255,0.07)',
+      background: '#ffffff', border: '1px solid #e0e5eb',
       borderRadius: 10, margin: '0 0 2px', overflow: 'hidden',
     }}>
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid #e0e5eb' }}>
         {[
           { key: 'ai',       label: '🤖 AI Findings & Reasoning', disabled: false },
           { key: 'evidence', label: '🔬 Deploy Evidence',          disabled: !hasEvidence },
@@ -378,15 +379,15 @@ function ExpandedPanel({ vuln, onApprove }) {
             onClick={() => !t.disabled && setTab(t.key)}
             style={{
               padding: '10px 18px', fontSize: 12, fontWeight: 600,
-              background: tab === t.key ? 'rgba(99,102,241,0.12)' : 'transparent',
+              background: tab === t.key ? 'rgba(0,156,153,0.1)' : 'transparent',
               border: 'none',
-              borderBottom: tab === t.key ? '2px solid #6366f1' : '2px solid transparent',
-              color: t.disabled ? '#334155' : tab === t.key ? '#818cf8' : '#475569',
+              borderBottom: tab === t.key ? '2px solid #009c99' : '2px solid transparent',
+              color: t.disabled ? '#64748b' : tab === t.key ? '#008c8a' : '#475569',
               cursor: t.disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
             }}>
             {t.label}
             {t.disabled && (
-              <span style={{ fontSize: 10, color: '#334155', marginLeft: 6 }}>— after patch</span>
+              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 6 }}>— after patch</span>
             )}
           </button>
         ))}
@@ -401,7 +402,7 @@ function ExpandedPanel({ vuln, onApprove }) {
             <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
               🔍 What I found
             </p>
-            <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: '0 0 12px', fontStyle: 'italic' }}>
+            <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, margin: '0 0 12px', fontStyle: 'italic' }}>
               {narrative}
             </p>
 
@@ -411,32 +412,32 @@ function ExpandedPanel({ vuln, onApprove }) {
               <span>
                 {advisoryUrl
                   ? <a href={advisoryUrl} target="_blank" rel="noopener noreferrer"
-                      style={{ color: '#60a5fa', textDecoration: 'none', fontFamily: 'monospace' }}>
+                      style={{ color: '#0369a1', textDecoration: 'none', fontFamily: 'monospace' }}>
                       {advisoryId} ↗
                     </a>
-                  : <span style={{ color: '#60a5fa', fontFamily: 'monospace' }}>{advisoryId}</span>
+                  : <span style={{ color: '#0369a1', fontFamily: 'monospace' }}>{advisoryId}</span>
                 }
                 {ghsaUrl && advisoryId !== ghsaId && (
                   <a href={ghsaUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#64748b', textDecoration: 'none', fontFamily: 'monospace', marginLeft: 10, fontSize: 11 }}>
+                    style={{ color: '#475569', textDecoration: 'none', fontFamily: 'monospace', marginLeft: 10, fontSize: 11 }}>
                     {ghsaId} ↗
                   </a>
                 )}
                 {nvdUrl && !advisoryId.startsWith('CVE-') && (
                   <a href={nvdUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ color: '#64748b', textDecoration: 'none', marginLeft: 10, fontSize: 11 }}>
+                    style={{ color: '#475569', textDecoration: 'none', marginLeft: 10, fontSize: 11 }}>
                     NVD ↗
                   </a>
                 )}
               </span>
 
               <span style={{ color: '#475569', fontWeight: 600 }}>Scanned file</span>
-              <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>
+              <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11 }}>
                 {vuln.scanned_file || `backend-services/${vuln.service}/requirements.txt`}
               </span>
 
               <span style={{ color: '#475569', fontWeight: 600 }}>Summary</span>
-              <span style={{ color: '#94a3b8' }}>{vuln.cve_summary || '—'}</span>
+              <span style={{ color: '#64748b' }}>{vuln.cve_summary || '—'}</span>
 
               <span style={{ color: '#475569', fontWeight: 600 }}>Safe fix</span>
               <span style={{ color: '#22c55e', fontFamily: 'monospace' }}>
@@ -447,7 +448,7 @@ function ExpandedPanel({ vuln, onApprove }) {
 
           {/* Section 2: My decision */}
           <div style={{
-            borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14,
+            borderTop: '1px solid #eef2f5', paddingTop: 14,
           }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 10px' }}>
               🤖 My decision
@@ -458,13 +459,13 @@ function ExpandedPanel({ vuln, onApprove }) {
                 background: decColor.bg, color: decColor.text,
               }}>{vuln.decision ?? 'PENDING'}</span>
               {vuln.confidence != null && (
-                <span style={{ fontSize: 11, color: '#64748b' }}>confidence: {vuln.confidence}%</span>
+                <span style={{ fontSize: 11, color: '#475569' }}>confidence: {vuln.confidence}%</span>
               )}
               {vuln.risk_score != null && (
-                <span style={{ fontSize: 11, color: '#64748b' }}>risk score: {vuln.risk_score}/10</span>
+                <span style={{ fontSize: 11, color: '#475569' }}>risk score: {vuln.risk_score}/10</span>
               )}
             </div>
-            <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+            <p style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
               "{vuln.reasoning || 'AI reasoning will appear here after Phase 2 is run.'}"
             </p>
 
@@ -476,10 +477,10 @@ function ExpandedPanel({ vuln, onApprove }) {
                     background: 'rgba(59,130,246,0.07)',
                     borderRadius: 8, padding: '10px 12px',
                   }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#93c5fd', margin: '0 0 4px' }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#0369a1', margin: '0 0 4px' }}>
                       Service-aware Risk Context
                     </p>
-                    <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>{vuln.risk_explanation}</p>
+                    <p style={{ fontSize: 12, color: '#334155', margin: 0 }}>{vuln.risk_explanation}</p>
                   </div>
                 )}
 
@@ -489,11 +490,11 @@ function ExpandedPanel({ vuln, onApprove }) {
                     background: 'rgba(245,158,11,0.07)',
                     borderRadius: 8, padding: '10px 12px',
                   }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#fcd34d', margin: '0 0 4px' }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#b45309', margin: '0 0 4px' }}>
                       Changelog + Breaking Risk
                     </p>
-                    <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
-                      Risk: <span style={{ fontFamily: 'monospace', color: '#fbbf24' }}>{vuln.changelog_risk || 'UNKNOWN'}</span>
+                    <p style={{ fontSize: 12, color: '#334155', margin: 0 }}>
+                      Risk: <span style={{ fontFamily: 'monospace', color: '#d97706' }}>{vuln.changelog_risk || 'UNKNOWN'}</span>
                       {vuln.changelog_summary ? ` — ${vuln.changelog_summary}` : ''}
                     </p>
                   </div>
@@ -505,12 +506,12 @@ function ExpandedPanel({ vuln, onApprove }) {
                     background: 'rgba(34,197,94,0.07)',
                     borderRadius: 8, padding: '10px 12px',
                   }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: '#86efac', margin: '0 0 6px' }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', margin: '0 0 6px' }}>
                       Dynamic Validation Plan
                     </p>
                     <div style={{ display: 'grid', gap: 4 }}>
                       {vuln.validation_plan.slice(0, 5).map((step, idx) => (
-                        <p key={`${idx}-${step}`} style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
+                        <p key={`${idx}-${step}`} style={{ fontSize: 12, color: '#334155', margin: 0 }}>
                           {idx + 1}. {step}
                         </p>
                       ))}
@@ -531,15 +532,15 @@ function ExpandedPanel({ vuln, onApprove }) {
               background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
               borderRadius: 10, padding: '14px 18px',
             }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#f87171', margin: '0 0 6px' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: '0 0 6px' }}>
                 ❌ Dev deployment failed — no PR raised
               </p>
-              <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 8px' }}>
+              <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 8px' }}>
                 {ev.failure_reason || 'One or more health checks did not pass. Check the Health & Container Logs tab for details.'}
               </p>
               {ev.workflow_run && (
                 <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
-                  style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>
+                  style={{ fontSize: 11, color: '#0369a1', textDecoration: 'none' }}>
                   View GitHub Actions run ↗
                 </a>
               )}
@@ -569,7 +570,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                     borderRadius: 8, padding: '10px 14px', textAlign: 'center',
                   }}>
                     <div style={{ fontSize: 18, marginBottom: 4 }}>{card.ok ? '✅' : '❌'}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0', fontFamily: 'monospace' }}>{card.value}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>{card.value}</div>
                     <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>{card.label}</div>
                   </div>
                 ))}
@@ -579,30 +580,30 @@ function ExpandedPanel({ vuln, onApprove }) {
               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', fontSize: 12, marginBottom: 16 }}>
                 {ev.image && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Image</span>
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.image}</span>
+                  <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.image}</span>
                 </>}
                 {ev.source_branch && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Feature Branch</span>
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.source_branch}</span>
+                  <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{ev.source_branch}</span>
                 </>}
                 {ev.source_commit && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>Commit SHA</span>
                   <span
                     title={ev.source_commit}
-                    style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}
+                    style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}
                   >
                     {ev.source_commit_short || ev.source_commit.slice(0, 7)}
                   </span>
                 </>}
                 {ev.ecr_image_digest && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>ECR Digest</span>
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
+                  <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
                     {ev.ecr_image_digest}
                   </span>
                 </>}
                 {ev.ecs_image_digest && <>
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>ECS Running Digest</span>
-                  <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
+                  <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
                     {ev.ecs_image_digest}
                   </span>
                 </>}
@@ -611,7 +612,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                   <a href={`https://us-east-1.console.aws.amazon.com/ecs/v2/clusters/orderflow-dev/tasks`}
                     target="_blank" rel="noopener noreferrer"
                     style={{
-                      color: '#60a5fa',
+                      color: '#0369a1',
                       fontFamily: 'monospace',
                       fontSize: 11,
                       textDecoration: 'none',
@@ -627,7 +628,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                   <span style={{ color: '#475569', fontWeight: 600, lineHeight: '1.8' }}>CI Run</span>
                   <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
                     style={{
-                      color: '#60a5fa',
+                      color: '#0369a1',
                       fontSize: 11,
                       textDecoration: 'none',
                       display: 'inline-flex',
@@ -642,9 +643,9 @@ function ExpandedPanel({ vuln, onApprove }) {
               {/* Audit-grade artifact checks */}
               {(ev.source_commit || ev.ecr_image_digest || ev.ecs_image_digest || patchVerify || runtimeVerify) && (
                 <div style={{
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid #eef2f5',
                   borderRadius: 10, padding: '12px 14px',
-                  background: 'rgba(15,23,42,0.45)', marginBottom: 16,
+                  background: '#f8fafc', marginBottom: 16,
                 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     Audit Evidence
@@ -655,10 +656,10 @@ function ExpandedPanel({ vuln, onApprove }) {
                       background: digestMatch ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
                       borderRadius: 8, padding: '10px 12px',
                     }}>
-                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                      <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 700 }}>
                         {digestMatch ? '✅ Image Digest Match' : '❌ Digest Mismatch'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
                         ECS running digest vs ECR digest
                       </div>
                     </div>
@@ -677,14 +678,14 @@ function ExpandedPanel({ vuln, onApprove }) {
                           : 'rgba(239,68,68,0.08)',
                       borderRadius: 8, padding: '10px 12px',
                     }}>
-                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                      <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 700 }}>
                         {patchVerifyOk
                           ? '✅ Patch Verified In Image'
                           : patchVerifyWarn
                             ? '⚠️ Image Verification Warning'
                             : '❌ Patch Verification Failed'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
                         {patchVerifyWarn
                           ? 'Image check mismatched, but runtime container verification passed'
                           : 'CI checks package versions in built container image'}
@@ -695,15 +696,15 @@ function ExpandedPanel({ vuln, onApprove }) {
                       background: runtimeVerifyOk ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
                       borderRadius: 8, padding: '10px 12px',
                     }}>
-                      <div style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>
+                      <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 700 }}>
                         {runtimeVerifyOk ? '✅ Patch Verified In Runtime Container' : '❌ Runtime Verification Missing/Failed'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
                         {runtimeTotal > 0
                           ? `Best-effort from live startup logs (${runtimeChecked}/${runtimeTotal} packages marked)`
                           : 'Best-effort from live task startup logs in CloudWatch'}
                       </div>
-                      <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
                         Runtime check is advisory; image verification + digest match are primary proof.
                       </div>
                     </div>
@@ -713,18 +714,18 @@ function ExpandedPanel({ vuln, onApprove }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
                       <thead>
                         <tr>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Package</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Built Image (CI)</th>
-                          <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Package</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Expected</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Found In Built Image (CI)</th>
+                          <th style={{ fontSize: 10, textAlign: 'right', color: '#64748b', padding: '6px 4px' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {patchVerify.results.map((r, i) => (
-                          <tr key={`${r.package}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
+                          <tr key={`${r.package}-${i}`} style={{ borderTop: '1px solid #eef2f5' }}>
+                            <td style={{ fontSize: 11, color: '#64748b', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
                             <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
-                            <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
+                            <td style={{ fontSize: 11, color: '#0f172a', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
                             <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
                               {r.ok === true ? '✅' : r.ok === false ? '❌' : '—'}
                             </td>
@@ -738,18 +739,18 @@ function ExpandedPanel({ vuln, onApprove }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 10 }}>
                       <thead>
                         <tr>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Runtime Package</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Expected</th>
-                          <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Found In Running Container Logs</th>
-                          <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Status</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Runtime Package</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Expected</th>
+                          <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Found In Running Container Logs</th>
+                          <th style={{ fontSize: 10, textAlign: 'right', color: '#64748b', padding: '6px 4px' }}>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {runtimeVerify.results.map((r, i) => (
-                          <tr key={`runtime-${r.package}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                            <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
+                          <tr key={`runtime-${r.package}-${i}`} style={{ borderTop: '1px solid #eef2f5' }}>
+                            <td style={{ fontSize: 11, color: '#64748b', padding: '6px 4px', fontFamily: 'monospace' }}>{r.package}</td>
                             <td style={{ fontSize: 11, color: '#22c55e', padding: '6px 4px', fontFamily: 'monospace' }}>{r.expected}</td>
-                            <td style={{ fontSize: 11, color: '#e2e8f0', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
+                            <td style={{ fontSize: 11, color: '#0f172a', padding: '6px 4px', fontFamily: 'monospace' }}>{r.found}</td>
                             <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
                               {r.ok === true ? '✅' : r.ok === false ? '❌' : '—'}
                             </td>
@@ -764,9 +765,9 @@ function ExpandedPanel({ vuln, onApprove }) {
               {/* Validation execution evidence (from AI plan) */}
               {validationEvidence?.checks?.length > 0 && (
                 <div style={{
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  border: '1px solid #eef2f5',
                   borderRadius: 10, padding: '12px 14px',
-                  background: 'rgba(15,23,42,0.45)', marginBottom: 16,
+                  background: '#f8fafc', marginBottom: 16,
                 }}>
                   <p style={{ fontSize: 11, fontWeight: 700, color: '#475569', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     Validation Evidence
@@ -774,32 +775,32 @@ function ExpandedPanel({ vuln, onApprove }) {
                   <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                     <span style={{
                       fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 99,
-                      color: validationEvidence.overall === 'FAIL' ? '#f87171' : validationEvidence.overall === 'PASS' ? '#22c55e' : '#f59e0b',
+                      color: validationEvidence.overall === 'FAIL' ? '#dc2626' : validationEvidence.overall === 'PASS' ? '#22c55e' : '#f59e0b',
                       background: validationEvidence.overall === 'FAIL' ? 'rgba(239,68,68,0.15)' : validationEvidence.overall === 'PASS' ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
                     }}>
                       {validationEvidence.overall || ev.validation_overall || 'PASS_WITH_WARNINGS'}
                     </span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>
+                    <span style={{ fontSize: 11, color: '#475569' }}>
                       PASS {validationEvidence?.summary?.pass ?? 0} • WARN {validationEvidence?.summary?.warn ?? 0} • FAIL {validationEvidence?.summary?.fail ?? 0}
                     </span>
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Check</th>
-                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Request / Endpoint</th>
-                        <th style={{ fontSize: 10, textAlign: 'left', color: '#334155', padding: '6px 4px' }}>Summary</th>
-                        <th style={{ fontSize: 10, textAlign: 'right', color: '#334155', padding: '6px 4px' }}>Result</th>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Check</th>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Request / Endpoint</th>
+                        <th style={{ fontSize: 10, textAlign: 'left', color: '#64748b', padding: '6px 4px' }}>Summary</th>
+                        <th style={{ fontSize: 10, textAlign: 'right', color: '#64748b', padding: '6px 4px' }}>Result</th>
                       </tr>
                     </thead>
                     <tbody>
                       {validationEvidence.checks.map((c, i) => (
-                        <tr key={`${c.check_name}-${i}`} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ fontSize: 11, color: '#94a3b8', padding: '6px 4px' }}>{c.check_name}</td>
-                          <td style={{ fontSize: 11, color: '#cbd5e1', padding: '6px 4px', fontFamily: 'monospace' }}>
+                        <tr key={`${c.check_name}-${i}`} style={{ borderTop: '1px solid #eef2f5' }}>
+                          <td style={{ fontSize: 11, color: '#64748b', padding: '6px 4px' }}>{c.check_name}</td>
+                          <td style={{ fontSize: 11, color: '#334155', padding: '6px 4px', fontFamily: 'monospace' }}>
                             {c.endpoint || '—'}
                           </td>
-                          <td style={{ fontSize: 11, color: '#cbd5e1', padding: '6px 4px' }}>{c.summary || '—'}</td>
+                          <td style={{ fontSize: 11, color: '#334155', padding: '6px 4px' }}>{c.summary || '—'}</td>
                           <td style={{ fontSize: 11, textAlign: 'right', padding: '6px 4px' }}>
                             {c.result === 'PASS' ? '✅ PASS' : c.result === 'FAIL' ? '❌ FAIL' : '⚠️ WARN'}
                           </td>
@@ -811,11 +812,11 @@ function ExpandedPanel({ vuln, onApprove }) {
               )}
 
               {/* Action buttons */}
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', paddingTop: 12, borderTop: '1px solid #eef2f5' }}>
                 {vuln.pr_url && (
                   <a href={vuln.pr_url} target="_blank" rel="noopener noreferrer" style={{
-                    background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.35)',
-                    color: '#818cf8', fontSize: 12, fontWeight: 600,
+                    background: 'rgba(0,156,153,0.12)', border: '1px solid rgba(0,156,153,0.35)',
+                    color: '#008c8a', fontSize: 12, fontWeight: 600,
                     padding: '7px 14px', borderRadius: 8, cursor: 'pointer',
                     textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6,
                   }}>
@@ -861,9 +862,9 @@ function ExpandedPanel({ vuln, onApprove }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
             <thead>
               <tr>
-                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'left', fontWeight: 600 }}>Check</th>
-                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'left', fontWeight: 600 }}>Value</th>
-                <th style={{ padding: '6px 12px', fontSize: 11, color: '#334155', textAlign: 'right', fontWeight: 600 }}>Result</th>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#64748b', textAlign: 'left', fontWeight: 600 }}>Check</th>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#64748b', textAlign: 'left', fontWeight: 600 }}>Value</th>
+                <th style={{ padding: '6px 12px', fontSize: 11, color: '#64748b', textAlign: 'right', fontWeight: 600 }}>Result</th>
               </tr>
             </thead>
             <tbody>
@@ -891,9 +892,9 @@ function ExpandedPanel({ vuln, onApprove }) {
                   ok: ev.error_log_ok,
                 },
               ].map(row => (
-                <tr key={row.label} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#64748b', width: 200 }}>{row.label}</td>
-                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#e2e8f0', fontFamily: 'monospace' }}>{row.value}</td>
+                <tr key={row.label} style={{ borderBottom: '1px solid #eef2f5' }}>
+                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#475569', width: 200 }}>{row.label}</td>
+                  <td style={{ padding: '8px 12px', fontSize: 12, color: '#0f172a', fontFamily: 'monospace' }}>{row.value}</td>
                   <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                     {row.ok
                       ? <span style={{ color: '#22c55e' }}>✅ Pass</span>
@@ -914,26 +915,26 @@ function ExpandedPanel({ vuln, onApprove }) {
               <div style={{ display: 'grid', gap: 8, marginBottom: 18 }}>
                 {validationEvidence.checks.map((c, i) => (
                   <div key={`val-log-${i}`} style={{
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 8, background: 'rgba(2,8,16,0.65)', padding: '10px 12px',
+                    border: '1px solid #eef2f5',
+                    borderRadius: 8, background: '#f8fafc', padding: '10px 12px',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                      <span style={{ fontSize: 12, color: '#e2e8f0', fontWeight: 700 }}>{c.check_name}</span>
+                      <span style={{ fontSize: 12, color: '#0f172a', fontWeight: 700 }}>{c.check_name}</span>
                       <span style={{ fontSize: 11, color: c.result === 'PASS' ? '#22c55e' : c.result === 'FAIL' ? '#ef4444' : '#f59e0b' }}>
                         {c.result || 'WARN'}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>
                       Request: {c.endpoint || '—'} | Expected: {c.expected_status ?? '—'} | Actual: {c.actual_status ?? '—'} | Latency: {c.response_time_ms ?? '—'}ms
                     </div>
                     {c.summary && (
-                      <div style={{ fontSize: 11, color: '#cbd5e1', marginTop: 4 }}>{c.summary}</div>
+                      <div style={{ fontSize: 11, color: '#334155', marginTop: 4 }}>{c.summary}</div>
                     )}
                     {c.response && (
                       <pre style={{
                         margin: '6px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                        fontSize: 10, color: '#94a3b8', fontFamily: 'monospace',
-                        background: 'rgba(15,23,42,0.6)', borderRadius: 6, padding: '6px 8px',
+                        fontSize: 10, color: '#64748b', fontFamily: 'monospace',
+                        background: '#f1f5f9', borderRadius: 6, padding: '6px 8px',
                         maxHeight: 120, overflowY: 'auto',
                       }}>
                         {typeof c.response === 'string' ? c.response : JSON.stringify(c.response, null, 2)}
@@ -942,8 +943,8 @@ function ExpandedPanel({ vuln, onApprove }) {
                     {c.logs && (
                       <pre style={{
                         margin: '6px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                        fontSize: 10, color: '#64748b', fontFamily: 'monospace',
-                        background: 'rgba(2,8,16,0.8)', borderRadius: 6, padding: '6px 8px',
+                        fontSize: 10, color: '#475569', fontFamily: 'monospace',
+                        background: '#f1f5f9', borderRadius: 6, padding: '6px 8px',
                         maxHeight: 120, overflowY: 'auto',
                       }}>
                         {c.logs}
@@ -961,8 +962,8 @@ function ExpandedPanel({ vuln, onApprove }) {
             CloudWatch Container Logs
           </p>
           <div style={{
-            background: '#020810',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#f8fafc',
+            border: '1px solid #e0e5eb',
             borderRadius: 10, padding: '12px 16px',
             fontFamily: '"Fira Code", "Cascadia Code", monospace',
             fontSize: 11, lineHeight: 1.7,
@@ -973,7 +974,7 @@ function ExpandedPanel({ vuln, onApprove }) {
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} />
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} />
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
-              <span style={{ fontSize: 10, color: '#334155', marginLeft: 8 }}>
+              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 8 }}>
                 /ecs/orderflow/dev/{vuln.service}
               </span>
             </div>
@@ -984,7 +985,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                 const isOk   = /startup complete|Application startup|Started server/i.test(line)
                 return (
                   <div key={i} style={{
-                    color: isErr ? '#f87171' : isWarn ? '#fbbf24' : isOk ? '#22c55e' : '#64748b',
+                    color: isErr ? '#dc2626' : isWarn ? '#d97706' : isOk ? '#22c55e' : '#475569',
                     padding: '1px 0',
                   }}>
                     {line.trim()}
@@ -992,7 +993,7 @@ function ExpandedPanel({ vuln, onApprove }) {
                 )
               })
             ) : (
-              <span style={{ color: '#334155', fontStyle: 'italic' }}>
+              <span style={{ color: '#64748b', fontStyle: 'italic' }}>
                 No log excerpt available — check GitHub Actions for full output
               </span>
             )}
@@ -1001,7 +1002,7 @@ function ExpandedPanel({ vuln, onApprove }) {
           {ev.workflow_run && (
             <div style={{ marginTop: 12, textAlign: 'right' }}>
               <a href={ev.workflow_run} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 11, color: '#60a5fa', textDecoration: 'none' }}>
+                style={{ fontSize: 11, color: '#0369a1', textDecoration: 'none' }}>
                 View full logs in GitHub Actions ↗
               </a>
             </div>
@@ -1059,7 +1060,7 @@ export default function SecurityDashboard() {
   if (loading) return (
     <>
       <div style={darkPage}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, color: '#64748b' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, color: '#475569' }}>
           <div style={{ fontSize: 28, animation: 'spin 1s linear infinite' }}>↻</div>
           <p style={{ fontSize: 13 }}>Loading scan results…</p>
         </div>
@@ -1071,28 +1072,28 @@ export default function SecurityDashboard() {
   if (error) return (
     <div style={darkPage}>
       <div style={{
-        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        background: '#ffffff', border: '1px solid #e0e5eb',
         borderRadius: 20, padding: '40px 48px', maxWidth: 460, width: '100%', textAlign: 'center',
       }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🛡</div>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', margin: '0 0 8px' }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: '0 0 8px' }}>
           {routeState?.scan_id ? 'Scan complete — results loading issue' : 'No scan results yet'}
         </h2>
         {routeState?.scan_id && (
           <div style={{
-            background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)',
+            background: 'rgba(0,156,153,0.1)', border: '1px solid rgba(0,156,153,0.2)',
             borderRadius: 10, padding: '10px 14px', marginBottom: 14, textAlign: 'left',
           }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', margin: '0 0 4px' }}>Last scan summary</p>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: '0 0 2px', fontFamily: 'monospace' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: '#008c8a', margin: '0 0 4px' }}>Last scan summary</p>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 2px', fontFamily: 'monospace' }}>
               Scan ID: {routeState.scan_id}
             </p>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-              Found: <strong style={{ color: '#f1f5f9' }}>{routeState.total}</strong> vulnerabilities
+            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
+              Found: <strong style={{ color: '#0f172a' }}>{routeState.total}</strong> vulnerabilities
             </p>
           </div>
         )}
-        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>
+        <p style={{ fontSize: 13, color: '#475569', marginBottom: 24 }}>
           {routeState?.scan_id
             ? 'Data may still be indexing. Click Retry in a moment.'
             : 'Run a scan first to populate this dashboard.'}
@@ -1115,12 +1116,12 @@ export default function SecurityDashboard() {
   if (!loading && !error && vulns.length === 0) return (
     <div style={darkPage}>
       <div style={{
-        background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        background: '#ffffff', border: '1px solid #e0e5eb',
         borderRadius: 20, padding: '40px 48px', maxWidth: 420, textAlign: 'center',
       }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>✓</div>
         <h2 style={{ fontSize: 18, fontWeight: 700, color: '#22c55e', marginBottom: 8 }}>All Clear</h2>
-        <p style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>
+        <p style={{ fontSize: 13, color: '#475569', marginBottom: 24 }}>
           No active vulnerabilities found. Run a new scan to check again.
         </p>
         <button onClick={() => navigate('/security')} style={btnPrimary}>▶ Run a Scan</button>
@@ -1289,15 +1290,15 @@ export default function SecurityDashboard() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0d1b2a 100%)',
-      padding: '28px 32px', color: '#e2e8f0', fontFamily: 'inherit',
+      background: '#eaeef3',
+      padding: '28px 32px', color: '#0f172a', fontFamily: 'inherit',
     }}>
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#f1f5f9' }}>Security Dashboard</h1>
-          <p style={{ fontSize: 13, color: '#64748b', margin: '3px 0 0' }}>AI-analysed vulnerability findings</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, color: '#0f172a' }}>Security Dashboard</h1>
+          <p style={{ fontSize: 13, color: '#475569', margin: '3px 0 0' }}>AI-analysed vulnerability findings</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={fetchData} style={btnSecondary}>↻ Refresh</button>
@@ -1307,20 +1308,21 @@ export default function SecurityDashboard() {
 
       {/* ── Scan info bar ───────────────────────────────────────── */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+        background: '#ffffff', border: '1px solid #e0e5eb',
         borderRadius: 12, padding: '12px 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         marginBottom: 20,
+        boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
       }}>
         <div>
-          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
             Last scan: {timeAgo(lastScan)}
           </span>
           <span style={{ fontSize: 12, color: '#475569', marginLeft: 14 }}>
             Monitoring: order-service, invoice-service, bff
           </span>
         </div>
-        <span style={{ fontSize: 11, color: '#334155', fontFamily: 'monospace' }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
           {history[0]?.scan_id ?? '—'}
         </span>
       </div>
@@ -1347,12 +1349,12 @@ export default function SecurityDashboard() {
         }}>
           <span style={{ fontSize: 20 }}>⚠️</span>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#fbbf24', margin: '0 0 2px' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#d97706', margin: '0 0 2px' }}>
               AI Reasoning not yet run (Phase 2)
             </p>
             <p style={{ fontSize: 12, color: '#92400e', margin: 0 }}>
               All findings show ESCALATE because the reasoner hasn't analysed them yet.
-              Trigger Phase 2 from GitHub Actions → <code style={{ color: '#fbbf24' }}>vulnerability-agent</code> → Run workflow → action: <code style={{ color: '#fbbf24' }}>reason</code>
+              Trigger Phase 2 from GitHub Actions → <code style={{ color: '#d97706' }}>vulnerability-agent</code> → Run workflow → action: <code style={{ color: '#d97706' }}>reason</code>
             </p>
           </div>
         </div>
@@ -1368,9 +1370,9 @@ export default function SecurityDashboard() {
           if (s !== 'ALL' && count === 0) return null
           return (
             <button key={s} onClick={() => setSevFilter(s)} style={{
-              background: active ? `${c.dark}22` : 'rgba(255,255,255,0.04)',
-              border: `1px solid ${active ? c.dark + '66' : 'rgba(255,255,255,0.08)'}`,
-              color: active ? c.dark : '#64748b',
+              background: active ? `${c.dark}22` : '#ffffff',
+              border: `1px solid ${active ? c.dark + '66' : '#e0e5eb'}`,
+              color: active ? c.dark : '#475569',
               fontSize: 11, fontWeight: 600, padding: '5px 12px',
               borderRadius: 99, cursor: 'pointer', transition: 'all 0.2s',
             }}>{s} {s !== 'ALL' ? `(${count})` : `(${count})`}</button>
@@ -1380,9 +1382,9 @@ export default function SecurityDashboard() {
           {/* Group toggle */}
           <button onClick={() => setGroupBy(g => !g)} style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            background: groupBy ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.05)',
-            border: `1px solid ${groupBy ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.1)'}`,
-            color: groupBy ? '#818cf8' : '#64748b',
+            background: groupBy ? 'rgba(0,156,153,0.12)' : '#f8fafc',
+            border: `1px solid ${groupBy ? 'rgba(0,156,153,0.4)' : '#e0e5eb'}`,
+            color: groupBy ? '#008c8a' : '#475569',
             fontSize: 11, fontWeight: 600, padding: '6px 12px',
             borderRadius: 8, cursor: 'pointer', whiteSpace: 'nowrap',
           }}>
@@ -1392,17 +1394,17 @@ export default function SecurityDashboard() {
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search package, CVE, service…"
             style={{
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#e2e8f0',
+              background: '#f8fafc', border: '1px solid #e0e5eb',
+              borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#0f172a',
               outline: 'none', width: 200,
             }} />
           <select value={decFilter} onChange={e => setDecFilter(e.target.value)}
             style={{
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#e2e8f0', outline: 'none',
+              background: '#f8fafc', border: '1px solid #e0e5eb',
+              borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#0f172a', outline: 'none',
             }}>
             {['ALL', 'AUTO_PATCH', 'ESCALATE', 'IGNORE', 'PENDING'].map(d => (
-              <option key={d} value={d} style={{ background: '#0f172a' }}>
+              <option key={d} value={d} style={{ background: '#ffffff' }}>
                 {d === 'ALL' ? 'All Decisions' : d}
               </option>
             ))}
@@ -1412,25 +1414,26 @@ export default function SecurityDashboard() {
 
       {/* ── Active Vulnerabilities table ─────────────────────────── */}
       <div style={{
-        background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+        background: '#ffffff', border: '1px solid #e0e5eb',
         borderRadius: 16, overflow: 'hidden', marginBottom: 24,
+        boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '14px 20px', borderBottom: '1px solid #eef2f5',
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>Active Vulnerabilities</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Active Vulnerabilities</p>
           <span style={{ fontSize: 12, color: '#475569' }}>
             {filtered.length} unique finding{filtered.length !== 1 ? 's' : ''}
             {groupBy && vulns.length !== filtered.length
-              ? <span style={{ color: '#334155', marginLeft: 6 }}>({vulns.length} total across services)</span>
+              ? <span style={{ color: '#64748b', marginLeft: 6 }}>({vulns.length} total across services)</span>
               : ''}
           </span>
         </div>
 
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <tr style={{ borderBottom: '1px solid #eef2f5' }}>
               {[
                 { col: null,       label: ''                },
                 { col: 'service',  label: 'Service'         },
@@ -1456,7 +1459,7 @@ export default function SecurityDashboard() {
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#334155', fontSize: 13 }}>
+              <tr><td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
                 No vulnerabilities match the current filters.
               </td></tr>
             )}
@@ -1470,8 +1473,8 @@ export default function SecurityDashboard() {
                 <tr key={`row-${i}`}
                   onClick={toggleExpand}
                   style={{
-                    borderBottom: isOpen ? 'none' : '1px solid rgba(255,255,255,0.04)',
-                    background: isOpen ? 'rgba(255,255,255,0.04)' : 'transparent',
+                    borderBottom: isOpen ? 'none' : '1px solid #eef2f5',
+                    background: isOpen ? '#ffffff' : 'transparent',
                     transition: 'background 0.2s', cursor: 'pointer',
                   }}>
                   {/* Expand toggle */}
@@ -1489,20 +1492,20 @@ export default function SecurityDashboard() {
                           {v._services.map(s => (
                             <span key={s} style={{
                               fontSize: 10, fontFamily: 'monospace', fontWeight: 600,
-                              background: 'rgba(99,102,241,0.12)', color: '#818cf8',
-                              border: '1px solid rgba(99,102,241,0.25)',
+                              background: 'rgba(0,156,153,0.1)', color: '#008c8a',
+                              border: '1px solid rgba(0,156,153,0.25)',
                               padding: '2px 7px', borderRadius: 99,
                             }}>{s}</span>
                           ))}
                         </div>
-                      : <span style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'monospace' }}>
+                      : <span style={{ fontSize: 12, color: '#64748b', fontFamily: 'monospace' }}>
                           {v._services?.[0] ?? v.service}
                         </span>
                     }
                   </td>
 
                   {/* Package */}
-                  <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>
+                  <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
                     <div>{v.package}</div>
                     <div style={{ fontSize: 10, color: '#475569', fontFamily: 'monospace', marginTop: 2 }}>
                       {(v.advisory_id || v.cve_id || v.ghsa_id || '').slice(0, 24)}
@@ -1547,7 +1550,7 @@ export default function SecurityDashboard() {
 
                 // Expanded two-tab panel
                 isOpen && (
-                  <tr key={`panel-${i}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                  <tr key={`panel-${i}`} style={{ borderBottom: '1px solid #eef2f5' }}>
                     <td colSpan={8} style={{ padding: '0 16px 12px' }}>
                       <ExpandedPanel
                         vuln={v}
@@ -1567,20 +1570,21 @@ export default function SecurityDashboard() {
 
         {/* Scan history chart */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          background: '#ffffff', border: '1px solid #e0e5eb',
           borderRadius: 16, padding: '20px 24px',
+          boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>Scan History</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: 0 }}>Scan History</p>
             <select value={historyRange} onChange={e => setHistoryRange(e.target.value)} style={{
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#94a3b8', outline: 'none',
+              background: '#eef2f5', border: '1px solid #e0e5eb',
+              borderRadius: 8, padding: '4px 10px', fontSize: 11, color: '#64748b', outline: 'none',
             }}>
-              <option value="today" style={{ background: '#0f172a' }}>Today</option>
-              <option value="yesterday" style={{ background: '#0f172a' }}>Yesterday</option>
-              <option value="2d" style={{ background: '#0f172a' }}>Last 2 Days</option>
-              <option value="3d" style={{ background: '#0f172a' }}>Last 3 Days</option>
-              <option value="7d" style={{ background: '#0f172a' }}>Last 7 Days</option>
+              <option value="today" style={{ background: '#ffffff' }}>Today</option>
+              <option value="yesterday" style={{ background: '#ffffff' }}>Yesterday</option>
+              <option value="2d" style={{ background: '#ffffff' }}>Last 2 Days</option>
+              <option value="3d" style={{ background: '#ffffff' }}>Last 3 Days</option>
+              <option value="7d" style={{ background: '#ffffff' }}>Last 7 Days</option>
             </select>
           </div>
           {chartData.length === 0 ? (
@@ -1592,10 +1596,10 @@ export default function SecurityDashboard() {
               textAlign: 'center', padding: 16,
             }}>
               <div>
-                <p style={{ fontSize: 12, color: '#cbd5e1', margin: '0 0 4px' }}>
+                <p style={{ fontSize: 12, color: '#334155', margin: '0 0 4px' }}>
                   No scans recorded for {historyRangeLabel(historyRange)}.
                 </p>
-                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>
                   Run Scan on the scan page, or switch to Yesterday / Last 7 Days to see earlier runs.
                 </p>
               </div>
@@ -1603,29 +1607,30 @@ export default function SecurityDashboard() {
           ) : (
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
               <Tooltip
-                cursor={{ stroke: 'rgba(59,130,246,0.25)', strokeWidth: 1 }}
+                cursor={{ stroke: 'rgba(0,156,153,0.3)', strokeWidth: 1 }}
                 content={<ScanHistoryTooltip />}
               />
-              <Line type="monotone" dataKey="scans" stroke="#3b82f6" strokeWidth={2.5}
-                dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6, boxShadow: '0 0 10px #3b82f6' }} />
+              <Line type="monotone" dataKey="scans" stroke="#009c99" strokeWidth={2.5}
+                dot={{ fill: '#009c99', r: 4 }} activeDot={{ r: 6, boxShadow: '0 0 10px #009c99' }} />
             </LineChart>
           </ResponsiveContainer>
           )}
-          <p style={{ fontSize: 11, color: '#64748b', margin: '10px 0 0' }}>
+          <p style={{ fontSize: 11, color: '#475569', margin: '10px 0 0' }}>
             Y-axis = total findings per scan run (across services included in that run).
           </p>
         </div>
 
         {/* Service Risk Snapshot */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          background: '#ffffff', border: '1px solid #e0e5eb',
           borderRadius: 16, padding: '20px 24px',
+          boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: '0 0 16px' }}>
             Service Risk Snapshot
           </p>
           {serviceRiskData.length === 0 ? (
@@ -1637,32 +1642,32 @@ export default function SecurityDashboard() {
               textAlign: 'center', padding: 16,
             }}>
               <div>
-                <p style={{ fontSize: 12, color: '#cbd5e1', margin: '0 0 4px' }}>No active vulnerabilities right now.</p>
-                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>Run a scan to populate service-wise risk distribution.</p>
+                <p style={{ fontSize: 12, color: '#334155', margin: '0 0 4px' }}>No active vulnerabilities right now.</p>
+                <p style={{ fontSize: 11, color: '#475569', margin: 0 }}>Run a scan to populate service-wise risk distribution.</p>
               </div>
             </div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={serviceRiskData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f8fafc" />
                   <XAxis dataKey="service" tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#475569' }} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={{ fill: 'rgba(148,163,184,0.08)' }}
                     content={<RiskSnapshotTooltip />}
                   />
-                  <Legend wrapperStyle={{ fontSize: 10, color: '#64748b' }} />
+                  <Legend wrapperStyle={{ fontSize: 10, color: '#475569' }} />
                   <Bar dataKey="CRITICAL" stackId="sev" fill="#ef4444" />
                   <Bar dataKey="HIGH"     stackId="sev" fill="#f97316" />
                   <Bar dataKey="MEDIUM"   stackId="sev" fill="#eab308" />
                   <Bar dataKey="LOW"      stackId="sev" fill="#22c55e" />
-                  <Bar dataKey="UNKNOWN"  stackId="sev" fill="#64748b">
-                    <LabelList dataKey="TOTAL" position="top" fill="#cbd5e1" fontSize={10} />
+                  <Bar dataKey="UNKNOWN"  stackId="sev" fill="#475569">
+                    <LabelList dataKey="TOTAL" position="top" fill="#334155" fontSize={10} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <p style={{ fontSize: 11, color: '#64748b', margin: '10px 0 0' }}>
+              <p style={{ fontSize: 11, color: '#475569', margin: '10px 0 0' }}>
                 Active vulnerability count by service and severity.
               </p>
             </>
@@ -1671,39 +1676,40 @@ export default function SecurityDashboard() {
 
         {/* Execution timeline (real events) */}
         <div style={{
-          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+          background: '#ffffff', border: '1px solid #e0e5eb',
           borderRadius: 16, padding: '20px 24px',
+          boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
         }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: '0 0 16px' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', margin: '0 0 16px' }}>
             Execution Timeline (Latest AUTO_PATCH)
           </p>
           {!latestAuto ? (
-            <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>No AUTO_PATCH execution events yet.</p>
+            <p style={{ fontSize: 12, color: '#475569', margin: 0 }}>No AUTO_PATCH execution events yet.</p>
           ) : (
             <>
               <div style={{
-                background: 'rgba(99,102,241,0.08)',
-                border: '1px solid rgba(99,102,241,0.2)',
+                background: 'rgba(0,156,153,0.08)',
+                border: '1px solid rgba(0,156,153,0.2)',
                 borderRadius: 10, padding: '10px 12px',
                 marginBottom: 14,
               }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: '#818cf8', margin: '0 0 4px' }}>AI Summary</p>
-                <p style={{ fontSize: 12, color: '#cbd5e1', margin: 0 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#008c8a', margin: '0 0 4px' }}>AI Summary</p>
+                <p style={{ fontSize: 12, color: '#334155', margin: 0 }}>
                   {`Service ${latestAuto.service}: ${executionSummary}`}
                 </p>
               </div>
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 10 }}>
+              <div style={{ borderTop: '1px solid #eef2f5', paddingTop: 10 }}>
                 {executionEvents.map((e) => (
                   <div key={e.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{
                         width: 8, height: 8, borderRadius: '50%',
-                        background: e.done ? '#22c55e' : '#334155',
+                        background: e.done ? '#22c55e' : '#64748b',
                         boxShadow: e.done ? '0 0 8px rgba(34,197,94,0.5)' : 'none',
                       }} />
-                      <span style={{ fontSize: 11, color: e.done ? '#cbd5e1' : '#64748b' }}>{e.label}</span>
+                      <span style={{ fontSize: 11, color: e.done ? '#334155' : '#475569' }}>{e.label}</span>
                     </div>
-                    <span style={{ fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>
+                    <span style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>
                       {e.iso ? new Date(e.iso).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
                     </span>
                   </div>
@@ -1723,24 +1729,24 @@ export default function SecurityDashboard() {
 // ── Shared styles ─────────────────────────────────────────────────────────────
 const darkPage = {
   minHeight: '100vh',
-  background: 'linear-gradient(135deg, #0a0f1e 0%, #0f172a 60%, #0d1b2a 100%)',
+  background: '#eaeef3',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   padding: 32,
 }
 
 const btnPrimary = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
-  background: 'linear-gradient(135deg, #3b82f6, #6366f1)',
+  background: 'linear-gradient(135deg, #009c99, #008c8a)',
   border: 'none', color: '#fff',
   padding: '9px 20px', borderRadius: 10,
   fontSize: 13, fontWeight: 600, cursor: 'pointer',
-  boxShadow: '0 4px 16px rgba(59,130,246,0.35)',
+  boxShadow: '0 4px 16px rgba(0,156,153,0.35)',
 }
 
 const btnSecondary = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8',
+  background: '#eef2f5',
+  border: '1px solid #e0e5eb', color: '#64748b',
   padding: '9px 16px', borderRadius: 10,
   fontSize: 13, fontWeight: 500, cursor: 'pointer',
 }

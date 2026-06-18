@@ -65,14 +65,14 @@ export default function Invoices() {
             placeholder="Search by invoice ID or customer..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {STATUS_FILTERS.map(s => (
             <button key={s} onClick={() => setStatus(s)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-colors
-                ${status === s ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                ${status === s ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
               {s}
             </button>
           ))}
@@ -96,9 +96,9 @@ export default function Invoices() {
               ) : (
                 filtered.map((inv, i) => (
                   <tr key={inv.id} className={`hover:bg-gray-50 transition-colors ${i !== filtered.length - 1 ? 'border-b border-gray-50' : ''}`}>
-                    <td className="px-6 py-4 font-mono text-indigo-600 font-medium">{inv.id}</td>
+                    <td className="px-6 py-4 font-mono text-brand-600 font-medium">{inv.id}</td>
                     <td className="px-6 py-4">
-                      <button onClick={() => navigate(`/orders/${inv.order_id}`)} className="font-mono text-gray-500 hover:text-indigo-600 hover:underline transition-colors">
+                      <button onClick={() => navigate(`/orders/${inv.order_id}`)} className="font-mono text-gray-500 hover:text-brand-600 hover:underline transition-colors">
                         {inv.order_id}
                       </button>
                     </td>
@@ -108,7 +108,7 @@ export default function Invoices() {
                     <td className={`px-6 py-4 font-medium ${inv.status === 'Overdue' ? 'text-red-500' : 'text-gray-400'}`}>{inv.due_at?.split('T')[0]}</td>
                     <td className="px-6 py-4"><StatusBadge status={inv.status} /></td>
                     <td className="px-6 py-4">
-                      <button className="text-gray-400 hover:text-indigo-600 transition-colors" title="Download invoice">
+                      <button className="text-gray-400 hover:text-brand-600 transition-colors" title="Download invoice">
                         <Download size={15} />
                       </button>
                     </td>

@@ -19,16 +19,16 @@ function iconFor(tool = '', type = '') {
 }
 
 const TYPE_STYLE = {
-  read:     { color: '#818cf8', bg: 'rgba(129,140,248,0.12)', label: 'read' },
-  write:    { color: '#fb923c', bg: 'rgba(251,146,60,0.12)',  label: 'write' },
-  ai:       { color: '#c084fc', bg: 'rgba(192,132,252,0.14)', label: 'ai' },
-  proposed: { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  label: 'proposed' },
+  read:     { color: '#008c8a', bg: 'rgba(0,156,153,0.1)',    label: 'read' },
+  write:    { color: '#ea580c', bg: 'rgba(253,96,52,0.12)',   label: 'write' },
+  ai:       { color: '#7c3aed', bg: 'rgba(124,58,237,0.1)',   label: 'ai' },
+  proposed: { color: '#d97706', bg: 'rgba(217,119,6,0.12)',   label: 'proposed' },
 }
 
 const STATUS = {
-  ok:       { color: '#22c55e', glyph: 'ok' },
-  error:    { color: '#f87171', glyph: 'err' },
-  proposed: { color: '#fbbf24', glyph: 'proposed' },
+  ok:       { color: '#16a34a', glyph: 'ok' },
+  error:    { color: '#dc2626', glyph: 'err' },
+  proposed: { color: '#d97706', glyph: 'proposed' },
 }
 
 function summarizeInput(input) {
@@ -61,8 +61,8 @@ function Json({ value }) {
   return (
     <pre style={{
       margin: '3px 0 0 18px', padding: '6px 9px', borderRadius: 6,
-      background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.06)',
-      color: '#7dd3fc', fontSize: 11, lineHeight: 1.5,
+      background: '#f8fafc', border: '1px solid #e0e5eb',
+      color: '#0369a1', fontSize: 11, lineHeight: 1.5,
       whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 220, overflow: 'auto',
     }}>{text}</pre>
   )
@@ -72,7 +72,7 @@ function Step({ step, prev }) {
   const [open, setOpen] = useState(false)
   const Icon = iconFor(step.tool, step.type)
   const ty = TYPE_STYLE[step.type] || TYPE_STYLE.read
-  const st = STATUS[step.status] || { color: '#94a3b8', glyph: step.status }
+  const st = STATUS[step.status] || { color: '#475569', glyph: step.status }
 
   return (
     <div>
@@ -81,23 +81,23 @@ function Step({ step, prev }) {
         onClick={() => setOpen(o => !o)}
         style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '1px 0' }}
       >
-        {open ? <ChevronDown size={12} color="#475569" /> : <ChevronRight size={12} color="#475569" />}
+        {open ? <ChevronDown size={13} color="#1e293b" /> : <ChevronRight size={13} color="#1e293b" />}
         <span style={{ color: ty.color, display: 'flex' }}><Icon size={12} /></span>
-        <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{step.tool}</span>
+        <span style={{ color: '#0f172a', fontWeight: 600 }}>{step.tool}</span>
         <span style={{
           fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
           color: ty.color, background: ty.bg, padding: '0 5px', borderRadius: 4,
         }}>{ty.label}</span>
-        <span style={{ color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {summarizeInput(step.input)}
         </span>
         <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          {step.tokens > 0 && <span style={{ color: '#c084fc' }}>{step.tokens} tok</span>}
+          {step.tokens > 0 && <span style={{ color: '#7c3aed' }}>{step.tokens} tok</span>}
           {step.duration_ms > 0 && <span style={{ color: '#475569' }}>{step.duration_ms}ms</span>}
           <span style={{ color: st.color, fontWeight: 700 }}>{st.glyph}</span>
         </span>
       </div>
-      <div style={{ marginLeft: 19, color: '#64748b' }}>
+      <div style={{ marginLeft: 19, color: '#334155' }}>
         <span style={{ color: '#475569' }}>← </span>{summarizeOutput(step.output)}
       </div>
       {open && (
@@ -123,22 +123,23 @@ export default function AgentToolTerminal({ events = [], onClear }) {
   return (
     <div style={{
       flex: 1, minWidth: 0,
-      background: 'rgba(0,0,0,0.45)',
-      border: '1px solid rgba(99,102,241,0.18)',
+      background: '#ffffff',
+      border: '1px solid #e0e5eb',
       borderRadius: 16, overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
+      boxShadow: '0 1px 2px rgba(16,24,40,0.05), 0 10px 24px -12px rgba(16,24,40,0.20)',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-        padding: '10px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '10px 18px', borderBottom: '1px solid #e0e5eb', background: '#e6ebf1',
       }}>
         <div style={{ display: 'flex', gap: 6 }}>
           <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ef4444' }} />
           <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#f59e0b' }} />
           <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#22c55e' }} />
         </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#475569', marginLeft: 6 }}>agent.tools</span>
-        <span style={{ fontSize: 10, color: '#334155' }}>live tool calls</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginLeft: 6 }}>agent.tools</span>
+        <span style={{ fontSize: 10, color: '#475569' }}>live tool calls</span>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
           {totalCalls > 0 && <span style={{ fontSize: 10, color: '#475569' }}>{totalCalls} call(s)</span>}
           {events.length > 0 && onClear && (
@@ -153,7 +154,7 @@ export default function AgentToolTerminal({ events = [], onClear }) {
       {/* Toolbox catalog — used tools light up green, the rest stay grey */}
       <div style={{
         flexShrink: 0, padding: '10px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid #eef2f5',
       }}>
         <p style={{ margin: '0 0 7px', fontSize: 9, fontWeight: 700, letterSpacing: 0.6,
           textTransform: 'uppercase', color: '#475569' }}>Toolbox</p>
@@ -164,9 +165,9 @@ export default function AgentToolTerminal({ events = [], onClear }) {
               <span key={name} style={{
                 display: 'flex', alignItems: 'center', gap: 3,
                 fontSize: 9, fontWeight: 600, padding: '3px 7px', borderRadius: 999,
-                border: `1px solid ${on ? 'rgba(34,197,94,0.55)' : 'rgba(255,255,255,0.08)'}`,
-                background: on ? 'rgba(34,197,94,0.16)' : 'transparent',
-                color: on ? '#86efac' : '#475569',
+                border: `1px solid ${on ? 'rgba(22,163,74,0.5)' : '#e0e5eb'}`,
+                background: on ? 'rgba(22,163,74,0.1)' : '#f8fafc',
+                color: on ? '#16a34a' : '#475569',
                 transition: 'all 0.3s',
               }}>
                 {on && <Check size={9} />} {name}
@@ -182,7 +183,7 @@ export default function AgentToolTerminal({ events = [], onClear }) {
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         {events.length === 0 && (
-          <span style={{ color: '#334155', fontStyle: 'italic' }}>
+          <span style={{ color: '#475569', fontStyle: 'italic' }}>
             $ pick an action or ask a question — every tool the agent calls streams here, with payloads…
           </span>
         )}
@@ -190,22 +191,22 @@ export default function AgentToolTerminal({ events = [], onClear }) {
           <div key={ev.id} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <span style={{ color: '#475569', flexShrink: 0 }}>[{ev.ts}]</span>
-              <span style={{ color: '#34d399', flexShrink: 0 }}>$</span>
-              <span style={{ color: '#cbd5e1' }}>{ev.title}</span>
-              {ev.status === 'running' && <Loader2 size={11} color="#818cf8" style={{ animation: 'spin 1s linear infinite' }} />}
+              <span style={{ color: '#16a34a', flexShrink: 0 }}>$</span>
+              <span style={{ color: '#334155' }}>{ev.title}</span>
+              {ev.status === 'running' && <Loader2 size={11} color="#009c99" style={{ animation: 'spin 1s linear infinite' }} />}
             </div>
             {ev.steps?.map((step, i) => <Step key={i} step={step} prev={ev.steps[i - 1]} />)}
             {ev.status === 'running' && ev.steps?.length === 0 && (
               <span style={{ marginLeft: 18, color: '#475569' }}>· orchestrating…</span>
             )}
             {ev.status === 'error' && ev.steps?.length === 0 && (
-              <span style={{ marginLeft: 18, color: '#f87171' }}>· request failed — no tools ran</span>
+              <span style={{ marginLeft: 18, color: '#dc2626' }}>· request failed — no tools ran</span>
             )}
             {ev.status === 'ok' && ev.steps?.length === 0 && (
               <span style={{ marginLeft: 18, color: '#475569' }}>· answered directly — no tools needed</span>
             )}
             {(ev.tokens > 0 || ev.model) && ev.status !== 'running' && (
-              <div style={{ marginLeft: 18, color: '#334155', fontSize: 10.5 }}>
+              <div style={{ marginLeft: 18, color: '#475569', fontSize: 10.5 }}>
                 {ev.model || ''}{ev.tokens > 0 ? ` · ${ev.tokens} tokens total` : ''}
               </div>
             )}
