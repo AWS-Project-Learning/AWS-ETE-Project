@@ -36,6 +36,16 @@ on:
           - plan
           - apply
           - destroy
+      environment:
+        description: "Target environment (required for destroy — ECS cleanup)"
+        required: false
+        type: choice
+        options:
+          - dev
+        default: dev
+      confirm:
+        description: "For destroy — type the environment name exactly (e.g. dev)"
+        required: false
 
 env:
   AWS_REGION:     us-east-1
@@ -92,7 +102,12 @@ jobs:
         id: plan
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          terraform plan -no-color -out=tfplan 2>&1 | tee plan-output.txt
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.action }}" = "destroy" ]; then
+            echo "Generating destroy plan..."
+            terraform plan -destroy -no-color -out=tfplan 2>&1 | tee plan-output.txt
+          else
+            terraform plan -no-color -out=tfplan 2>&1 | tee plan-output.txt
+          fi
           echo "exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
 
       - name: Upload plan artifact
@@ -170,5 +185,69 @@ jobs:
           path: ${{ env.TF_WORKING_DIR }}
 
       - name: Terraform Apply
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+  # ── Destroy ─────────────────────────────────────────────────────────────────
+  # 1. Safety confirmation  2. Delete ECS services (scripts/destroy-ecs.sh)
+  # 3. Apply the saved destroy plan from the plan job.
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    needs: plan
+    environment: infra-approver-list
+
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC
+
+    env:
+      TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+
+    steps:
+      - name: Validate destroy confirmation
+        run: |
+          set -euo pipefail
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          CONFIRM="${{ github.event.inputs.confirm || '' }}"
+          if [ "$CONFIRM" != "$ENV" ]; then
+            echo "FAIL: For destroy, type the environment name in 'confirm'."
+            echo "      Expected '$ENV', got '${CONFIRM:-<empty>}'."
+            exit 1
+          fi
+          echo "PASS: Confirmation matches environment '$ENV'."
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Destroy ECS services
+        run: |
+          chmod +x scripts/destroy-ecs.sh
+          ./scripts/destroy-ecs.sh "${{ github.event.inputs.environment || 'dev' }}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Download destroy plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORKING_DIR }}
+
+      - name: Terraform Destroy
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve tfplan
