@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
-# destroy-ecs.sh — Drain and delete all OrderFlow ECS services on a cluster.
+# destroy-ecs.sh — Pre-terraform destroy cleanup for OrderFlow deploy resources.
 #
 # What this does:
-#   1. Sets desiredCount=0 on bff, order-service, invoice-service.
-#   2. Waits for all Fargate tasks to drain.
-#   3. Deletes each ECS service (--force).
-#   4. Deletes Cloud Map service entries (created by deploy/apply.py).
-#   5. Verifies no running tasks remain.
+#   1. Scales ECS services to 0, drains tasks, deletes services.
+#   2. Deletes Cloud Map service entries (deploy/apply.py — blocks namespace destroy).
+#   3. Empties ECR repos and the versioned frontend S3 bucket (blocks TF destroy).
 #
-# What this does NOT do:
-#   - Destroy ALB, RDS, VPC, CloudFront, Lambda, or any Terraform resource.
-#   - Remove ECR images or task definitions.
-#
-# Use before a full `terraform destroy` so subnets/VPC teardown is not blocked
-# by active ENIs from running tasks. The infra.yml destroy job runs this first.
+# Run before `terraform destroy`. The infra.yml destroy job calls this first,
+# then generates a fresh destroy plan (so force_delete / force_destroy apply).
 #
 # Usage:
 #   ./scripts/destroy-ecs.sh           # defaults to dev
-#   ./scripts/destroy-ecs.sh prod      # any env
+#   ./scripts/destroy-ecs.sh prod
 #
 set -euo pipefail
 
@@ -27,10 +21,10 @@ CLUSTER="${PROJECT}-${ENV}"
 SERVICES=(bff order-service invoice-service)
 
 echo "=============================================="
-echo " Destroying ECS services on ${CLUSTER}"
+echo " Pre-destroy cleanup — ${PROJECT} / ${ENV}"
 echo "=============================================="
 
-# ── 1. Scale each service to 0 ────────────────────────────────────────────────
+# ── 1. Scale each ECS service to 0 ────────────────────────────────────────────
 for SERVICE in "${SERVICES[@]}"; do
   ACTIVE=$(aws ecs describe-services \
     --cluster  "$CLUSTER" \
@@ -52,7 +46,7 @@ done
 
 # ── 2. Wait for tasks to drain (max 4 min) ────────────────────────────────────
 echo ""
-echo "Waiting for tasks to drain..."
+echo "Waiting for Fargate tasks to drain..."
 for i in $(seq 1 24); do
   RUNNING=$(aws ecs list-tasks \
     --cluster        "$CLUSTER" \
@@ -65,14 +59,13 @@ for i in $(seq 1 24); do
     break
   fi
   if [ "$i" = "24" ]; then
-    echo ""
     echo "FAIL: tasks still running after 4 minutes."
     exit 1
   fi
   sleep 10
 done
 
-# ── 3. Delete each service ────────────────────────────────────────────────────
+# ── 3. Delete ECS services ────────────────────────────────────────────────────
 echo ""
 for SERVICE in "${SERVICES[@]}"; do
   ACTIVE=$(aws ecs describe-services \
@@ -82,7 +75,7 @@ for SERVICE in "${SERVICES[@]}"; do
     --output   text 2>/dev/null || echo "")
 
   if [ -n "$ACTIVE" ]; then
-    echo "  Deleting service $SERVICE ..."
+    echo "  Deleting ECS service $SERVICE ..."
     aws ecs delete-service \
       --cluster  "$CLUSTER" \
       --service  "$SERVICE" \
@@ -90,16 +83,25 @@ for SERVICE in "${SERVICES[@]}"; do
       --no-cli-pager > /dev/null
     echo "  Deleted $SERVICE."
   else
-    echo "  $SERVICE not found / not active — skipping delete."
+    echo "  $SERVICE not found / not active — skipping."
   fi
 done
 
-# ── 4. Delete Cloud Map services (deploy pipeline, not Terraform) ─────────────
+# ── 4. Delete Cloud Map services ──────────────────────────────────────────────
 echo ""
 NS_ID=$(aws ssm get-parameter \
   --name   "/orderflow/${ENV}/infra/cloudmap-namespace-id" \
   --query  'Parameter.Value' \
   --output text 2>/dev/null || echo "")
+
+if [ -z "$NS_ID" ] || [ "$NS_ID" = "None" ]; then
+  NS_ID=$(aws servicediscovery list-namespaces \
+    --query "Namespaces[?Name=='${PROJECT}-${ENV}.local'].Id | [0]" \
+    --output text 2>/dev/null || echo "")
+  if [ -n "$NS_ID" ] && [ "$NS_ID" != "None" ]; then
+    echo "Cloud Map namespace from SSM missing — resolved by name: ${NS_ID}"
+  fi
+fi
 
 if [ -n "$NS_ID" ] && [ "$NS_ID" != "None" ]; then
   echo "Deleting Cloud Map services in namespace ${NS_ID} ..."
@@ -109,7 +111,7 @@ if [ -n "$NS_ID" ] && [ "$NS_ID" != "None" ]; then
     --output  text 2>/dev/null || echo "")
 
   if [ -z "$CM_IDS" ]; then
-    echo "  No Cloud Map services found — skipping."
+    echo "  No Cloud Map services found."
   else
     for SID in $CM_IDS; do
       NAME=$(aws servicediscovery get-service \
@@ -119,12 +121,61 @@ if [ -n "$NS_ID" ] && [ "$NS_ID" != "None" ]; then
     done
   fi
 else
-  echo "Cloud Map namespace id not in SSM — skipping service cleanup."
+  echo "WARN: Cloud Map namespace not found — TF may fail on namespace destroy."
 fi
 
-# ── 5. Verify ─────────────────────────────────────────────────────────────────
+# ── 5. Empty ECR repositories ─────────────────────────────────────────────────
 echo ""
-echo "Verifying teardown..."
+echo "Emptying ECR repositories ..."
+for SERVICE in "${SERVICES[@]}"; do
+  REPO="${PROJECT}/${SERVICE}"
+  if ! aws ecr describe-repositories --repository-names "$REPO" --no-cli-pager &>/dev/null; then
+    echo "  $REPO — not found, skipping."
+    continue
+  fi
+  echo "  Purging images in $REPO ..."
+  while true; do
+    IMAGE_IDS=$(aws ecr list-images --repository-name "$REPO" --max-items 100 \
+      --query 'imageIds' --output json 2>/dev/null || echo "[]")
+    [ "$IMAGE_IDS" = "[]" ] && break
+    aws ecr batch-delete-image --repository-name "$REPO" \
+      --image-ids "$IMAGE_IDS" --no-cli-pager > /dev/null
+  done
+  echo "  OK  : $REPO empty"
+done
+
+# ── 6. Empty frontend S3 bucket (versioned objects block delete) ─────────────
+echo ""
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+BUCKET="${PROJECT}-frontend-${ENV}-${ACCOUNT}"
+echo "Emptying S3 bucket s3://${BUCKET} ..."
+if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+  aws s3 rm "s3://${BUCKET}" --recursive --no-cli-pager > /dev/null || true
+  # Remove all versioned objects and delete markers
+  while true; do
+    RESP=$(aws s3api list-object-versions --bucket "$BUCKET" \
+      --max-keys 1000 --output json 2>/dev/null || echo '{}')
+    VCOUNT=$(echo "$RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('Versions',[]))+len(d.get('DeleteMarkers',[])))")
+    [ "${VCOUNT:-0}" = "0" ] && break
+    echo "$RESP" | python3 -c "
+import json, sys
+d = json.load(sys.stdin)
+objs = [{'Key': v['Key'], 'VersionId': v['VersionId']} for v in d.get('Versions', [])]
+objs += [{'Key': v['Key'], 'VersionId': v['VersionId']} for v in d.get('DeleteMarkers', [])]
+if objs:
+    json.dump({'Objects': objs, 'Quiet': True}, sys.stdout)
+" > /tmp/s3-delete.json
+    [ ! -s /tmp/s3-delete.json ] && break
+    aws s3api delete-objects --bucket "$BUCKET" --delete "file:///tmp/s3-delete.json" --no-cli-pager > /dev/null
+  done
+  echo "  OK  : bucket emptied"
+else
+  echo "  Bucket not found — skipping."
+fi
+
+# ── 7. Verify ECS ─────────────────────────────────────────────────────────────
+echo ""
+echo "Verifying ECS teardown..."
 ERRORS=0
 
 RUNNING=$(aws ecs list-tasks \
@@ -155,13 +206,12 @@ done
 
 if [ "$ERRORS" -gt 0 ]; then
   echo ""
-  echo "FAIL: $ERRORS check(s) failed — ECS services may still exist."
+  echo "FAIL: $ERRORS ECS check(s) failed."
   exit 1
 fi
 
 echo ""
 echo "=============================================="
-echo " DONE — ECS services destroyed on ${CLUSTER}"
-echo " ECS cluster ${CLUSTER} is preserved (Terraform-managed)."
-echo " Next: run terraform destroy (infra.yml action=destroy)"
+echo " DONE — pre-destroy cleanup complete"
+echo " Next: terraform plan -destroy && terraform apply"
 echo "=============================================="

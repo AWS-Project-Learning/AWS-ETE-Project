@@ -242,12 +242,12 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init
 
-      - name: Download destroy plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.TF_WORKING_DIR }}
+      # Regenerate the destroy plan here (not the plan-job artifact) so
+      # force_delete / force_destroy and current state are always used.
+      - name: Generate fresh destroy plan
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan -destroy -input=false -no-color -out=destroy.tfplan
 
       - name: Terraform Destroy
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -auto-approve destroy.tfplan
