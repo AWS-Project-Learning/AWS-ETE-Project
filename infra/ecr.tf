@@ -20,6 +20,7 @@ resource "aws_ecr_repository" "services" {
 
   name                 = "${var.project}/${each.key}" # e.g. orderflow/order-service
   image_tag_mutability = "MUTABLE"                    # allows overwriting tags like "latest"
+  force_delete         = true                           # allow terraform destroy to purge images
 
   # Scan images for known OS/library vulnerabilities on every push.
   # Results appear in the ECR console — free basic scanning.

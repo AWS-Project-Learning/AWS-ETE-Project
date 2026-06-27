@@ -5,7 +5,8 @@
 #   1. Sets desiredCount=0 on bff, order-service, invoice-service.
 #   2. Waits for all Fargate tasks to drain.
 #   3. Deletes each ECS service (--force).
-#   4. Verifies no running tasks remain.
+#   4. Deletes Cloud Map service entries (created by deploy/apply.py).
+#   5. Verifies no running tasks remain.
 #
 # What this does NOT do:
 #   - Destroy ALB, RDS, VPC, CloudFront, Lambda, or any Terraform resource.
@@ -93,7 +94,35 @@ for SERVICE in "${SERVICES[@]}"; do
   fi
 done
 
-# ── 4. Verify ─────────────────────────────────────────────────────────────────
+# ── 4. Delete Cloud Map services (deploy pipeline, not Terraform) ─────────────
+echo ""
+NS_ID=$(aws ssm get-parameter \
+  --name   "/orderflow/${ENV}/infra/cloudmap-namespace-id" \
+  --query  'Parameter.Value' \
+  --output text 2>/dev/null || echo "")
+
+if [ -n "$NS_ID" ] && [ "$NS_ID" != "None" ]; then
+  echo "Deleting Cloud Map services in namespace ${NS_ID} ..."
+  CM_IDS=$(aws servicediscovery list-services \
+    --filters "Name=NAMESPACE_ID,Values=${NS_ID}" \
+    --query   'Services[].Id' \
+    --output  text 2>/dev/null || echo "")
+
+  if [ -z "$CM_IDS" ]; then
+    echo "  No Cloud Map services found — skipping."
+  else
+    for SID in $CM_IDS; do
+      NAME=$(aws servicediscovery get-service \
+        --id "$SID" --query 'Service.Name' --output text 2>/dev/null || echo "$SID")
+      echo "  Deleting Cloud Map service ${NAME} (${SID}) ..."
+      aws servicediscovery delete-service --id "$SID" --no-cli-pager > /dev/null
+    done
+  fi
+else
+  echo "Cloud Map namespace id not in SSM — skipping service cleanup."
+fi
+
+# ── 5. Verify ─────────────────────────────────────────────────────────────────
 echo ""
 echo "Verifying teardown..."
 ERRORS=0
